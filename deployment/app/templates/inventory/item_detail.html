@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.inventory_planning') }}">Inventurplanung</a></li>
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('main.inventory_planning_detail', id=item.session.id) }}">
+                    {{ item.session.name }}
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('main.inventory_execute_session', session_id=item.session.id) }}">
+                    Erfassung
+                </a>
+            </li>
+            <li class="breadcrumb-item active">{{ item.asset.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="card">
+        <div class="card-body">
+            <h1 class="card-title">{{ item.asset.name }}</h1>
+            
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <p><strong>Kategorie:</strong> {{ item.asset.category }}</p>
+                    <p><strong>Erwarteter Standort:</strong> {{ item.expected_location or '-' }}</p>
+                    <p><strong>Seriennummer:</strong> {{ item.asset.serial_number or '-' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Status:</strong>
+                        {% if item.status == 'pending' %}
+                        <span class="badge bg-secondary">Ausstehend</span>
+                        {% elif item.status == 'found' %}
+                        <span class="badge bg-success">Gefunden</span>
+                        {% elif item.status == 'missing' %}
+                        <span class="badge bg-danger">Fehlend</span>
+                        {% elif item.status == 'damaged' %}
+                        <span class="badge bg-warning text-dark">Beschädigt</span>
+                        {% endif %}
+                    </p>
+                    {% if item.counted_at %}
+                    <p><strong>Erfasst von:</strong> {{ item.counted_by }}</p>
+                    <p><strong>Erfasst am:</strong> {{ item.counted_at.strftime('%d.%m.%Y %H:%M') }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="counted_quantity" class="form-label">Gezählte Menge</label>
+                            <input type="number" class="form-control" id="counted_quantity" name="counted_quantity"
+                                   value="{{ item.counted_quantity or '' }}" min="0" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="actual_location" class="form-label">Tatsächlicher Standort</label>
+                            <input type="text" class="form-control" id="actual_location" name="actual_location"
+                                   value="{{ item.actual_location or '' }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="condition" class="form-label">Zustand</label>
+                            <select class="form-select" id="condition" name="condition" required>
+                                <option value="good" {% if item.condition == 'good' %}selected{% endif %}>Gut</option>
+                                <option value="damaged" {% if item.condition == 'damaged' %}selected{% endif %}>Beschädigt</option>
+                                <option value="repair_needed" {% if item.condition == 'repair_needed' %}selected{% endif %}>Reparatur notwendig</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="condition_notes" class="form-label">Anmerkungen zum Zustand</label>
+                            <textarea class="form-control" id="condition_notes" name="condition_notes" rows="3">{{ item.condition_notes or '' }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="image" class="form-label">Foto hochladen</label>
+                            <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                            {% if item.image_path %}
+                            <div class="mt-2">
+                                <img src="{{ url_for('main.uploaded_file', filename=item.image_path) }}" 
+                                     class="img-fluid" alt="Asset Foto">
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                    <a href="{{ url_for('main.inventory_execute_session', session_id=item.session.id) }}" 
+                       class="btn btn-secondary">Abbrechen</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

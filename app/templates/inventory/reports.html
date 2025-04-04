@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+.inventory-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+.inventory-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.inventory-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+.inventory-card .card-body {
+    padding: 1.5rem;
+}
+.inventory-card .card-title {
+    color: #2c3e50;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+.inventory-stats {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+.inventory-stats h6 {
+    color: #2c3e50;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+.inventory-stats ul {
+    margin: 0;
+    padding: 0;
+}
+.inventory-stats li {
+    padding: 0.25rem 0;
+    color: #495057;
+}
+.inventory-stats li i {
+    margin-right: 0.5rem;
+    width: 20px;
+    text-align: center;
+}
+.btn-inventory {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.btn-inventory.btn-primary {
+    background: #3498db;
+    border: none;
+}
+.btn-inventory.btn-primary:hover {
+    background: #2980b9;
+}
+.btn-inventory.btn-secondary {
+    background: #95a5a6;
+    border: none;
+}
+.btn-inventory.btn-secondary:hover {
+    background: #7f8c8d;
+}
+.chart-container {
+    margin: 1rem 0;
+    height: 200px;
+}
+</style>
+<div class="inventory-container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Start</a></li>
+            <li class="breadcrumb-item active">Inventurberichte</li>
+        </ol>
+    </nav>
+
+    <div class="mb-4">
+        <h1>Inventurberichte</h1>
+    </div>
+
+    {% if completed_sessions %}
+    <div class="row">
+        {% for session in completed_sessions %}
+        <div class="col-md-6 mb-4">
+            <div class="inventory-card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ session.name }}</h5>
+                    <p class="card-text">
+                        <strong>Standort:</strong> {{ session.location }}<br>
+                        <strong>Zeitraum:</strong> {{ session.start_date.strftime('%d.%m.%Y') }} - {{ session.end_date.strftime('%d.%m.%Y') }}<br>
+                        <strong>Status:</strong> {{ session.status }}
+                    </p>
+
+                    {% set total = session.items|length %}
+                    {% set found = session.items|selectattr('status', 'equalto', 'found')|list|length %}
+                    {% set missing = session.items|selectattr('status', 'equalto', 'missing')|list|length %}
+                    {% set damaged = session.items|selectattr('status', 'equalto', 'damaged')|list|length %}
+
+                    <div class="inventory-stats">
+                        <h6>Zusammenfassung</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success"></i> Gefunden: {{ found }} von {{ total }}</li>
+                            <li><i class="fas fa-exclamation-triangle text-danger"></i> Fehlend: {{ missing }}</li>
+                            <li><i class="fas fa-tools text-warning"></i> Beschädigt: {{ damaged }}</li>
+                        </ul>
+                    </div>
+
+                    <div class="mt-3">
+                        <canvas id="chart-{{ session.id }}" width="400" height="200"></canvas>
+                    </div>
+
+                    <div class="mt-3">
+                        <a href="{{ url_for('main.inventory_report_detail', id=session.id) }}" 
+                           class="btn btn-inventory btn-primary">
+                            <i class="fas fa-search"></i> Details anzeigen
+                        </a>
+                        <a href="{{ url_for('main.inventory_report_export', id=session.id) }}" 
+                           class="btn btn-inventory btn-secondary ml-2">
+                            <i class="fas fa-file-pdf"></i> PDF Export
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        {% for session in completed_sessions %}
+        var ctx{{ session.id }} = document.getElementById('chart-{{ session.id }}').getContext('2d');
+        const chartData = {
+            type: 'pie',
+            data: {
+                labels: ['Gefunden', 'Fehlend', 'Beschädigt'],
+                datasets: [{
+                    data: [
+                        {{ session.items|selectattr('status', 'equalto', 'found')|list|length }},
+                        {{ session.items|selectattr('status', 'equalto', 'missing')|list|length }},
+                        {{ session.items|selectattr('status', 'equalto', 'damaged')|list|length }}
+                    ],
+                    backgroundColor: ['#28a745', '#dc3545', '#ffc107'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            usePointStyle: true,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const value = context.raw;
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${context.label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        new Chart(ctx{{ session.id }}, chartData);
+        {% endfor %}
+    </script>
+    {% else %}
+    <div class="alert alert-info">
+        Keine abgeschlossenen Inventuren vorhanden.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

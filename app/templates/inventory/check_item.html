@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.inventory_execute') }}">Aktive Inventuren</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.inventory_execute_session', id=session.id) }}">{{ session.name }}</a></li>
+            <li class="breadcrumb-item active">{{ item.asset.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Asset erfassen: {{ item.asset.name }}</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                <!-- Asset-Informationen -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6>Asset-Details</h6>
+                        <p><strong>Kategorie:</strong> {{ item.asset.category }}</p>
+                        <p><strong>Erwarteter Standort:</strong> {{ item.expected_location }}</p>
+                        {% if item.asset.serial_number %}
+                        <p><strong>Seriennummer:</strong> {{ item.asset.serial_number }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        {% if item.asset.image_path %}
+                        <img src="{{ url_for('static', filename=item.asset.image_path) }}" 
+                             class="img-fluid" alt="Asset Bild">
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Erfassungsformular -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="actual_location" class="form-label">Tatsächlicher Standort</label>
+                            <input type="text" class="form-control" id="actual_location" 
+                                   name="actual_location" value="{{ item.actual_location or '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="counted_quantity" class="form-label">Gezählte Menge</label>
+                            <input type="number" class="form-control" id="counted_quantity" 
+                                   name="counted_quantity" value="{{ item.counted_quantity or 1 }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="condition" class="form-label">Zustand</label>
+                            <select class="form-select" id="condition" name="condition">
+                                <option value="good" {% if item.condition == 'good' %}selected{% endif %}>Gut</option>
+                                <option value="damaged" {% if item.condition == 'damaged' %}selected{% endif %}>Beschädigt</option>
+                                <option value="missing" {% if item.condition == 'missing' %}selected{% endif %}>Fehlend</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notizen</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3">{{ item.notes or '' }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="image" class="form-label">Bild hochladen</label>
+                            <input type="file" class="form-control" id="image" name="image">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aktionen -->
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                    <a href="{{ url_for('main.inventory_execute_session', id=session.id) }}" 
+                       class="btn btn-secondary">Zurück</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

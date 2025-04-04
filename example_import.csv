@@ -1,0 +1,6 @@
+name;category;location;value;status;description;purchase_date
+Laptop XPS 15;Hardware;Büro 101;1299.99;active;Dell XPS 15 mit 32GB RAM;01.01.2023
+Monitor Dell U2719D;Hardware;Büro 101;449.99;active;27 Zoll 4K Monitor;01.01.2023
+Bürostuhl;Möbel;Büro 102;199.99;active;Ergonomischer Bürostuhl;15.02.2023
+Drucker HP M404;Hardware;Druckerraum;299.99;inactive;Laserdrucker Schwarz/Weiß;01.03.2023
+Beamer;Präsentation;Konferenzraum;799.99;on_loan;Full HD Beamer mit HDMI;01.04.2023

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Meine Ausleihen</h1>
+
+    <!-- Aktive Ausleihen -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Aktuelle Ausleihen</h5>
+            {% if active_loans %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Asset</th>
+                            <th>Ausgeliehen an</th>
+                            <th>Von</th>
+                            <th>Bis</th>
+                            <th>Status</th>
+                            <th>Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for loan in active_loans %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('main.view_asset', id=loan.loaned_asset.id) }}">
+                                    {{ loan.loaned_asset.name }}
+                                </a>
+                            </td>
+                            <td>{{ loan.borrower_name }}</td>
+                            <td>{{ loan.start_date.strftime('%d.%m.%Y') }}</td>
+                            <td>{{ loan.expected_return_date.strftime('%d.%m.%Y') }}</td>
+                            <td>
+                                {% if loan.expected_return_date < now %}
+                                <span class="badge bg-danger">Überfällig</span>
+                                {% else %}
+                                <span class="badge bg-success">Aktiv</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form action="{{ url_for('main.return_loan', id=loan.id) }}" method="POST" style="display: inline;">
+                                    <button type="submit" class="btn btn-success btn-sm">
+                                        <i class="fas fa-undo"></i> Zurückgeben
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">Keine aktiven Ausleihen vorhanden.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Ausleihhistorie -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Ausleihhistorie</h5>
+            {% if loan_history %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Asset</th>
+                            <th>Ausgeliehen an</th>
+                            <th>Von</th>
+                            <th>Bis</th>
+                            <th>Zurückgegeben am</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for loan in loan_history %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('main.view_asset', id=loan.loaned_asset.id) }}">
+                                    {{ loan.loaned_asset.name }}
+                                </a>
+                            </td>
+                            <td>{{ loan.borrower_name }}</td>
+                            <td>{{ loan.start_date.strftime('%d.%m.%Y') }}</td>
+                            <td>{{ loan.expected_return_date.strftime('%d.%m.%Y') }}</td>
+                            <td>{{ loan.actual_return_date.strftime('%d.%m.%Y') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">Keine Ausleihhistorie vorhanden.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

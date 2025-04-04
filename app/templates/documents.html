@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="columns">
+        <!-- Dokumente hochladen -->
+        <div class="column is-4">
+            <div class="box">
+                <h2 class="title is-4">Dokument hochladen</h2>
+                <form method="POST" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="field">
+                        <label class="label">{{ form.title.label }}</label>
+                        <div class="control">
+                            {{ form.title(class="input") }}
+                        </div>
+                        {% for error in form.title.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.document_type.label }}</label>
+                        <div class="control">
+                            <div class="select is-fullwidth">
+                                {{ form.document_type() }}
+                            </div>
+                        </div>
+                        {% for error in form.document_type.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.file.label }}</label>
+                        <div class="control">
+                            {{ form.file(class="input") }}
+                        </div>
+                        {% for error in form.file.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                        <p class="help">Erlaubte Formate: PDF, Word, JPG, PNG</p>
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.notes.label }}</label>
+                        <div class="control">
+                            {{ form.notes(class="textarea") }}
+                        </div>
+                        {% for error in form.notes.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <div class="control">
+                            {{ form.submit(class="button is-primary") }}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Dokumentenliste -->
+        <div class="column is-8">
+            <div class="box">
+                <h2 class="title is-4">Dokumente für {{ asset.name }}</h2>
+                
+                {% if documents %}
+                <div class="table-container">
+                    <table class="table is-fullwidth">
+                        <thead>
+                            <tr>
+                                <th>Titel</th>
+                                <th>Typ</th>
+                                <th>Datum</th>
+                                <th>Größe</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in documents %}
+                            <tr>
+                                <td>{{ doc.title }}</td>
+                                <td>
+                                    <span class="tag 
+                                        {% if doc.document_type == 'manual' %}is-info
+                                        {% elif doc.document_type == 'invoice' %}is-success
+                                        {% elif doc.document_type == 'warranty' %}is-warning
+                                        {% elif doc.document_type == 'certificate' %}is-primary
+                                        {% else %}is-light{% endif %}">
+                                        {{ doc.get_type_display() }}
+                                    </span>
+                                </td>
+                                <td>{{ doc.upload_date.strftime('%d.%m.%Y') }}</td>
+                                <td>{{ doc.get_size_display() }}</td>
+                                <td>
+                                    <div class="buttons are-small">
+                                        <a href="{{ url_for('main.download_document', document_id=doc.id) }}" 
+                                           class="button is-link" title="Herunterladen">
+                                            <span class="icon">
+                                                <i class="fas fa-download"></i>
+                                            </span>
+                                        </a>
+                                        {% if doc.can_preview() %}
+                                        <a href="{{ url_for('main.preview_document', document_id=doc.id) }}"
+                                           class="button is-info" title="Vorschau">
+                                            <span class="icon">
+                                                <i class="fas fa-eye"></i>
+                                            </span>
+                                        </a>
+                                        {% endif %}
+                                        <a href="{{ url_for('main.delete_document', document_id=doc.id) }}"
+                                           class="button is-danger" title="Löschen"
+                                           onclick="return confirm('Sind Sie sicher, dass Sie dieses Dokument löschen möchten?')">
+                                            <span class="icon">
+                                                <i class="fas fa-trash"></i>
+                                            </span>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="has-text-grey">Noch keine Dokumente vorhanden.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

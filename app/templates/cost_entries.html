@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="title">Kosten: {{ asset.name }}</h1>
+
+    <!-- Kostenübersicht -->
+    <div class="box">
+        <div class="columns">
+            <div class="column">
+                <div class="notification is-info">
+                    <p class="heading">Gesamtkosten</p>
+                    <p class="title">{{ asset.get_total_costs()|round(2) }} €</p>
+                </div>
+            </div>
+            <div class="column">
+                <div class="notification is-primary">
+                    <p class="heading">Monatliche Kosten (Ø)</p>
+                    <p class="title">{{ asset.get_monthly_costs()|round(2) }} €</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kostenverteilung -->
+        <div class="content">
+            <h3>Kostenverteilung</h3>
+            {% set costs_by_type = asset.get_costs_by_type() %}
+            {% if costs_by_type %}
+            <table class="table is-fullwidth">
+                <thead>
+                    <tr>
+                        <th>Kostenart</th>
+                        <th>Betrag</th>
+                        <th>Anteil</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for type, amount in costs_by_type.items() %}
+                    <tr>
+                        <td>{{ type }}</td>
+                        <td>{{ amount|round(2) }} €</td>
+                        <td>{{ ((amount / asset.get_total_costs()) * 100)|round(1) }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>Noch keine Kosten erfasst.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Neuer Kosteneintrag -->
+    <div class="box">
+        <h2 class="subtitle">Neuer Kosteneintrag</h2>
+        <form method="POST" action="{{ url_for('main.add_cost_entry', id=asset.id) }}" enctype="multipart/form-data">
+            {{ form.csrf_token }}
+            
+            <div class="field">
+                <label class="label">{{ form.cost_type.label }}</label>
+                <div class="control">
+                    <div class="select">
+                        {{ form.cost_type() }}
+                    </div>
+                </div>
+                {% for error in form.cost_type.errors %}
+                <p class="help is-danger">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div class="field">
+                <label class="label">{{ form.date.label }}</label>
+                <div class="control">
+                    {{ form.date(class="input") }}
+                </div>
+                {% for error in form.date.errors %}
+                <p class="help is-danger">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div class="field">
+                <label class="label">{{ form.amount.label }}</label>
+                <div class="control">
+                    {{ form.amount(class="input", step="0.01") }}
+                </div>
+                {% for error in form.amount.errors %}
+                <p class="help is-danger">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div class="field">
+                <label class="label">{{ form.description.label }}</label>
+                <div class="control">
+                    {{ form.description(class="textarea") }}
+                </div>
+                {% for error in form.description.errors %}
+                <p class="help is-danger">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div class="field">
+                <label class="label">{{ form.receipt.label }}</label>
+                <div class="file has-name">
+                    <label class="file-label">
+                        {{ form.receipt(class="file-input", onchange="updateFileName(this)") }}
+                        <span class="file-cta">
+                            <span class="file-icon">
+                                <i class="fas fa-upload"></i>
+                            </span>
+                            <span class="file-label">
+                                Datei auswählen...
+                            </span>
+                        </span>
+                        <span class="file-name" id="fileName">
+                            Keine Datei ausgewählt
+                        </span>
+                    </label>
+                </div>
+                {% for error in form.receipt.errors %}
+                <p class="help is-danger">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <div class="field">
+                <div class="control">
+                    <button type="submit" class="button is-primary">
+                        <span class="icon">
+                            <i class="fas fa-plus"></i>
+                        </span>
+                        <span>Kosteneintrag hinzufügen</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Kosteneinträge -->
+    <div class="box">
+        <h2 class="subtitle">Kosteneinträge</h2>
+        {% if cost_entries %}
+        <table class="table is-fullwidth">
+            <thead>
+                <tr>
+                    <th>Datum</th>
+                    <th>Art</th>
+                    <th>Beschreibung</th>
+                    <th>Betrag</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in cost_entries %}
+                <tr>
+                    <td>{{ entry.date.strftime('%d.%m.%Y') }}</td>
+                    <td>{{ entry.cost_type }}</td>
+                    <td>{{ entry.description }}</td>
+                    <td>{{ entry.amount|round(2) }} €</td>
+                    <td>
+                        <div class="buttons are-small">
+                            {% if entry.has_receipt %}
+                            <a href="{{ url_for('main.download_receipt', id=entry.id) }}" class="button is-info" title="Beleg herunterladen">
+                                <span class="icon is-small">
+                                    <i class="fas fa-download"></i>
+                                </span>
+                            </a>
+                            {% endif %}
+                            <form method="POST" action="{{ url_for('main.delete_cost_entry', id=entry.id) }}" class="is-inline">
+                                <button type="submit" class="button is-danger" title="Löschen" onclick="return confirm('Kosteneintrag wirklich löschen?')">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-trash"></i>
+                                    </span>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>Keine Kosteneinträge vorhanden.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function updateFileName(input) {
+    document.getElementById('fileName').textContent = input.files[0].name;
+}
+</script>
+{% endblock %}

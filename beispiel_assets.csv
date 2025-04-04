@@ -1,0 +1,13 @@
+name;description;status;value;category;location
+Laptop Dell XPS 15;Leistungsstarker Laptop für Entwicklung;active;1499.99;Hardware;Büro 101
+Monitor Dell U2719D;27 Zoll 4K Monitor;active;599.99;Hardware;Büro 101
+Drucker HP LaserJet Pro;Netzwerkdrucker für Team;active;399.99;Hardware;Druckerraum
+Bürostuhl Ergonomisch;Hochwertiger ergonomischer Stuhl;active;299.99;Möbel;Büro 101
+Schreibtisch höhenverstellbar;Elektrisch höhenverstellbarer Schreibtisch;active;799.99;Möbel;Büro 102
+iPad Pro 12.9;Tablet für Präsentationen;active;1099.99;Mobile Geräte;Meeting-Raum
+Beamer Epson;4K Projektor für Konferenzraum;active;1299.99;Hardware;Konferenzraum
+Server Dell PowerEdge;Hauptserver für Entwicklungsumgebung;active;2999.99;Hardware;Serverraum
+Kaffeemaschine Jura;Professionelle Kaffeemaschine;inactive;1999.99;Küche;Küche
+Mikroskop Zeiss;Digitales Mikroskop für Labor;active;4999.99;Labor;Labor 1
+Werkzeugkasten komplett;Komplettes Werkzeugset;active;399.99;Werkzeug;Werkstatt
+3D-Drucker Prusa;Professioneller 3D-Drucker;active;899.99;Hardware;Werkstatt

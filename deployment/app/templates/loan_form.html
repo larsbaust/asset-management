@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ 'Asset ausleihen' if not loan else 'Ausleihe bearbeiten' }}</h5>
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="mb-3">
+                            <label for="borrower_name" class="form-label">Name des Ausleihenden</label>
+                            <input type="text" class="form-control" id="borrower_name" name="borrower_name" 
+                                   value="{{ loan.borrower_name if loan else '' }}" required>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="start_date" class="form-label">Startdatum</label>
+                                    <input type="date" class="form-control" id="start_date" name="start_date"
+                                           value="{{ loan.start_date.strftime('%Y-%m-%d') if loan and loan.start_date else '' }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="expected_return_date" class="form-label">Geplantes Rückgabedatum</label>
+                                    <input type="date" class="form-control" id="expected_return_date" name="expected_return_date"
+                                           value="{{ loan.expected_return_date.strftime('%Y-%m-%d') if loan and loan.expected_return_date else '' }}" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notizen</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3">{{ loan.notes if loan else '' }}</textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Speichern</button>
+                            <a href="{{ url_for('main.view_asset', id=asset.id) }}" class="btn btn-secondary">Abbrechen</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Setze das Mindestdatum für Startdatum auf heute
+    var today = new Date().toISOString().split('T')[0];
+    document.getElementById('start_date').min = today;
+    
+    // Aktualisiere das Mindestdatum für Rückgabedatum basierend auf Startdatum
+    document.getElementById('start_date').addEventListener('change', function() {
+        document.getElementById('expected_return_date').min = this.value;
+    });
+});
+</script>
+{% endblock %}

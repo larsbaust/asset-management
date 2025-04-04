@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <h1>{{ asset.name }}</h1>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Asset Details</h5>
+                    <dl class="row">
+                        <dt class="col-sm-3">Beschreibung</dt>
+                        <dd class="col-sm-9">{{ asset.description or 'Keine Beschreibung verfügbar' }}</dd>
+                        
+                        <dt class="col-sm-3">Kategorie</dt>
+                        <dd class="col-sm-9">{{ asset.category }}</dd>
+                        
+                        <dt class="col-sm-3">Status</dt>
+                        <dd class="col-sm-9">{{ asset.status }}</dd>
+                        
+                        <dt class="col-sm-3">Standort</dt>
+                        <dd class="col-sm-9">{{ asset.location or 'Kein Standort angegeben' }}</dd>
+                        
+                        <dt class="col-sm-3">Kaufdatum</dt>
+                        <dd class="col-sm-9">{{ asset.purchase_date.strftime('%d.%m.%Y') if asset.purchase_date else 'Nicht angegeben' }}</dd>
+                        
+                        <dt class="col-sm-3">Kaufpreis</dt>
+                        <dd class="col-sm-9">{{ "%.2f €"|format(asset.purchase_price) if asset.purchase_price else 'Nicht angegeben' }}</dd>
+                        
+                        <dt class="col-sm-3">Aktueller Wert</dt>
+                        <dd class="col-sm-9">{{ "%.2f €"|format(asset.current_value) if asset.current_value else 'Nicht angegeben' }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Wartungshistorie -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Wartungshistorie</h5>
+                    {% if asset.maintenances %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Datum</th>
+                                    <th>Typ</th>
+                                    <th>Status</th>
+                                    <th>Beschreibung</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for maintenance in asset.maintenances %}
+                                <tr>
+                                    <td>{{ maintenance.scheduled_date.strftime('%d.%m.%Y') }}</td>
+                                    <td>{{ maintenance.maintenance_type }}</td>
+                                    <td>{{ maintenance.status }}</td>
+                                    <td>{{ maintenance.description }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p>Keine Wartungseinträge vorhanden.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Ausleihhistorie -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Ausleihhistorie</h5>
+                    {% if asset.loans %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Ausgeliehen an</th>
+                                    <th>Von</th>
+                                    <th>Bis</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for loan in asset.loans %}
+                                <tr>
+                                    <td>{{ loan.borrower_name }}</td>
+                                    <td>{{ loan.start_date.strftime('%d.%m.%Y') }}</td>
+                                    <td>{{ loan.expected_return_date.strftime('%d.%m.%Y') }}</td>
+                                    <td>{{ loan.status }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p>Keine Ausleiheinträge vorhanden.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- QR Code -->
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    <h5 class="card-title">QR Code</h5>
+                    <img src="{{ url_for('main.asset_qr', id=asset.id) }}" alt="Asset QR Code" class="img-fluid">
+                </div>
+            </div>
+
+            <!-- Aktionen -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Aktionen</h5>
+                    <div class="d-grid gap-2">
+                        {% if asset.status == 'active' %}
+                        <a href="{{ url_for('main.loan_asset', id=asset.id) }}" class="btn btn-success">
+                            <i class="fas fa-hand-holding"></i> Ausleihen
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('main.edit_asset', id=asset.id) }}" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Bearbeiten
+                        </a>
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="fas fa-trash"></i> Löschen
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Asset löschen</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Sind Sie sicher, dass Sie das Asset "{{ asset.name }}" löschen möchten?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <form action="{{ url_for('main.delete_asset', id=asset.id) }}" method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Löschen</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

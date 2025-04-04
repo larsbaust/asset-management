@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="columns">
+        <div class="column">
+            <h1 class="title">Inventurplanung</h1>
+            
+            <!-- Neue Inventur Button -->
+            <div class="buttons mb-5">
+                <a href="{{ url_for('main.inventory_planning_new') }}" class="button is-primary">
+                    <span class="icon">
+                        <i class="fas fa-plus"></i>
+                    </span>
+                    <span>Neue Inventur planen</span>
+                </a>
+            </div>
+
+            <!-- Aktive und geplante Inventuren -->
+            <div class="box">
+                <h2 class="subtitle">Aktive und geplante Inventuren</h2>
+                {% if active_sessions %}
+                <div class="table-container">
+                    <table class="table is-fullwidth">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Standort</th>
+                                <th>Zeitraum</th>
+                                <th>Status</th>
+                                <th>Teams</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in active_sessions %}
+                            <tr>
+                                <td>{{ session.name }}</td>
+                                <td>{{ session.location }}</td>
+                                <td>
+                                    {{ session.start_date.strftime('%d.%m.%Y %H:%M') }} -<br>
+                                    {{ session.end_date.strftime('%d.%m.%Y %H:%M') }}
+                                </td>
+                                <td>
+                                    {% if session.status == 'planned' %}
+                                    <span class="tag is-info">Geplant</span>
+                                    {% elif session.status == 'active' %}
+                                    <span class="tag is-success">Aktiv</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ session.inventory_teams|length }}</td>
+                                <td>
+                                    <div class="buttons are-small" style="gap: 0.5rem;">
+                                        <a href="{{ url_for('main.inventory_planning_detail', id=session.id) }}" class="button is-link">
+                                            <span class="icon">
+                                                <i class="fas fa-eye"></i>
+                                            </span>
+                                        </a>
+                                        {% if session.status == 'active' %}
+                                        <a href="{{ url_for('main.inventory_execute_session', id=session.id) }}" class="button is-success">
+                                            Zur Erfassung
+                                        </a>
+                                        {% endif %}
+                                        {% if session.status == 'planned' %}
+                                        <form method="POST" action="{{ url_for('main.inventory_execute_session', id=session.id) }}" style="display: inline;">
+                                            <button type="submit" class="button is-success" onclick="return confirm('Möchten Sie diese Inventur starten?')">
+                                                Inventur starten
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        <form method="POST" action="{{ url_for('main.inventory_planning_cancel', id=session.id) }}" style="display: inline;">
+                                            <button type="submit" class="button is-danger" onclick="return confirm('Möchten Sie diese Inventur wirklich abbrechen?')">
+                                                <span class="icon">
+                                                    <i class="fas fa-times"></i>
+                                                </span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="has-text-grey">Keine aktiven oder geplanten Inventuren vorhanden.</p>
+                {% endif %}
+            </div>
+
+            <!-- Letzte abgeschlossene Inventuren -->
+            <div class="box">
+                <h2 class="subtitle">Letzte abgeschlossene Inventuren</h2>
+                {% if completed_sessions %}
+                <div class="table-container">
+                    <table class="table is-fullwidth">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Standort</th>
+                                <th>Zeitraum</th>
+                                <th>Teams</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in completed_sessions %}
+                            <tr>
+                                <td>{{ session.name }}</td>
+                                <td>{{ session.location }}</td>
+                                <td>
+                                    {{ session.start_date.strftime('%d.%m.%Y %H:%M') }} -<br>
+                                    {{ session.end_date.strftime('%d.%m.%Y %H:%M') }}
+                                </td>
+                                <td>{{ session.inventory_teams|length }}</td>
+                                <td>
+                                    <a href="{{ url_for('main.inventory_planning_detail', id=session.id) }}" class="button is-small is-link">
+                                        <span class="icon">
+                                            <i class="fas fa-eye"></i>
+                                        </span>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="has-text-grey">Keine abgeschlossenen Inventuren vorhanden.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+name,description,value,status,category,location
+Laptop Dell XPS,Business Laptop,1200.0,active,Hardware,Büro 101
+"Monitor LG 4K,""27"""" Display"",400.0,active,Hardware,Büro 101"
+Drucker HP,Laserdrucker,300.0,active,Hardware,Büro 102
+Schreibtisch,Höhenverstellbar,500.0,active,Möbel,Büro 101
+Bürostuhl,Ergonomischer Stuhl,250.0,active,Möbel,Büro 102
+Laptop Lenovo,Multifunktionsdrucker,110.0,active,Software,Serverraum
+Tastatur Logitech,4K Monitor,1336.0,inactive,Zubehör,Büro 101
+Maus Razer,Wireless Tastatur,2289.0,inactive,Software,Büro 102
+Maus Razer,Gaming Laptop,1442.0,active,Hardware,Büro 101
+MacBook Pro,Multifunktionsdrucker,165.0,inactive,Hardware,Büro 102
+Laptop Lenovo,Gaming Laptop,594.0,inactive,Hardware,Büro 101
+Smartphone iPhone,Business Laptop,743.0,inactive,Zubehör,Büro 102
+Tastatur Logitech,4K Monitor,1079.0,active,Netzwerk,Büro 101
+Drucker Epson,Multifunktionsdrucker,1468.0,inactive,Zubehör,Büro 101
+Tablet Samsung,High-End Server,1888.0,inactive,Hardware,Serverraum
+Maus Razer,Wireless Tastatur,1701.0,active,Hardware,Serverraum
+Smartphone iPhone,Ergonomische Maus,2804.0,inactive,Hardware,Lager
+Monitor Samsung,Gaming Laptop,2611.0,inactive,Software,Serverraum
+Maus Razer,Gaming Laptop,2177.0,active,Software,Serverraum
+Monitor Samsung,Multifunktionsdrucker,1863.0,inactive,Software,Büro 102
+Maus Razer,Multifunktionsdrucker,1331.0,active,Software,Home Office
+Smartphone iPhone,Ergonomische Maus,726.0,inactive,Zubehör,Lager
+Server Dell,Tablet,1314.0,active,Software,Büro 101
+Router Cisco,High-End Server,727.0,active,Netzwerk,Büro 101
+Router Cisco,WLAN Router,1163.0,inactive,Software,Serverraum
+Tastatur Logitech,Business Laptop,2319.0,inactive,Möbel,Lager
+Monitor Samsung,Wireless Tastatur,1594.0,active,Möbel,Büro 101
+Monitor Samsung,Ergonomische Maus,1544.0,inactive,Zubehör,Büro 102
+Maus Razer,Tablet,805.0,active,Zubehör,Büro 102
+Drucker Epson,Wireless Tastatur,1347.0,inactive,Netzwerk,Lager
+Laptop Lenovo,WLAN Router,344.0,inactive,Netzwerk,Lager
+Maus Razer,Tablet,1185.0,active,Möbel,Büro 102
+Router Cisco,High-End Server,2052.0,inactive,Hardware,Büro 101
+Tastatur Logitech,Business Laptop,1968.0,active,Software,Büro 102
+Server Dell,Smartphone,1704.0,active,Möbel,Home Office
+Smartphone iPhone,High-End Server,2406.0,inactive,Hardware,Home Office
+MacBook Pro,Business Laptop,1399.0,active,Software,Büro 102
+Server Dell,Smartphone,2461.0,inactive,Möbel,Lager
+Laptop Lenovo,Tablet,2325.0,active,Netzwerk,Home Office
+Monitor Samsung,WLAN Router,1879.0,active,Netzwerk,Home Office
+Router Cisco,Tablet,1492.0,inactive,Netzwerk,Büro 102
+Tastatur Logitech,4K Monitor,1143.0,inactive,Möbel,Home Office
+Router Cisco,Gaming Laptop,1201.0,active,Zubehör,Lager
+MacBook Pro,WLAN Router,873.0,inactive,Hardware,Serverraum
+Monitor Samsung,Wireless Tastatur,1974.0,active,Zubehör,Büro 101
+Tablet Samsung,Smartphone,1754.0,active,Zubehör,Lager
+Laptop Lenovo,Gaming Laptop,654.0,active,Hardware,Lager
+Server Dell,Gaming Laptop,126.0,active,Netzwerk,Home Office
+MacBook Pro,High-End Server,349.0,inactive,Hardware,Home Office
+MacBook Pro,Tablet,504.0,active,Zubehör,Lager
+Tablet Samsung,Smartphone,2015.0,inactive,Möbel,Serverraum
+Smartphone iPhone,Wireless Tastatur,642.0,inactive,Software,Büro 102
+Maus Razer,WLAN Router,870.0,active,Hardware,Serverraum
+Laptop Lenovo,Wireless Tastatur,271.0,inactive,Hardware,Büro 101
+Server Dell,High-End Server,1624.0,inactive,Möbel,Serverraum

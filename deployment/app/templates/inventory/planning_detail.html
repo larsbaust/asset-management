@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.inventory_planning') }}">Inventurplanung</a></li>
+            <li class="breadcrumb-item active">{{ session.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">{{ session.name }}</h5>
+            <div>
+                {% if session.status == 'planned' %}
+                <form action="{{ url_for('main.inventory_start') }}" method="post" class="d-inline">
+                    <input type="hidden" name="id" value="{{ session.id }}">
+                    <button type="submit" class="btn btn-success">Inventur starten</button>
+                </form>
+                {% elif session.status == 'active' %}
+                <a href="{{ url_for('main.inventory_execute_session', id=session.id) }}" 
+                   class="btn btn-primary">Zur Erfassung</a>
+                <form action="{{ url_for('main.complete_inventory', id=session.id) }}" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-success" 
+                            onclick="return confirm('Möchten Sie diese Inventur wirklich abschließen?')">
+                        Inventur abschließen
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <strong>Standort:</strong> {{ session.location }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Zeitraum:</strong> {{ session.start_date.strftime('%d.%m.%Y %H:%M') }} - {{ session.end_date.strftime('%d.%m.%Y %H:%M') }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Notizen:</strong> {{ session.notes }}
+                </div>
+            </div>
+
+            <h6 class="mb-3">Assets ({{ items|length }})</h6>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th>Kategorie</th>
+                        <th>Erwarteter Standort</th>
+                        <th>Status</th>
+                        {% if session.status == 'active' %}
+                        <th>Aktionen</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>{{ item.asset.name }}</td>
+                        <td>{{ item.asset.category }}</td>
+                        <td>{{ item.expected_location or '-' }}</td>
+                        <td>
+                            {% if item.status == 'pending' %}
+                            <span class="badge bg-secondary">Ausstehend</span>
+                            {% elif item.status == 'found' %}
+                            <span class="badge bg-success">Gefunden</span>
+                            {% elif item.status == 'missing' %}
+                            <span class="badge bg-danger">Fehlend</span>
+                            {% elif item.status == 'damaged' %}
+                            <span class="badge bg-warning text-dark">Beschädigt</span>
+                            {% endif %}
+                        </td>
+                        {% if session.status == 'active' %}
+                        <td>
+                            <a href="{{ url_for('main.inventory_item_detail', id=item.id) }}" 
+                               class="btn btn-sm btn-primary">
+                                {% if item.status == 'pending' %}
+                                Erfassen
+                                {% else %}
+                                Bearbeiten
+                                {% endif %}
+                            </a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if session.status != 'completed' %}
+            <div class="mt-3">
+                <a href="{{ url_for('main.inventory_planning_add_items', id=session.id) }}" 
+                   class="btn btn-secondary">Assets hinzufügen</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

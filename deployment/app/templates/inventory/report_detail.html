@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+.inventory-detail-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+.chart-box {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    height: 100%;
+}
+.chart-box h2 {
+    color: #2c3e50;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+.chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+.asset-table {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    margin-top: 2rem;
+}
+.asset-table h2 {
+    color: #2c3e50;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+}
+.table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.table th {
+    background: #f8f9fa;
+    color: #2c3e50;
+    font-weight: 600;
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+}
+.table td {
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+.status-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+.status-tag i {
+    margin-right: 0.5rem;
+}
+.status-found {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+.status-missing {
+    background: #ffebee;
+    color: #c62828;
+}
+.status-damaged {
+    background: #fff3e0;
+    color: #ef6c00;
+}
+.status-pending {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+</style>
+<div class="inventory-detail-container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Start</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.inventory_reports') }}">Inventurberichte</a></li>
+            <li class="breadcrumb-item active">{{ session.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="mb-4">
+        <h1>Inventurbericht: {{ session.name }}</h1>
+    </div>
+
+    <div class="chart-grid">
+        <div class="chart-box">
+            <h2>Status-Übersicht</h2>
+            <canvas id="statusChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h2>Zeitlicher Verlauf</h2>
+            <canvas id="timelineChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h2>Standort-Analyse</h2>
+            <canvas id="locationChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h2>Kategorien-Übersicht</h2>
+            <canvas id="categoryChart"></canvas>
+        </div>
+    </div>
+
+    <div class="asset-table">
+        <h2>Asset-Liste</h2>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th>Status</th>
+                        <th>Erfasst am</th>
+                        <th>Aktueller Standort</th>
+                        <th>Zustand</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in session.items %}
+                    <tr>
+                        <td>{{ item.asset.name }}</td>
+                        <td>
+                            <span class="status-tag {% if item.status == 'found' %}status-found{% elif item.status == 'missing' %}status-missing{% elif item.status == 'damaged' %}status-damaged{% else %}status-pending{% endif %}">
+                                {% if item.status == 'found' %}
+                                    <i class="fas fa-check"></i> Gefunden
+                                {% elif item.status == 'missing' %}
+                                    <i class="fas fa-exclamation-triangle"></i> Fehlend
+                                {% elif item.status == 'damaged' %}
+                                    <i class="fas fa-tools"></i> Beschädigt
+                                {% elif item.status == 'pending' %}
+                                    <i class="fas fa-clock"></i> Ausstehend
+                                {% else %}
+                                    <i class="fas fa-question"></i> {{ item.status }}
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>{{ item.counted_at.strftime('%d.%m.%Y %H:%M') if item.counted_at else '-' }}</td>
+                        <td>{{ item.actual_location or '-' }}</td>
+                        <td>{{ item.condition or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Gemeinsame Chart-Optionen
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        usePointStyle: true,
+                        font: { size: 12 }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    titleColor: '#2c3e50',
+                    bodyColor: '#2c3e50',
+                    borderColor: '#e2e8f0',
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const value = context.raw;
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${context.label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        };
+
+        // Status Chart
+        const statusConfig = {
+            type: 'doughnut',
+            data: {
+                labels: ['Gefunden', 'Fehlend', 'Beschädigt', 'Ausstehend'],
+                datasets: [{
+                    data: [
+                        {{ session.items|selectattr('status', 'equalto', 'found')|list|length }},
+                        {{ session.items|selectattr('status', 'equalto', 'missing')|list|length }},
+                        {{ session.items|selectattr('status', 'equalto', 'damaged')|list|length }},
+                        {{ session.items|selectattr('status', 'equalto', 'pending')|list|length }}
+                    ],
+                    backgroundColor: ['#48c774', '#f14668', '#ffdd57', '#ff9900'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: commonOptions
+        };
+        new Chart(document.getElementById('statusChart').getContext('2d'), statusConfig);
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const value = context.raw;
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${context.label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Timeline Chart (neu)
+        const timelineCtx = document.getElementById('timelineChart').getContext('2d');
+        const timelineData = {
+            {% set dates = {} %}
+            {% for item in session.items if item.counted_at %}
+                {% set date = item.counted_at.strftime('%Y-%m-%d') %}
+                {% if date not in dates %}
+                    {% set _ = dates.update({date: {'found': 0, 'missing': 0, 'damaged': 0, 'pending': 0}}) %}
+                {% endif %}
+                {% set _ = dates[date].update({item.status: dates[date][item.status] + 1}) %}
+            {% endfor %}
+        };
+        new Chart(timelineCtx, {
+            type: 'line',
+            data: {
+                labels: Object.keys(timelineData).sort(),
+                datasets: [{
+                    label: 'Gefunden',
+                    data: Object.keys(timelineData).sort().map(date => timelineData[date].found),
+                    borderColor: '#48c774',
+                    fill: false
+                }, {
+                    label: 'Fehlend',
+                    data: Object.keys(timelineData).sort().map(date => timelineData[date].missing),
+                    borderColor: '#f14668',
+                    fill: false
+                }, {
+                    label: 'Beschädigt',
+                    data: Object.keys(timelineData).sort().map(date => timelineData[date].damaged),
+                    borderColor: '#ffdd57',
+                    fill: false
+                }, {
+                    label: 'Ausstehend',
+                    data: Object.keys(timelineData).sort().map(date => timelineData[date].pending),
+                    borderColor: '#ff9900',
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Location Chart (neu)
+        const locationCtx = document.getElementById('locationChart').getContext('2d');
+        const locationData = {
+            {% set locations = {} %}
+            {% for item in session.items if item.actual_location %}
+                {% if item.actual_location not in locations %}
+                    {% set _ = locations.update({item.actual_location: {'found': 0, 'missing': 0, 'damaged': 0, 'pending': 0}}) %}
+                {% endif %}
+                {% set _ = locations[item.actual_location].update({item.status: locations[item.actual_location][item.status] + 1}) %}
+            {% endfor %}
+        };
+        new Chart(locationCtx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(locationData),
+                datasets: [{
+                    label: 'Gefunden',
+                    data: Object.values(locationData).map(loc => loc.found),
+                    backgroundColor: '#48c774'
+                }, {
+                    label: 'Fehlend',
+                    data: Object.values(locationData).map(loc => loc.missing),
+                    backgroundColor: '#f14668'
+                }, {
+                    label: 'Beschädigt',
+                    data: Object.values(locationData).map(loc => loc.damaged),
+                    backgroundColor: '#ffdd57'
+                }, {
+                    label: 'Ausstehend',
+                    data: Object.values(locationData).map(loc => loc.pending),
+                    backgroundColor: '#ff9900'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        stacked: true
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Category Chart (neu)
+        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+        const categoryData = {
+            {% set categories = {} %}
+            {% for item in session.items %}
+                {% set category = item.asset.category %}
+                {% if category not in categories %}
+                    {% set _ = categories.update({category: {'found': 0, 'missing': 0, 'damaged': 0, 'pending': 0}}) %}
+                {% endif %}
+                {% set _ = categories[category].update({item.status: categories[category][item.status] + 1}) %}
+            {% endfor %}
+        };
+        new Chart(categoryCtx, {
+            type: 'radar',
+            data: {
+                labels: Object.keys(categoryData),
+                datasets: [{
+                    label: 'Gefunden',
+                    data: Object.values(categoryData).map(cat => cat.found),
+                    borderColor: '#48c774',
+                    backgroundColor: 'rgba(72, 199, 116, 0.2)'
+                }, {
+                    label: 'Fehlend',
+                    data: Object.values(categoryData).map(cat => cat.missing),
+                    borderColor: '#f14668',
+                    backgroundColor: 'rgba(241, 70, 104, 0.2)'
+                }, {
+                    label: 'Beschädigt',
+                    data: Object.values(categoryData).map(cat => cat.damaged),
+                    borderColor: '#ffdd57',
+                    backgroundColor: 'rgba(255, 221, 87, 0.2)'
+                }, {
+                    label: 'Ausstehend',
+                    data: Object.values(categoryData).map(cat => cat.pending),
+                    borderColor: '#ff9900',
+                    backgroundColor: 'rgba(255, 153, 0, 0.2)'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    });
+    </script>
+</div>
+{% endblock %}

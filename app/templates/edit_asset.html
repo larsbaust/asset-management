@@ -1,0 +1,865 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="title">{% if is_new %}Neues Asset{% else %}Asset bearbeiten{% endif %}</h1>
+
+    <div class="columns">
+        <!-- Asset Informationen -->
+        <div class="column is-6">
+            <div class="box">
+                <h2 class="subtitle">Asset Details</h2>
+                <form method="POST" action="{% if is_new %}{{ url_for('main.add_asset') }}{% else %}{{ url_for('main.edit_asset', id=asset.id) }}{% endif %}" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="field">
+                        <label class="label">{{ form.image.label }}</label>
+                        <div class="control">
+                            <div class="file has-name">
+                                <label class="file-label">
+                                    {{ form.image(class="file-input", onchange="updateImagePreview(this)") }}
+                                    <span class="file-cta">
+                                        <span class="file-icon">
+                                            <i class="fas fa-upload"></i>
+                                        </span>
+                                        <span class="file-label">Bild auswählen...</span>
+                                    </span>
+                                    <span class="file-name" id="image-filename">Keine Datei ausgewählt</span>
+                                </label>
+                            </div>
+                        </div>
+                        {% if asset and asset.image_url %}
+                        <figure class="image is-128x128 mt-2">
+                            <img src="{{ asset.image_url }}" alt="{{ asset.name }}" id="image-preview" style="object-fit: contain;">
+                        </figure>
+                        {% else %}
+                        <figure class="image is-128x128 mt-2" style="display: none;">
+                            <img src="" alt="Vorschau" id="image-preview" style="object-fit: contain;">
+                        </figure>
+                        {% endif %}
+                        {% for error in form.image.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.name.label }}</label>
+                        <div class="control">
+                            {{ form.name(class="input") }}
+                        </div>
+                        {% for error in form.name.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.article_number.label }}</label>
+                        <div class="control">
+                            {{ form.article_number(class="input") }}
+                        </div>
+                        {% for error in form.article_number.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.ean.label }}</label>
+                        <div class="control">
+                            {{ form.ean(class="input") }}
+                        </div>
+                        {% for error in form.ean.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.category.label }}</label>
+                        <div class="control">
+                            <div class="select" style="width: 100%;">
+                                {{ form.category(class="", style="width: 100%;") }}
+                            </div>
+                        </div>
+                        {% for error in form.category.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.assignments.label }}</label>
+                        <div class="control is-flex">
+                            <div class="select is-multiple" style="flex-grow: 1;">
+                                {{ form.assignments(class="", size=4) }}
+                            </div>
+                            <div class="buttons ml-2">
+                                <button type="button" class="button is-primary" onclick="addNewAssignment()" title="Neue Zuordnung hinzufügen">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
+                                </button>
+                                <button type="button" class="button is-danger" onclick="confirmDelete('assignment')" title="Ausgewählte Zuordnung entfernen">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-minus"></i>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                        {% for error in form.assignments.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.manufacturers.label }}</label>
+                        <div class="control is-flex">
+                            <div class="select is-multiple" style="flex-grow: 1;">
+                                {{ form.manufacturers(class="", size=4) }}
+                            </div>
+                            <div class="buttons ml-2">
+                                <button type="button" class="button is-primary" onclick="addNewManufacturer()" title="Neuen Hersteller hinzufügen">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
+                                </button>
+                                <button type="button" class="button is-danger" onclick="confirmDelete('manufacturer')" title="Ausgewählten Hersteller entfernen">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-minus"></i>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                        {% for error in form.manufacturers.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.suppliers.label }}</label>
+                        <div class="control is-flex">
+                            <div class="select is-multiple" style="flex-grow: 1;">
+                                {{ form.suppliers(class="", size=4) }}
+                            </div>
+                            <div class="buttons ml-2">
+                                <button type="button" class="button is-primary" onclick="addNewSupplier()" title="Neuen Lieferanten hinzufügen">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
+                                </button>
+                                <button type="button" class="button is-danger" onclick="confirmDelete('supplier')" title="Ausgewählten Lieferanten entfernen">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-minus"></i>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                        {% for error in form.suppliers.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.value.label }}</label>
+                        <div class="control">
+                            {{ form.value(class="input") }}
+                        </div>
+                        {% for error in form.value.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.status.label }}</label>
+                        <div class="control">
+                            <div class="select">
+                                {{ form.status() }}
+                            </div>
+                        </div>
+                        {% for error in form.status.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.location.label }}</label>
+                        <div class="control is-flex">
+                            <div class="select" style="flex-grow: 1;">
+                                {{ form.location(class="") }}
+                            </div>
+                            <div class="buttons ml-2">
+                                <button type="button" class="button is-primary" onclick="addNewLocation()" title="Neuen Standort hinzufügen">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-plus"></i>
+                                    </span>
+                                </button>
+                                <button type="button" class="button is-danger" onclick="confirmDelete('location')" title="Ausgewählten Standort entfernen">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-minus"></i>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                        {% for error in form.location.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.serial_number.label }}</label>
+                        <div class="control">
+                            {{ form.serial_number(class="input") }}
+                        </div>
+                        {% for error in form.serial_number.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ form.purchase_date.label }}</label>
+                        <div class="control">
+                            {{ form.purchase_date(class="input", type="date") }}
+                        </div>
+                        {% for error in form.purchase_date.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <div class="control">
+                            <button type="submit" class="button is-primary">Speichern</button>
+                            <a href="{{ url_for('main.assets') }}" class="button is-light">Abbrechen</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Dokumente -->
+        {% if not is_new %}
+        <div class="column is-6">
+            <div class="box">
+                <h2 class="subtitle">Dokumente</h2>
+                
+                <!-- Dokument Upload Formular -->
+                <form method="POST" action="{{ url_for('main.upload_document', id=asset.id) }}" enctype="multipart/form-data" class="mb-5">
+                    {{ doc_form.hidden_tag() }}
+                    
+                    <div class="field">
+                        <label class="label">{{ doc_form.title.label }}</label>
+                        <div class="control">
+                            {{ doc_form.title(class="input") }}
+                        </div>
+                        {% for error in doc_form.title.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ doc_form.document_type.label }}</label>
+                        <div class="control">
+                            <div class="select">
+                                {{ doc_form.document_type() }}
+                            </div>
+                        </div>
+                        {% for error in doc_form.document_type.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ doc_form.file.label }}</label>
+                        <div class="file has-name">
+                            <label class="file-label">
+                                {{ doc_form.file(class="file-input", onchange="updateFileName(this)") }}
+                                <span class="file-cta">
+                                    <span class="file-icon">
+                                        <i class="fas fa-upload"></i>
+                                    </span>
+                                    <span class="file-label">
+                                        Datei auswählen...
+                                    </span>
+                                </span>
+                                <span class="file-name" id="fileName">
+                                    Keine Datei ausgewählt
+                                </span>
+                            </label>
+                        </div>
+                        {% for error in doc_form.file.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">{{ doc_form.notes.label }}</label>
+                        <div class="control">
+                            {{ doc_form.notes(class="textarea") }}
+                        </div>
+                        {% for error in doc_form.notes.errors %}
+                        <p class="help is-danger">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field">
+                        <div class="control">
+                            <button type="submit" class="button is-info">
+                                <span class="icon">
+                                    <i class="fas fa-upload"></i>
+                                </span>
+                                <span>Dokument hochladen</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Liste der vorhandenen Dokumente -->
+                {% if documents %}
+                <table class="table is-fullwidth">
+                    <thead>
+                        <tr>
+                            <th>Titel</th>
+                            <th>Typ</th>
+                            <th>Größe</th>
+                            <th>Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for doc in documents %}
+                        <tr>
+                            <td>{{ doc.title }}</td>
+                            <td>{{ doc.get_type_display() }}</td>
+                            <td>{{ doc.get_size_display() }}</td>
+                            <td>
+                                <div class="buttons are-small">
+                                    <a href="{{ url_for('main.download_document', id=doc.id) }}" class="button is-primary" title="Herunterladen">
+                                        <span class="icon is-small">
+                                            <i class="fas fa-download"></i>
+                                        </span>
+                                    </a>
+                                    <a href="{{ url_for('main.preview_document', id=doc.id) }}" class="button is-info" title="Vorschau" target="_blank">
+                                        <span class="icon is-small">
+                                            <i class="fas fa-eye"></i>
+                                        </span>
+                                    </a>
+                                    <form method="POST" action="{{ url_for('main.delete_document', id=doc.id) }}" class="is-inline">
+                                        <button type="submit" class="button is-danger" title="Löschen" onclick="return confirm('Dokument wirklich löschen?')">
+                                            <span class="icon is-small">
+                                                <i class="fas fa-trash"></i>
+                                            </span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="has-text-centered">Keine Dokumente vorhanden.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="column is-6">
+            <div class="box">
+                <h2 class="subtitle">Dokumente</h2>
+                <p class="has-text-centered">Dokumente können nach dem Erstellen des Assets hinzugefügt werden.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="buttons">
+        {% if not is_new %}
+        <a href="{{ url_for('main.loan_asset', id=asset.id) }}" class="button is-info">
+            <span class="icon">
+                <i class="fas fa-handshake"></i>
+            </span>
+            <span>Ausleihen</span>
+        </a>
+        <a href="{{ url_for('main.asset_costs', id=asset.id) }}" class="button is-warning">
+            <span class="icon">
+                <i class="fas fa-euro-sign"></i>
+            </span>
+            <span>Kosten verwalten</span>
+        </a>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Modal für neue Kategorie -->
+<div class="modal" id="categoryModal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Neue Kategorie</p>
+            <button class="delete" aria-label="close" onclick="closeModal('categoryModal')"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="field">
+                <label class="label">Name</label>
+                <div class="control">
+                    <input type="text" class="input" id="newCategoryName">
+                </div>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-success" onclick="saveNewCategory()">Speichern</button>
+            <button class="button" onclick="closeModal('categoryModal')">Abbrechen</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Modal für neue Zuordnung -->
+<div class="modal" id="assignmentModal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Neue Zuordnung</p>
+            <button class="delete" aria-label="close" onclick="closeModal('assignmentModal')"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="field">
+                <label class="label">Name</label>
+                <div class="control">
+                    <input type="text" class="input" id="newAssignmentName">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">Beschreibung</label>
+                <div class="control">
+                    <textarea class="textarea" id="newAssignmentDescription"></textarea>
+                </div>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-success" onclick="saveNewAssignment()">Speichern</button>
+            <button class="button" onclick="closeModal('assignmentModal')">Abbrechen</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Modal für neuen Hersteller -->
+<div class="modal" id="manufacturerModal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Neuer Hersteller</p>
+            <button class="delete" aria-label="close" onclick="closeModal('manufacturerModal')"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="field">
+                <label class="label">Name</label>
+                <div class="control">
+                    <input type="text" class="input" id="newManufacturerName">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">Beschreibung</label>
+                <div class="control">
+                    <textarea class="textarea" id="newManufacturerDescription"></textarea>
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">Website</label>
+                <div class="control">
+                    <input type="url" class="input" id="newManufacturerWebsite">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">Kontaktinformationen</label>
+                <div class="control">
+                    <textarea class="textarea" id="newManufacturerContact"></textarea>
+                </div>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-success" onclick="saveNewManufacturer()">Speichern</button>
+            <button class="button" onclick="closeModal('manufacturerModal')">Abbrechen</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Modal für neuen Lieferanten -->
+<div class="modal" id="supplierModal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Neuer Lieferant</p>
+            <button class="delete" aria-label="close" onclick="closeModal('supplierModal')"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="field">
+                <label class="label">Name</label>
+                <div class="control">
+                    <input type="text" class="input" id="newSupplierName">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">Beschreibung</label>
+                <div class="control">
+                    <textarea class="textarea" id="newSupplierDescription"></textarea>
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">Website</label>
+                <div class="control">
+                    <input type="url" class="input" id="newSupplierWebsite">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">Kontaktinformationen</label>
+                <div class="control">
+                    <textarea class="textarea" id="newSupplierContact"></textarea>
+                </div>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-success" onclick="saveNewSupplier()">Speichern</button>
+            <button class="button" onclick="closeModal('supplierModal')">Abbrechen</button>
+        </footer>
+    </div>
+</div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Neue Kategorie</p>
+            <button class="delete" aria-label="close" onclick="closeModal('categoryModal')"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="field">
+                <label class="label">Name der Kategorie</label>
+                <div class="control">
+                    <input class="input" type="text" id="newCategoryName">
+                </div>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-primary" onclick="saveNewCategory()">Speichern</button>
+            <button class="button" onclick="closeModal('categoryModal')">Abbrechen</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Modal für neuen Standort -->
+<div class="modal" id="locationModal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Neuer Standort</p>
+            <button class="delete" aria-label="close" onclick="closeModal('locationModal')"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="field">
+                <label class="label">Name des Standorts</label>
+                <div class="control">
+                    <input class="input" type="text" id="newLocationName">
+                </div>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-primary" onclick="saveNewLocation()">Speichern</button>
+            <button class="button" onclick="closeModal('locationModal')">Abbrechen</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Modal für Löschbestätigung -->
+<div class="modal" id="deleteModal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Löschen bestätigen</p>
+            <button class="delete" aria-label="close" onclick="closeModal('deleteModal')"></button>
+        </header>
+        <section class="modal-card-body">
+            <p>Möchten Sie <span id="deleteItemName"></span> wirklich löschen?</p>
+            <p class="help is-danger mt-2">Diese Aktion kann nicht rückgängig gemacht werden.</p>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button is-danger" id="confirmDeleteBtn">Löschen</button>
+            <button class="button" onclick="closeModal('deleteModal')">Abbrechen</button>
+        </footer>
+    </div>
+</div>
+
+<script>
+function updateFileName(input) {
+    const fileName = input.files[0]?.name || 'Keine Datei ausgewählt';
+    input.parentElement.querySelector('.file-name').textContent = fileName;
+}
+
+function updateImagePreview(input) {
+    const preview = document.getElementById('image-preview');
+    const previewContainer = preview.parentElement;
+    const filename = document.getElementById('image-filename');
+
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            previewContainer.style.display = 'block';
+            filename.textContent = input.files[0].name;
+        };
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        preview.src = '';
+        previewContainer.style.display = 'none';
+        filename.textContent = 'Keine Datei ausgewählt';
+    }
+}
+
+function addNewCategory() {
+    document.getElementById('categoryModal').classList.add('is-active');
+}
+
+function addNewLocation() {
+    document.getElementById('locationModal').classList.add('is-active');
+}
+
+function addNewAssignment() {
+    document.getElementById('assignmentModal').classList.add('is-active');
+}
+
+function addNewManufacturer() {
+    document.getElementById('manufacturerModal').classList.add('is-active');
+}
+
+function addNewSupplier() {
+    document.getElementById('supplierModal').classList.add('is-active');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('is-active');
+}
+
+function deleteItem(type, option) {
+    const endpoint = type === 'category' ? '/categories/delete' :
+                    type === 'assignment' ? '/assignments/delete' :
+                    type === 'manufacturer' ? '/manufacturers/delete' :
+                    '/suppliers/delete';
+
+    fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: option })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Option aus Select entfernen
+            const select = document.getElementById(type === 'category' ? 'category' :
+                                                type === 'assignment' ? 'assignments' :
+                                                type === 'manufacturer' ? 'manufacturers' :
+                                                'suppliers');
+            const optionToRemove = Array.from(select.options).find(opt => opt.text === option);
+            if (optionToRemove) {
+                select.remove(optionToRemove.index);
+            }
+        } else {
+            alert('Fehler beim Löschen: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ein Fehler ist aufgetreten.');
+    });
+}
+
+function confirmDelete(type) {
+    const select = document.getElementById(type === 'category' ? 'category' :
+                                        type === 'assignment' ? 'assignments' :
+                                        type === 'manufacturer' ? 'manufacturers' :
+                                        'suppliers');
+    const selectedOptions = Array.from(select.selectedOptions);
+    
+    if (selectedOptions.length === 0) {
+        alert('Bitte wählen Sie zuerst einen Eintrag aus.');
+        return;
+    }
+
+    const itemNames = selectedOptions.map(opt => opt.text).join('\n- ');
+    if (confirm(`Möchten Sie die folgenden Einträge wirklich löschen?\n- ${itemNames}`)) {
+        selectedOptions.forEach(option => deleteItem(type, option.text));
+    }
+}
+
+function saveNewLocation() {
+    const name = document.getElementById('newLocationName').value;
+    if (!name) {
+        alert('Bitte geben Sie einen Namen ein.');
+        return;
+    }
+
+    fetch('/locations/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: name })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Fehler beim Speichern des Standorts: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Fehler beim Speichern des Standorts');
+    });
+}
+
+function saveNewAssignment() {
+    const name = document.getElementById('newAssignmentName').value;
+    const description = document.getElementById('newAssignmentDescription').value;
+
+    if (!name) {
+        alert('Bitte geben Sie einen Namen ein.');
+        return;
+    }
+
+    fetch('/assignments/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: name,
+            description: description
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Select hinzufügen
+            const select = document.getElementById('assignments');
+            const option = new Option(data.name, data.id);
+            select.add(option);
+            // Alle vorhandenen Optionen selektiert lassen und neue auch selektieren
+            const selectedValues = Array.from(select.selectedOptions).map(opt => opt.value);
+            selectedValues.push(data.id);
+            Array.from(select.options).forEach(opt => {
+                opt.selected = selectedValues.includes(opt.value);
+            });
+            
+            closeModal('assignmentModal');
+            document.getElementById('newAssignmentName').value = '';
+            document.getElementById('newAssignmentDescription').value = '';
+        } else {
+            alert('Fehler beim Speichern: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ein Fehler ist aufgetreten.');
+    });
+}
+
+function saveNewManufacturer() {
+    const name = document.getElementById('newManufacturerName').value;
+    const description = document.getElementById('newManufacturerDescription').value;
+    const website = document.getElementById('newManufacturerWebsite').value;
+    const contactInfo = document.getElementById('newManufacturerContact').value;
+
+    if (!name) {
+        alert('Bitte geben Sie einen Namen ein.');
+        return;
+    }
+
+    fetch('/manufacturers/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: name,
+            description: description,
+            website: website,
+            contact_info: contactInfo
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Select hinzufügen
+            const select = document.getElementById('manufacturers');
+            const option = new Option(data.name, data.id);
+            select.add(option);
+            // Alle vorhandenen Optionen selektiert lassen und neue auch selektieren
+            const selectedValues = Array.from(select.selectedOptions).map(opt => opt.value);
+            selectedValues.push(data.id);
+            Array.from(select.options).forEach(opt => {
+                opt.selected = selectedValues.includes(opt.value);
+            });
+            
+            closeModal('manufacturerModal');
+            document.getElementById('newManufacturerName').value = '';
+            document.getElementById('newManufacturerDescription').value = '';
+            document.getElementById('newManufacturerWebsite').value = '';
+            document.getElementById('newManufacturerContact').value = '';
+        } else {
+            alert('Fehler beim Speichern: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ein Fehler ist aufgetreten.');
+    });
+}
+
+function saveNewSupplier() {
+    const name = document.getElementById('newSupplierName').value;
+    const description = document.getElementById('newSupplierDescription').value;
+    const website = document.getElementById('newSupplierWebsite').value;
+    const contactInfo = document.getElementById('newSupplierContact').value;
+
+    if (!name) {
+        alert('Bitte geben Sie einen Namen ein.');
+        return;
+    }
+
+    fetch('/suppliers/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: name,
+            description: description,
+            website: website,
+            contact_info: contactInfo
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Select hinzufügen
+            const select = document.getElementById('suppliers');
+            const option = new Option(data.name, data.id);
+            select.add(option);
+            // Alle vorhandenen Optionen selektiert lassen und neue auch selektieren
+            const selectedValues = Array.from(select.selectedOptions).map(opt => opt.value);
+            selectedValues.push(data.id);
+            Array.from(select.options).forEach(opt => {
+                opt.selected = selectedValues.includes(opt.value);
+            });
+            
+            closeModal('supplierModal');
+            document.getElementById('newSupplierName').value = '';
+            document.getElementById('newSupplierDescription').value = '';
+            document.getElementById('newSupplierWebsite').value = '';
+            document.getElementById('newSupplierContact').value = '';
+        } else {
+            alert('Fehler beim Speichern: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ein Fehler ist aufgetreten.');
+    });
+
+}
+</script>
+{% endblock %}

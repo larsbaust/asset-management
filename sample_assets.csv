@@ -1,0 +1,94 @@
+name,description,value,purchase_price,purchase_date,status,category,location
+Laptop Dell XPS,Business Laptop,1100.00,1200.00,2024-01-15,active,Hardware,Büro 101
+Monitor LG 4K,"27"" Display",380.00,400.00,2024-01-15,active,Hardware,Büro 101
+Drucker HP,Laserdrucker,280.00,300.00,2024-02-01,active,Hardware,Büro 102
+Schreibtisch,Höhenverstellbar,480.00,500.00,2023-11-20,active,Möbel,Büro 101
+Bürostuhl,Ergonomischer Stuhl,230.00,250.00,2023-12-05,active,Möbel,Büro 102
+MacBook Pro,"14"" M2 Pro",2800.00,3000.00,2024-02-15,active,Hardware,Büro 203
+iPad Pro,"12.9"" mit Pencil",950.00,1000.00,2024-01-10,active,Mobile Geräte,Büro 203
+Konferenzraum-Display,Samsung 75" Smart Display,1800.00,2000.00,2023-10-01,active,Hardware,Konferenzraum A
+Beamer Epson,FullHD Projektor,650.00,700.00,2023-09-15,active,Hardware,Konferenzraum B
+Netzwerk-Switch,Cisco 48-Port,850.00,900.00,2023-08-20,active,Netzwerk,Serverraum
+Server-Rack,19" Standardrack,900.00,1000.00,2023-07-01,active,Infrastruktur,Serverraum
+Klimaanlage,Split-Gerät für Serverraum,2300.00,2500.00,2023-06-15,active,Infrastruktur,Serverraum
+Telefonanlage,VoIP-System,1800.00,2000.00,2023-05-01,active,Kommunikation,Serverraum
+Kaffeemaschine,Profi-Kaffeevollautomat,1400.00,1500.00,2023-12-01,active,Küche,Küche 1.OG
+Kühlschrank,Energieeffizient A+++,800.00,900.00,2023-11-15,active,Küche,Küche 1.OG
+Mikrowelle,Kombigerät mit Grill,180.00,200.00,2024-01-05,active,Küche,Küche 2.OG
+Werkzeugschrank,Komplett ausgestattet,850.00,900.00,2023-10-10,active,Werkzeug,Werkstatt
+3D-Drucker,Prusa i3 MK3S+,700.00,750.00,2024-02-20,active,Werkzeug,Werkstatt
+Messgeräte-Set,Digitale Messgeräte,450.00,500.00,2024-01-25,active,Werkzeug,Werkstatt
+Sicherheitssystem,Komplette Videoüberwachung,2800.00,3000.00,2023-09-01,active,Sicherheit,Gebäude
+Laptop ThinkPad X1,Business Ultrabook,1600.00,1800.00,2024-03-10,active,Hardware,Büro 104
+Surface Pro 9,Tablet mit Keyboard,1100.00,1200.00,2024-03-05,active,Mobile Geräte,Büro 105
+Dokumentenscanner,Fujitsu ScanSnap,380.00,400.00,2024-02-28,active,Hardware,Büro 106
+Whiteboard,Interaktives Display,2800.00,3000.00,2024-02-25,active,Präsentation,Konferenzraum C
+Videokonferenz-System,Logitech Rally,1800.00,2000.00,2024-02-20,active,Kommunikation,Konferenzraum D
+NAS-System,Synology 8-Bay,1400.00,1500.00,2024-02-15,active,Storage,Serverraum
+USV-Anlage,APC 3000VA,900.00,1000.00,2024-02-10,active,Infrastruktur,Serverraum
+Firewall,Sophos XG,1800.00,2000.00,2024-02-05,active,Netzwerk,Serverraum
+Wasserspender,Filtered & Gekühlt,700.00,800.00,2024-02-01,active,Küche,Küche 1.OG
+Geschirrspüler,Industriespüler,1800.00,2000.00,2024-01-28,active,Küche,Küche 2.OG
+Lötstation,Digitale Temperaturregelung,280.00,300.00,2024-01-25,active,Werkzeug,Werkstatt
+Oszilloskop,4-Kanal Digital,1400.00,1500.00,2024-01-20,active,Werkzeug,Werkstatt
+Zugangskontrolle,RFID-System,1800.00,2000.00,2024-01-15,active,Sicherheit,Eingang
+Smartphone Galaxy S23,Diensthandy,800.00,900.00,2024-01-10,active,Mobile Geräte,Büro 201
+Smartphone iPhone 15,Diensthandy,900.00,1000.00,2024-01-05,active,Mobile Geräte,Büro 202
+Konferenztelefon,Jabra Speak 750,230.00,250.00,2023-12-28,active,Kommunikation,Konferenzraum A
+Dokumenten-Schredder,Industriegerät,700.00,800.00,2023-12-25,active,Büro,Kopierraum
+Plotter,HP DesignJet,2300.00,2500.00,2023-12-20,active,Hardware,Designbüro
+Grafikarbeitsstation,HP Z4 Workstation,2800.00,3000.00,2023-12-15,active,Hardware,Designbüro
+Zeichentablett,Wacom Cintiq Pro,1800.00,2000.00,2023-12-10,active,Hardware,Designbüro
+Farbdrucker,Epson EcoTank,450.00,500.00,2023-12-05,inactive,Hardware,Lager
+Aktenvernichter,Industriegerät,280.00,300.00,2023-12-01,active,Büro,Archiv
+Router,Cisco Enterprise,850.00,900.00,2023-11-28,active,Netzwerk,Serverraum
+Access Point,Ubiquiti UniFi Pro,180.00,200.00,2023-11-25,active,Netzwerk,Flur 1.OG
+Beamer-Leinwand,Motorisiert 4m,450.00,500.00,2023-11-20,active,Präsentation,Konferenzraum B
+Regal-System,Schwerlast-Regale,850.00,900.00,2023-11-15,active,Möbel,Lager
+Transportwagen,Aluminium klappbar,180.00,200.00,2023-11-10,active,Werkzeug,Lager
+Erste-Hilfe-Station,Komplett ausgestattet,280.00,300.00,2023-11-05,active,Sicherheit,Flur EG
+Zeiterfassungsterminal,RFID-basiert,850.00,900.00,2023-11-01,active,Sicherheit,Eingang
+Garderobe,Wandmontierte Garderobe,180.00,200.00,2023-10-28,active,Möbel,Eingang
+Besucherstühle-Set,10 Stück gepolstert,850.00,900.00,2023-10-25,active,Möbel,Empfang
+Empfangstresen,L-Form mit Beleuchtung,2300.00,2500.00,2023-10-20,active,Möbel,Empfang
+Pflanzen-Set,Bürobegrünung komplett,450.00,500.00,2023-10-15,active,Dekoration,Alle Etagen
+LED-Beleuchtung,Komplette Büroetage,4500.00,5000.00,2023-10-10,active,Infrastruktur,1.OG
+Laptop Lenovo,Gaming Laptop,1000.00,1100.00,2024-03-01,active,Hardware,Büro 101
+Tastatur Logitech,4K Monitor,1200.00,1336.00,2024-03-05,active,Netzwerk,Büro 101
+Serverschrank,42HE mit Lüftung,1800.00,2000.00,2023-10-05,active,Infrastruktur,Serverraum
+Backup-System,Tape Library,2800.00,3000.00,2023-10-01,active,Storage,Serverraum
+Entwickler-PC,Custom Workstation,1800.00,2000.00,2023-09-28,active,Hardware,Büro 301
+Monitore-Set,"3x 27"" 4K Displays",1400.00,1500.00,2023-09-25,active,Hardware,Büro 301
+Dockingstation,Thunderbolt 4,230.00,250.00,2023-09-20,active,Hardware,Büro 302
+Webcam,Logitech Brio 4K,180.00,200.00,2023-09-15,active,Hardware,Büro 303
+Headset,Sony WH-1000XM4,280.00,300.00,2023-09-10,active,Audio,Büro 304
+Soundsystem,Konferenzraum-Audio,1800.00,2000.00,2023-09-05,active,Audio,Konferenzraum A
+Mikrofonanlage,Drahtlos-Set,900.00,1000.00,2023-09-01,active,Audio,Konferenzraum B
+Tablet Samsung,Galaxy Tab S9,700.00,800.00,2023-08-28,active,Mobile Geräte,Büro 305
+E-Book Reader,Kindle Paperwhite,110.00,120.00,2023-08-25,active,Mobile Geräte,Büro 306
+Smartwatch,Apple Watch Ultra,750.00,800.00,2023-08-20,active,Mobile Geräte,Büro 307
+Drucker-Server,Print Management,450.00,500.00,2023-08-15,active,Netzwerk,Serverraum
+Label-Drucker,Brother Professional,280.00,300.00,2023-08-10,active,Hardware,Lager
+Barcode-Scanner,Wireless 2D Scanner,180.00,200.00,2023-08-05,active,Hardware,Lager
+Präsentations-Clicker,Logitech Spotlight,85.00,100.00,2023-08-01,active,Präsentation,Konferenzraum C
+Laminiergerät,Professionell A3,230.00,250.00,2023-07-28,active,Büro,Kopierraum
+Bindegerät,Spiralbindung,180.00,200.00,2023-07-25,active,Büro,Kopierraum
+Schneidemaschine,Profi-Papierschneider,280.00,300.00,2023-07-20,active,Büro,Kopierraum
+Falzmaschine,Automatisch A3,450.00,500.00,2023-07-15,active,Büro,Kopierraum
+Briefwaage,Digital bis 20kg,85.00,100.00,2023-07-10,active,Büro,Poststelle
+Frankiermaschine,Digital mit Waage,1800.00,2000.00,2023-07-05,active,Büro,Poststelle
+Zeitstempeluhr,Digital vernetzt,280.00,300.00,2023-07-01,active,Büro,Poststelle
+Schließfächer,20 Fächer mit RFID,1800.00,2000.00,2023-06-28,active,Möbel,Umkleide
+Werkbank,Profi-Ausführung,850.00,900.00,2023-06-25,active,Werkzeug,Werkstatt
+Kompressor,Silent 50L,450.00,500.00,2023-06-20,active,Werkzeug,Werkstatt
+Schweißgerät,Inverter-Schweißgerät,700.00,800.00,2023-06-15,active,Werkzeug,Werkstatt
+Akku-Werkzeug-Set,18V Komplett-Set,850.00,900.00,2023-06-10,active,Werkzeug,Werkstatt
+Materiallager-System,Automatisiert,4500.00,5000.00,2023-06-05,active,Lager,Lager
+Gabelstapler,Elektro 2.5t,18000.00,20000.00,2023-06-01,active,Lager,Lager
+Hubwagen,Elektrisch,1800.00,2000.00,2023-05-28,active,Lager,Lager
+Packtisch,Höhenverstellbar,450.00,500.00,2023-05-25,active,Lager,Lager
+Etikettierer,Mobiles Gerät,280.00,300.00,2023-05-20,active,Lager,Lager
+Warenwirtschaft-Terminal,Touch-Display,850.00,900.00,2023-05-15,active,Hardware,Lager
+Überwachungskameras,4K Set mit 8 Kameras,2800.00,3000.00,2023-05-10,active,Sicherheit,Gebäude
+Bewegungsmelder,Set für alle Etagen,850.00,900.00,2023-05-05,active,Sicherheit,Gebäude
+Brandmeldeanlage,Komplettes System,4500.00,5000.00,2023-05-01,active,Sicherheit,Gebäude

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="level">
+        <div class="level-left">
+            <div class="level-item">
+                <h1 class="title is-3">Assets</h1>
+            </div>
+        </div>
+        <div class="level-right">
+            <div class="level-item">
+                <div class="buttons">
+                    <a href="{{ url_for('main.add_asset') }}" class="button is-primary">
+                        <span class="icon">
+                            <i class="fas fa-plus"></i>
+                        </span>
+                        <span>Neues Asset</span>
+                    </a>
+                    <a href="{{ url_for('main.import_assets') }}" class="button is-info">
+                        <span class="icon">
+                            <i class="fas fa-file-import"></i>
+                        </span>
+                        <span>CSV Import</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if assets %}
+    <div class="box">
+        <div class="table-container">
+        <table class="table is-fullwidth is-striped is-hoverable">
+            <thead>
+                <tr>
+                    <th>Bild</th>
+                    <th>Name</th>
+                    <th>Art. Nr</th>
+                    <th>Kategorie</th>
+                    <th>Zuordnung</th>
+                    <th>Hersteller</th>
+                    <th>EAN</th>
+                    <th>Lieferant</th>
+                    <th>Standort</th>
+                    <th>Status</th>
+                    <th>Wert</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for asset in assets %}
+                <tr>
+                    <td>
+                        {% if asset.image_url %}
+                        <figure class="image is-48x48">
+                            <img src="{{ asset.image_url }}" alt="{{ asset.name }}" style="object-fit: cover;">
+                        </figure>
+                        {% else %}
+                        <figure class="image is-48x48">
+                            <img src="{{ url_for('static', filename='images/no-image.png') }}" alt="Kein Bild">
+                        </figure>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('main.asset_details', id=asset.id) }}">{{ asset.name }}</a>
+                    </td>
+                    <td>{{ asset.article_number or '-' }}</td>
+                    <td>{{ asset.category or 'Keine Kategorie' }}</td>
+                    <td>
+                        {% for assignment in asset.assignments %}
+                        <span class="tag is-info is-light">{{ assignment.name }}</span>
+                        {% else %}
+                        -
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% for manufacturer in asset.manufacturers %}
+                        <span class="tag is-dark is-light">{{ manufacturer.name }}</span>
+                        {% else %}
+                        -
+                        {% endfor %}
+                    </td>
+                    <td>{{ asset.ean or '-' }}</td>
+                    <td>
+                        {% for supplier in asset.suppliers %}
+                        <span class="tag is-warning is-light">{{ supplier.name }}</span>
+                        {% else %}
+                        -
+                        {% endfor %}
+                    </td>
+                    <td>{{ asset.location or 'Kein Standort' }}</td>
+                    <td>
+                        <span class="tag {% if asset.status == 'active' %}is-success{% elif asset.status == 'inactive' %}is-danger{% elif asset.status == 'on_loan' %}is-info{% endif %}">
+                            {{ 'Aktiv' if asset.status == 'active' else 'Inaktiv' if asset.status == 'inactive' else 'Ausgeliehen' }}
+                        </span>
+                    </td>
+                    <td>{{ "%.2f €"|format(asset.value or 0) }}</td>
+                    <td>
+                        <div class="buttons are-small">
+                            <a href="{{ url_for('main.edit_asset', id=asset.id) }}" class="button is-warning" title="Bearbeiten">
+                                <span class="icon is-small">
+                                    <i class="fas fa-edit"></i>
+                                </span>
+                            </a>
+                            {% if asset.status != 'on_loan' %}
+                            <a href="{{ url_for('main.loan_asset', id=asset.id) }}" class="button is-info" title="Ausleihen">
+                                <span class="icon is-small">
+                                    <i class="fas fa-hand-holding"></i>
+                                </span>
+                            </a>
+                            {% endif %}
+                            <a href="{{ url_for('main.asset_documents', id=asset.id) }}" class="button is-primary" title="Dokumente">
+                                <span class="icon is-small">
+                                    <i class="fas fa-file-alt"></i>
+                                </span>
+                            </a>
+                            <button class="button is-danger" title="Löschen" onclick="deleteAsset({{ asset.id }}, '{{ asset.name|escape }}')">
+                                <span class="icon is-small">
+                                    <i class="fas fa-trash"></i>
+                                </span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="notification is-info">
+        <p>Keine Assets vorhanden. <a href="{{ url_for('main.add_asset') }}">Erstellen Sie ein neues Asset</a>.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function deleteAsset(assetId, assetName) {
+    if (confirm('Möchten Sie das Asset "' + assetName + '" wirklich löschen? Alle zugehörigen Daten (Dokumente, Kosten, etc.) werden ebenfalls gelöscht.')) {
+        fetch('/assets/' + assetId + '/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Asset wurde erfolgreich gelöscht, Seite neu laden
+                location.reload();
+            } else {
+                alert('Fehler beim Löschen des Assets.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Fehler beim Löschen des Assets.');
+        });
+    }
+}
+</script>
+{% endblock %}

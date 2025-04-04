@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="columns is-centered">
+        <div class="column is-6">
+            <div class="box">
+                <h1 class="title has-text-centered">{{ title }}</h1>
+                
+                <form method="POST">
+                    {{ form.csrf_token }}
+                    
+                    <div class="field">
+                        <label class="label">Name</label>
+                        <div class="control">
+                            {{ form.name(class="input", placeholder="Name des Assets") }}
+                        </div>
+                        {% if form.name.errors %}
+                            {% for error in form.name.errors %}
+                                <p class="help is-danger">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Beschreibung</label>
+                        <div class="control">
+                            {{ form.description(class="textarea", placeholder="Beschreibung des Assets") }}
+                        </div>
+                        {% if form.description.errors %}
+                            {% for error in form.description.errors %}
+                                <p class="help is-danger">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Wert (€)</label>
+                        <div class="control">
+                            {{ form.value(class="input", placeholder="Wert in Euro") }}
+                        </div>
+                        {% if form.value.errors %}
+                            {% for error in form.value.errors %}
+                                <p class="help is-danger">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Status</label>
+                        <div class="control">
+                            <div class="select is-fullwidth">
+                                {{ form.status }}
+                            </div>
+                        </div>
+                        {% if form.status.errors %}
+                            {% for error in form.status.errors %}
+                                <p class="help is-danger">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Kategorie</label>
+                        <div class="control">
+                            {{ form.category(class="input", placeholder="Kategorie") }}
+                        </div>
+                        {% if form.category.errors %}
+                            {% for error in form.category.errors %}
+                                <p class="help is-danger">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <div class="field">
+                        <label class="label">Standort</label>
+                        <div class="control">
+                            {{ form.location(class="input", placeholder="Standort") }}
+                        </div>
+                        {% if form.location.errors %}
+                            {% for error in form.location.errors %}
+                                <p class="help is-danger">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <div class="field">
+                        <div class="control">
+                            <button type="submit" class="button is-primary is-fullwidth">
+                                <span class="icon">
+                                    <i class="fas fa-save"></i>
+                                </span>
+                                <span>Speichern</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
