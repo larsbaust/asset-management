@@ -65,6 +65,38 @@
                         </a>
                     </div>
                 </div>
+                <div class="navbar-item has-dropdown is-hoverable">
+                    <a class="navbar-link">
+                        <span class="icon">
+                            <i class="fas fa-shopping-cart"></i>
+                        </span>
+                        <span>Bestellung</span>
+                    </a>
+                    <div class="navbar-dropdown">
+                        <a class="navbar-item" href="{{ url_for('order.order_plan') }}">
+                            <span class="icon">
+                                <i class="fas fa-plus"></i>
+                            </span>
+                            <span>Bestellung planen</span>
+                        </a>
+                        <a class="navbar-item" href="{{ url_for('order.order_overview') }}">
+                            <span class="icon">
+                                <i class="fas fa-list"></i>
+                            </span>
+                            <span>Bestellungsübersicht</span>
+                        </a>
+                        <a class="navbar-item" href="{{ url_for('order.order_history') }}">
+                            <span class="icon">
+                                <i class="fas fa-history"></i>
+                            </span>
+                            <span>Bestellt-Historie</span>
+                        </a>
+                    </div>
+                </div>
+                <a href="{{ url_for('suppliers.supplier_list') }}" class="navbar-item">
+                    <span class="icon"><i class="fas fa-truck"></i></span>
+                    <span>Lieferanten</span>
+                </a>
                 <a href="{{ url_for('main.import_assets') }}" class="navbar-item">
                     <span class="icon">
                         <i class="fas fa-file-import"></i>

@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Lieferanten</h1>
+<form method="get" class="mb-4">
+    <input type="text" name="search" value="{{ search }}" placeholder="Suche nach Name..." class="input is-small" style="width:200px;">
+    <button type="submit" class="button is-small is-info">Suchen</button>
+    <span class="ml-3">Filtern:</span>
+    <a href="{{ url_for('suppliers.supplier_list', letter='Alle') }}" class="button is-small">Alle</a>
+    {% for char in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' %}
+        <a href="{{ url_for('suppliers.supplier_list', letter=char) }}" class="button is-small">{{ char }}</a>
+    {% endfor %}
+</form>
+<div class="table-container">
+<table class="table is-striped is-hoverable is-fullwidth">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Adresse</th>
+            <th>Telefon</th>
+            <th>E-Mail</th>
+            <th>Website</th>
+            <th>Kundennr.</th>
+            <th>Kreditornr.</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for supplier in suppliers %}
+        <tr>
+            <td><strong>{{ supplier.name }}</strong></td>
+            <td>{{ supplier.address or '-' }}</td>
+            <td>{{ supplier.phone or '-' }}</td>
+            <td>{{ supplier.email or '-' }}</td>
+            <td>{% if supplier.website %}<a href="{{ supplier.website }}" target="_blank">{{ supplier.website }}</a>{% else %}-{% endif %}</td>
+            <td>{{ supplier.customer_number or '-' }}</td>
+            <td>{{ supplier.creditor_number or '-' }}</td>
+        </tr>
+    {% else %}
+        <tr><td colspan="7">Keine Lieferanten gefunden.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endblock %}

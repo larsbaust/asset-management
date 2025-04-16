@@ -37,6 +37,12 @@ def create_app():
     from app.auth import auth as auth_blueprint
     app.register_blueprint(auth_blueprint)
 
+    from app.order import order as order_blueprint
+    app.register_blueprint(order_blueprint)
+
+    from app.suppliers import suppliers as suppliers_blueprint
+    app.register_blueprint(suppliers_blueprint)
+
     with app.app_context():
         db.create_all()
         # Create test user if it doesn't exist
@@ -44,6 +50,19 @@ def create_app():
             user = User(username='admin')
             user.set_password('admin')
             db.session.add(user)
+            db.session.commit()
+
+        # Beispiel-Lieferanten anlegen
+        from app.models import Supplier
+        if Supplier.query.count() == 0:
+            beispiel_lieferanten = [
+                Supplier(name='Muster GmbH', address='Musterstraße 1, 12345 Musterstadt', phone='01234 567890', email='info@muster.de', website='www.muster.de', customer_number='10001', creditor_number='20001'),
+                Supplier(name='ABC Technik AG', address='Industriestr. 12, 54321 Technikstadt', phone='09876 543210', email='kontakt@abc-technik.de', website='www.abc-technik.de', customer_number='10002', creditor_number='20002'),
+                Supplier(name='Bürobedarf Schmitt', address='Büroallee 5, 11111 Bürostadt', phone='030 123456', email='service@schmitt-buero.de', website='www.schmitt-buero.de', customer_number='10003', creditor_number='20003'),
+                Supplier(name='Zeta Solutions', address='Zetaweg 7, 22222 Zetastadt', phone='040 987654', email='kontakt@zeta.de', website='www.zeta.de', customer_number='10004', creditor_number='20004'),
+                Supplier(name='Delta Logistik', address='Logistikpark 99, 33333 Logistown', phone='0201 998877', email='info@delta-logistik.de', website='www.delta-logistik.de', customer_number='10005', creditor_number='20005')
+            ]
+            db.session.bulk_save_objects(beispiel_lieferanten)
             db.session.commit()
 
     return app
