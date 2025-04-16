@@ -69,7 +69,7 @@ def order_export(order_id):
     order = Order.query.get_or_404(order_id)
     def generate():
         yield 'Bestellung ID;Lieferant;Datum;Status;Kommentar\n'
-        yield f'{order.id};{order.supplier.name};{order.order_date.strftime('%d.%m.%Y %H:%M')};{order.status};{order.comment or ''}\n'
+        yield f'{order.id};{order.supplier.name};{order.order_date.strftime("%d.%m.%Y %H:%M")};{order.status};{order.comment or ""}\n'
         yield '\nPositionen:\nAsset;Menge\n'
         for item in order.items:
             yield f'{item.asset.name};{item.quantity}\n'
