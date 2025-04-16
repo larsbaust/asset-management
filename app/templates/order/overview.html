@@ -1,5 +1,61 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>Bestellungsübersicht</h1>
-<p>Hier siehst du alle geplanten und laufenden Bestellungen.</p>
+<form method="get" class="mb-4">
+    <div class="field is-grouped">
+        <div class="control">
+            <div class="select">
+                <select name="status">
+                    <option value="">Status (alle)</option>
+                    <option value="offen" {% if selected_status == 'offen' %}selected{% endif %}>offen</option>
+                    <option value="bestellt" {% if selected_status == 'bestellt' %}selected{% endif %}>bestellt</option>
+                    <option value="erledigt" {% if selected_status == 'erledigt' %}selected{% endif %}>erledigt</option>
+                </select>
+            </div>
+        </div>
+        <div class="control">
+            <div class="select">
+                <select name="supplier_id">
+                    <option value="">Lieferant (alle)</option>
+                    {% for supplier in suppliers %}
+                    <option value="{{ supplier.id }}" {% if selected_supplier_id == supplier.id %}selected{% endif %}>{{ supplier.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="control">
+            <button type="submit" class="button is-link">Filtern</button>
+        </div>
+    </div>
+</form>
+<div class="table-container">
+    <table class="table is-striped is-hoverable is-fullwidth">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Lieferant</th>
+                <th>Datum</th>
+                <th>Status</th>
+                <th>Anzahl Positionen</th>
+                <th>Details</th>
+                <th>Export</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td>{{ order.id }}</td>
+                <td>{{ order.supplier.name }}</td>
+                <td>{{ order.order_date.strftime('%d.%m.%Y %H:%M') }}</td>
+                <td>{{ order.status }}</td>
+                <td>{{ order.items|length }}</td>
+                <td><a href="{{ url_for('order.order_detail', order_id=order.id) }}" class="button is-small is-info">Anzeigen</a></td>
+                <td><a href="{{ url_for('order.order_export', order_id=order.id) }}" class="button is-small is-success">CSV</a></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7">Keine Bestellungen vorhanden.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}

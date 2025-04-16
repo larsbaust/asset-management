@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Bestellung #{{ order.id }}</h1>
+<p><strong>Lieferant:</strong> {{ order.supplier.name }}</p>
+<p><strong>Datum:</strong> {{ order.order_date.strftime('%d.%m.%Y %H:%M') }}</p>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="field">
+        <label class="label">Status</label>
+        <div class="control">
+            {{ form.status(class_="select") }}
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">Kommentar</label>
+        <div class="control">
+            {{ form.comment(class_="textarea") }}
+        </div>
+    </div>
+    <div class="field">
+        <div class="control">
+            <button type="submit" class="button is-primary">Speichern</button>
+        </div>
+    </div>
+</form>
+<hr>
+<h2>Positionen</h2>
+<table class="table is-striped is-fullwidth">
+    <thead>
+        <tr>
+            <th>Asset</th>
+            <th>Menge</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in order.items %}
+        <tr>
+            <td>{{ item.asset.name }}</td>
+            <td>{{ item.quantity }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2">Keine Positionen vorhanden.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('order.order_overview') }}" class="button">Zurück zur Übersicht</a>
+{% endblock %}

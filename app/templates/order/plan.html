@@ -1,5 +1,41 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>Bestellung planen</h1>
-<p>Hier kannst du eine neue Bestellung planen.</p>
+<form method="post">
+    {{ form.hidden_tag() }}
+    <div class="field mb-4">
+        <label class="label">Lieferant auswählen</label>
+        <div class="control">
+            {{ form.supplier(class_="select") }}
+        </div>
+    </div>
+    <div class="table-container">
+        <table class="table is-striped is-hoverable is-fullwidth">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Name</th>
+                    <th>Kategorie</th>
+                    <th>Menge</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for asset_form in form.assets %}
+                {% set asset = asset_infos[asset_form.asset_id.data|string] %}
+                <tr>
+                    <td>{{ asset_form.select() }}</td>
+                    <td>{{ asset.name }}</td>
+                    <td>{{ asset.category or '-' }}</td>
+                    <td>{{ asset_form.quantity(class_="input is-small", min=1) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="field mt-4">
+        <div class="control">
+            {{ form.submit(class_="button is-primary") }}
+        </div>
+    </div>
+</form>
 {% endblock %}

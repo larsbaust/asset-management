@@ -65,6 +65,29 @@ class Supplier(db.Model):
     def __repr__(self):
         return f'<Supplier {self.name}>'
 
+
+class Order(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('supplier.id'), nullable=False)
+    order_date = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(30), default='offen')
+    comment = db.Column(db.Text)
+    supplier = db.relationship('Supplier', backref='orders')
+    items = db.relationship('OrderItem', backref='order', cascade="all, delete-orphan", lazy=True)
+
+    def __repr__(self):
+        return f'<Order {self.id} von {self.supplier.name}>'
+
+class OrderItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=1)
+    asset = db.relationship('Asset')
+
+    def __repr__(self):
+        return f'<OrderItem {self.asset.name} x{self.quantity}>'
+
 class Asset(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
