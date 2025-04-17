@@ -23,6 +23,17 @@ asset_suppliers = db.Table('asset_suppliers',
     db.Column('supplier_id', db.Integer, db.ForeignKey('supplier.id'), primary_key=True)
 )
 
+class Category(db.Model):
+    """Modell für Kategorien von Assets"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    description = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Category {self.name}>'
+
 class Assignment(db.Model):
     """Modell für Zuordnungen von Assets"""
     id = db.Column(db.Integer, primary_key=True)
@@ -94,7 +105,8 @@ class Asset(db.Model):
     description = db.Column(db.Text)
     image_url = db.Column(db.String(255))  # URL oder Pfad zum Bild
     article_number = db.Column(db.String(100))  # Artikelnummer
-    category = db.Column(db.String(50))
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
+    category = db.relationship('Category', backref='assets')
     ean = db.Column(db.String(13))  # EAN-Nummer
     value = db.Column(db.Float)
     status = db.Column(db.String(20), nullable=False, default='active')

@@ -1,7 +1,9 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify, send_file, current_app as app
+from .models import Assignment
+from . import db
 from werkzeug.utils import secure_filename
 from . import db
-from .models import Asset, Assignment, Manufacturer, Supplier
+from .models import Asset, Assignment, Manufacturer, Supplier, Category
 from .forms import AssetForm
 from datetime import datetime
 import os
@@ -15,6 +17,15 @@ def init_app(app):
     def assets():
         assets = Asset.query.all()
         return render_template('assets.html', assets=assets)
+
+            return jsonify({'success': False, 'message': 'Kategorie nicht gefunden'}), 404
+        db.session.delete(category)
+        try:
+            db.session.commit()
+            return jsonify({'success': True})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': str(e)}), 400
 
     @app.route('/assets/add', methods=['GET', 'POST'])
     def add_asset():
@@ -40,8 +51,8 @@ def init_app(app):
                 description=form.description.data,
                 image_url=image_path,
                 article_number=form.article_number.data,
+                category_id=int(form.category.data),
                 ean=form.ean.data,
-                category=form.category.data,
                 value=form.value.data,
                 status=form.status.data,
                 location=form.location.data,
@@ -87,22 +98,21 @@ def init_app(app):
                     old_file = os.path.join(app.root_path, 'static', asset.image_url.lstrip('/static/'))
                     if os.path.exists(old_file):
                         os.remove(old_file)
-                
+            
                 filename = secure_filename(form.image.data.filename)
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 filename = f'{timestamp}_{filename}'
                 upload_path = os.path.join(app.static_folder, 'uploads')
                 if not os.path.exists(upload_path):
                     os.makedirs(upload_path)
-                file_path = os.path.join(upload_path, filename)
-                form.image.data.save(file_path)
-                asset.image_url = f'/static/uploads/{filename}'
+                asset.image_url = os.path.join('static', 'uploads', filename)
+                form.image.data.save(os.path.join(upload_path, filename))
 
             asset.name = form.name.data
             asset.description = form.description.data
             asset.article_number = form.article_number.data
+            asset.category_id = int(form.category.data)
             asset.ean = form.ean.data
-            asset.category = form.category.data
             asset.value = form.value.data
             asset.status = form.status.data
             asset.location = form.location.data
@@ -116,7 +126,7 @@ def init_app(app):
                     assignment = Assignment.query.get(assignment_id)
                     if assignment:
                         asset.assignments.append(assignment)
-            
+        
             # Hersteller aktualisieren
             asset.manufacturers = []
             if form.manufacturers.data:
@@ -124,7 +134,7 @@ def init_app(app):
                     manufacturer = Manufacturer.query.get(manufacturer_id)
                     if manufacturer:
                         asset.manufacturers.append(manufacturer)
-            
+        
             # Lieferanten aktualisieren
             asset.suppliers = []
             if form.suppliers.data:

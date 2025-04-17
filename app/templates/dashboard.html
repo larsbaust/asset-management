@@ -165,7 +165,7 @@
                     {% for asset in recent_assets %}
                     <tr>
                         <td>{{ asset.name }}</td>
-                        <td>{{ asset.category }}</td>
+                        <td>{{ asset.category.name if asset.category else 'Keine Kategorie' }}</td>
                         <td>{{ "%.2f €"|format(asset.value|float) if asset.value else "-" }}</td>
                         <td>
                             <span class="status-badge {% if asset.status == 'active' %}status-active{% elif asset.status == 'on_loan' %}status-borrowed{% endif %}">

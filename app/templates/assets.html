@@ -28,6 +28,73 @@
         </div>
     </div>
 
+    <!-- Filterleiste -->
+    <form method="get" class="box mb-4">
+      <div class="columns is-multiline">
+        <div class="column is-3">
+          <input class="input" type="text" name="name" placeholder="Name" value="{{ selected.name }}">
+        </div>
+        <div class="column is-2">
+          <div class="select is-fullwidth">
+            <select name="category">
+              <option value="">Kategorie wählen...</option>
+              {% for value, label in categories %}
+                <option value="{{ value }}" {% if selected.category == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="column is-2">
+          <div class="select is-fullwidth">
+            <select name="location">
+              <option value="">Standort wählen...</option>
+              {% for value, label in locations %}
+                <option value="{{ value }}" {% if selected.location == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="column is-2">
+          <div class="select is-fullwidth">
+            <select name="manufacturer">
+              <option value="">Hersteller wählen...</option>
+              {% for value, label in manufacturers %}
+                <option value="{{ value }}" {% if selected.manufacturer == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="column is-2">
+          <div class="select is-fullwidth">
+            <select name="supplier">
+              <option value="">Lieferant wählen...</option>
+              {% for value, label in suppliers %}
+                <option value="{{ value }}" {% if selected.supplier == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="column is-2">
+          <div class="select is-fullwidth">
+            <select name="assignment">
+              <option value="">Zuordnung wählen...</option>
+              {% for value, label in assignments %}
+                <option value="{{ value }}" {% if selected.assignment == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="column is-1">
+          <label class="checkbox">
+            <input type="checkbox" name="with_image" value="1" {% if selected.with_image %}checked{% endif %}>
+            Nur mit Bild
+          </label>
+        </div>
+        <div class="column is-1">
+          <button class="button is-link is-fullwidth" type="submit">Filtern</button>
+        </div>
+      </div>
+    </form>
     {% if assets %}
     <div class="box">
         <div class="table-container">
@@ -36,11 +103,12 @@
                 <tr>
                     <th>Bild</th>
                     <th>Name</th>
-                    <th>Art. Nr</th>
+                    <th>Artikelnummer</th>
                     <th>Kategorie</th>
+                    <th>EAN</th>
+                    <th>Seriennummer</th>
                     <th>Zuordnung</th>
                     <th>Hersteller</th>
-                    <th>EAN</th>
                     <th>Lieferant</th>
                     <th>Standort</th>
                     <th>Status</th>
@@ -66,7 +134,9 @@
                         <a href="{{ url_for('main.asset_details', id=asset.id) }}">{{ asset.name }}</a>
                     </td>
                     <td>{{ asset.article_number or '-' }}</td>
-                    <td>{{ asset.category or 'Keine Kategorie' }}</td>
+                    <td>{{ asset.category.name if asset.category else 'Keine Kategorie' }}</td>
+                    <td>{{ asset.ean or '-' }}</td>
+                    <td>{{ asset.serial_number or '-' }}</td>
                     <td>
                         {% for assignment in asset.assignments %}
                         <span class="tag is-info is-light">{{ assignment.name }}</span>
@@ -81,7 +151,6 @@
                         -
                         {% endfor %}
                     </td>
-                    <td>{{ asset.ean or '-' }}</td>
                     <td>
                         {% for supplier in asset.suppliers %}
                         <span class="tag is-warning is-light">{{ supplier.name }}</span>

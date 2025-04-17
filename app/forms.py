@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, TextAreaField, FloatField, DateTimeField, BooleanField, SubmitField, FileField, IntegerField
+from wtforms import StringField, SelectField, SelectMultipleField, TextAreaField, FloatField, DateTimeField, BooleanField, SubmitField, FileField, IntegerField
 from wtforms.fields import DateField
 from wtforms.validators import DataRequired, Length, Optional, NumberRange
 from flask_wtf.file import FileAllowed
@@ -54,20 +54,6 @@ LOCATIONS = [
     ('Zweibrücken Fashion Outlet', 'Zweibrücken Fashion Outlet')
 ]
 
-# Initiale Kategorien
-CATEGORIES = [
-    ('', 'Kategorie auswählen...'),
-    ('Hardware', 'Hardware'),
-    ('Software', 'Software'),
-    ('Möbel', 'Möbel'),
-    ('Büro', 'Büro'),
-    ('Netzwerk', 'Netzwerk'),
-    ('Sicherheit', 'Sicherheit'),
-    ('Audio', 'Audio'),
-    ('Video', 'Video'),
-    ('Sonstiges', 'Sonstiges')
-]
-
 class AssetForm(FlaskForm):
     name = StringField('Name', validators=[DataRequired(), Length(max=100)])
     description = TextAreaField('Beschreibung', validators=[Optional()])
@@ -80,10 +66,10 @@ class AssetForm(FlaskForm):
         ('inactive', 'Inaktiv'),
         ('on_loan', 'Ausgeliehen')
     ], validators=[DataRequired()])
-    category = SelectField('Kategorie', choices=CATEGORIES, validators=[DataRequired()])
-    assignments = SelectField('Zuordnungen', choices=[], validators=[Optional()], render_kw={'multiple': True})
-    manufacturers = SelectField('Hersteller', choices=[], validators=[Optional()], render_kw={'multiple': True})
-    suppliers = SelectField('Lieferanten', choices=[], validators=[Optional()], render_kw={'multiple': True})
+    category = SelectField('Kategorie', choices=[], validators=[DataRequired()])
+    assignments = SelectMultipleField('Zuordnungen', choices=[], validators=[Optional()])
+    manufacturers = SelectMultipleField('Hersteller', choices=[], validators=[Optional()])
+    suppliers = SelectMultipleField('Lieferanten', choices=[], validators=[Optional()])
     location = SelectField('Standort', choices=LOCATIONS, validators=[Optional()])
     serial_number = StringField('Seriennummer', validators=[Optional(), Length(max=255)])
     purchase_date = DateField('Anschaffungsdatum', validators=[Optional()], format='%Y-%m-%d')
@@ -92,10 +78,11 @@ class AssetForm(FlaskForm):
     def __init__(self, *args, **kwargs):
         super(AssetForm, self).__init__(*args, **kwargs)
         # Die Choices für die SelectFields werden dynamisch aus der Datenbank geladen
-        from .models import Assignment, Manufacturer, Supplier
-        self.assignments.choices = [(a.id, a.name) for a in Assignment.query.order_by(Assignment.name).all()]
-        self.manufacturers.choices = [(m.id, m.name) for m in Manufacturer.query.order_by(Manufacturer.name).all()]
-        self.suppliers.choices = [(s.id, s.name) for s in Supplier.query.order_by(Supplier.name).all()]
+        from .models import Assignment, Manufacturer, Supplier, Category
+        self.assignments.choices = [(str(a.id), a.name) for a in Assignment.query.order_by(Assignment.name).all()]
+        self.manufacturers.choices = [(str(m.id), m.name) for m in Manufacturer.query.order_by(Manufacturer.name).all()]
+        self.suppliers.choices = [(str(s.id), s.name) for s in Supplier.query.order_by(Supplier.name).all()]
+        self.category.choices = [(str(c.id), c.name) for c in Category.query.order_by(Category.name).all()]
 
 class LoanForm(FlaskForm):
     """Formular für das Ausleihen von Assets"""

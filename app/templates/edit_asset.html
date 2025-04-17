@@ -75,10 +75,23 @@
                     <div class="field">
                         <label class="label">{{ form.category.label }}</label>
                         <div class="control">
-                            <div class="select" style="width: 100%;">
-                                {{ form.category(class="", style="width: 100%;") }}
-                            </div>
-                        </div>
+                            <div class="is-flex">
+    <div class="select" style="width: 100%;">
+        {{ form.category(class="", style="width: 100%;") }}
+    </div>
+    <div class="buttons ml-2">
+        <button type="button" class="button is-primary" onclick="addNewCategory()" title="Neue Kategorie hinzufügen">
+            <span class="icon is-small">
+                <i class="fas fa-plus"></i>
+            </span>
+        </button>
+        <button type="button" class="button is-danger" onclick="confirmDelete('category')" title="Ausgewählte Kategorie entfernen">
+            <span class="icon is-small">
+                <i class="fas fa-minus"></i>
+            </span>
+        </button>
+    </div>
+</div>
                         {% for error in form.category.errors %}
                         <p class="help is-danger">{{ error }}</p>
                         {% endfor %}
@@ -87,8 +100,8 @@
                     <div class="field">
                         <label class="label">{{ form.assignments.label }}</label>
                         <div class="control is-flex">
-                            <div class="select is-multiple" style="flex-grow: 1;">
-                                {{ form.assignments(class="", size=4) }}
+                            <div class="select is-multiple" style="flex-grow: 1; min-width: 220px;">
+                                {{ form.assignments(class="", size=8, style="min-height: 180px; width: 100%;") }}
                             </div>
                             <div class="buttons ml-2">
                                 <button type="button" class="button is-primary" onclick="addNewAssignment()" title="Neue Zuordnung hinzufügen">
@@ -111,8 +124,8 @@
                     <div class="field">
                         <label class="label">{{ form.manufacturers.label }}</label>
                         <div class="control is-flex">
-                            <div class="select is-multiple" style="flex-grow: 1;">
-                                {{ form.manufacturers(class="", size=4) }}
+                            <div class="select is-multiple" style="flex-grow: 1; min-width: 220px;">
+                                {{ form.manufacturers(class="", size=8, style="min-height: 180px; width: 100%;") }}
                             </div>
                             <div class="buttons ml-2">
                                 <button type="button" class="button is-primary" onclick="addNewManufacturer()" title="Neuen Hersteller hinzufügen">
@@ -135,8 +148,8 @@
                     <div class="field">
                         <label class="label">{{ form.suppliers.label }}</label>
                         <div class="control is-flex">
-                            <div class="select is-multiple" style="flex-grow: 1;">
-                                {{ form.suppliers(class="", size=4) }}
+                            <div class="select is-multiple" style="flex-grow: 1; min-width: 220px;">
+                                {{ form.suppliers(class="", size=8, style="min-height: 180px; width: 100%;") }}
                             </div>
                             <div class="buttons ml-2">
                                 <button type="button" class="button is-primary" onclick="addNewSupplier()" title="Neuen Lieferanten hinzufügen">
@@ -385,10 +398,12 @@
 
 </div>
 
+
+
 <!-- Modal für neue Kategorie -->
 <div class="modal" id="categoryModal">
     <div class="modal-background"></div>
-    <div class="modal-card">
+    <div class="modal-card" style="width: 600px; max-width: 95vw; min-height: 220px;">
         <header class="modal-card-head">
             <p class="modal-card-title">Neue Kategorie</p>
             <button class="delete" aria-label="close" onclick="closeModal('categoryModal')"></button>
@@ -411,7 +426,7 @@
 <!-- Modal für neue Zuordnung -->
 <div class="modal" id="assignmentModal">
     <div class="modal-background"></div>
-    <div class="modal-card">
+    <div class="modal-card" style="width: 600px; max-width: 95vw; min-height: 420px;">
         <header class="modal-card-head">
             <p class="modal-card-title">Neue Zuordnung</p>
             <button class="delete" aria-label="close" onclick="closeModal('assignmentModal')"></button>
@@ -440,7 +455,7 @@
 <!-- Modal für neuen Hersteller -->
 <div class="modal" id="manufacturerModal">
     <div class="modal-background"></div>
-    <div class="modal-card">
+    <div class="modal-card" style="width: 600px; max-width: 95vw; min-height: 420px;">
         <header class="modal-card-head">
             <p class="modal-card-title">Neuer Hersteller</p>
             <button class="delete" aria-label="close" onclick="closeModal('manufacturerModal')"></button>
@@ -481,7 +496,7 @@
 <!-- Modal für neuen Lieferanten -->
 <div class="modal" id="supplierModal">
     <div class="modal-background"></div>
-    <div class="modal-card">
+    <div class="modal-card" style="width: 600px; max-width: 95vw; min-height: 420px;">
         <header class="modal-card-head">
             <p class="modal-card-title">Neuer Lieferant</p>
             <button class="delete" aria-label="close" onclick="closeModal('supplierModal')"></button>
@@ -518,7 +533,7 @@
         </footer>
     </div>
 </div>
-    <div class="modal-card">
+    <div class="modal-card" style="width: 600px; max-width: 95vw; min-height: 420px;">
         <header class="modal-card-head">
             <p class="modal-card-title">Neue Kategorie</p>
             <button class="delete" aria-label="close" onclick="closeModal('categoryModal')"></button>
@@ -541,7 +556,7 @@
 <!-- Modal für neuen Standort -->
 <div class="modal" id="locationModal">
     <div class="modal-background"></div>
-    <div class="modal-card">
+    <div class="modal-card" style="width: 600px; max-width: 95vw; min-height: 420px;">
         <header class="modal-card-head">
             <p class="modal-card-title">Neuer Standort</p>
             <button class="delete" aria-label="close" onclick="closeModal('locationModal')"></button>
@@ -564,7 +579,7 @@
 <!-- Modal für Löschbestätigung -->
 <div class="modal" id="deleteModal">
     <div class="modal-background"></div>
-    <div class="modal-card">
+    <div class="modal-card" style="width: 600px; max-width: 95vw; min-height: 420px;">
         <header class="modal-card-head">
             <p class="modal-card-title">Löschen bestätigen</p>
             <button class="delete" aria-label="close" onclick="closeModal('deleteModal')"></button>
@@ -862,4 +877,5 @@ function saveNewSupplier() {
 
 }
 </script>
+<script src="{{ url_for('static', filename='js/category.js') }}"></script>
 {% endblock %}

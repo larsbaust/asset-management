@@ -54,7 +54,7 @@
                             {{ asset.name }}
                         </a>
                     </td>
-                    <td>{{ asset.category }}</td>
+                    <td>{{ asset.category.name if asset.category else 'Keine Kategorie' }}</td>
                     <td>{{ asset.location or '-' }}</td>
                     <td>{{ asset.purchase_date.strftime('%d.%m.%Y') if asset.purchase_date else '-' }}</td>
                     <td>{{ "%.2f €"|format(asset.purchase_price) if asset.purchase_price else '-' }}</td>

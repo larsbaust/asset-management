@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file, current_app
 from .models import Asset, db, Loan, Document, CostEntry, InventorySession, InventoryItem, InventoryTeam
 from .forms import AssetForm, LoanForm, DocumentForm, CostEntryForm, InventorySessionForm, InventoryTeamForm, InventoryCheckForm
 import csv
@@ -23,6 +23,44 @@ import tempfile
 import os
 
 main = Blueprint('main', __name__)
+
+@main.route('/assignments/add', methods=['POST'])
+def add_assignment():
+    from .models import Assignment, db
+    data = request.get_json()
+    name = data.get('name')
+    description = data.get('description')
+    if not name:
+        return jsonify({'status': 'error', 'message': 'Name ist erforderlich.'}), 400
+    # Prüfe auf Duplikate
+    if Assignment.query.filter_by(name=name).first():
+        return jsonify({'status': 'error', 'message': 'Name existiert bereits.'}), 400
+    assignment = Assignment(name=name, description=description)
+    db.session.add(assignment)
+    db.session.commit()
+    return jsonify({'status': 'success', 'id': assignment.id, 'name': assignment.name})
+
+@main.route('/manufacturers/add', methods=['POST'])
+def add_manufacturer():
+    from .models import Manufacturer, db
+    data = request.get_json()
+    name = data.get('name')
+    description = data.get('description')
+    website = data.get('website')
+    contact_info = data.get('contact_info')
+    if not name:
+        return jsonify({'success': False, 'message': 'Name ist erforderlich'}), 400
+    if Manufacturer.query.filter_by(name=name).first():
+        return jsonify({'success': False, 'message': 'Name existiert bereits.'}), 400
+    manufacturer = Manufacturer(
+        name=name,
+        description=description,
+        website=website,
+        contact_info=contact_info
+    )
+    db.session.add(manufacturer)
+    db.session.commit()
+    return jsonify({'success': True, 'id': manufacturer.id, 'name': manufacturer.name})
 
 # Konfiguration für Datei-Uploads
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
@@ -79,7 +117,7 @@ def index():
     category_data = []
     categories = {}
     for asset in user_assets:
-        cat = asset.category or 'Ohne Kategorie'
+        cat = asset.category.name if asset.category else 'Ohne Kategorie'
         categories[cat] = categories.get(cat, 0) + 1
     
     for category, count in categories.items():
@@ -241,15 +279,24 @@ def dashboard():
     cost_type_labels = list(costs.keys())
     cost_amounts = list(costs.values())
 
-    # Kategorien-Statistiken
+    # Kategorien-Statistiken (nur Klartextnamen)
+    from .models import Category
+    # Zeige alle Kategorien (auch neue/ohne Assets) im Chart
     categories = db.session.query(
-        Asset.category, func.count(Asset.id)
-    ).group_by(Asset.category).all()
-    
+        Category.name,
+        func.count(Asset.id)
+    ).outerjoin(Asset, Asset.category_id == Category.id)\
+     .group_by(Category.id, Category.name)\
+     .order_by(Category.name)\
+     .all()
     category_data = [{
-        'category': cat or 'Ohne Kategorie',
+        'category': cat_name or 'Ohne Kategorie',
         'count': count
-    } for cat, count in categories]
+    } for cat_name, count in categories]
+    # Assets ohne Kategorie ergänzen (falls vorhanden)
+    no_category_count = Asset.query.filter(Asset.category == None).count()
+    if no_category_count:
+        category_data.append({'category': 'Ohne Kategorie', 'count': no_category_count})
 
     return render_template('dashboard.html',
         recent_assets=recent_assets,
@@ -265,25 +312,147 @@ def dashboard():
 
 @main.route('/assets')
 def assets():
-    """Liste aller Assets des aktuellen Benutzers"""
-    assets = Asset.query.all()
-    return render_template('assets.html', assets=assets)
+    """Asset-Übersicht mit Filterfunktion"""
+    from .models import Assignment, Manufacturer, Supplier
+    query = Asset.query
+
+    # Filter: Name (Textfeld)
+    name = request.args.get('name', '').strip()
+    if name:
+        query = query.filter(Asset.name.ilike(f"%{name}%"))
+
+    # Filter: Kategorie (Dropdown)
+    category = request.args.get('category', '')
+    if category:
+        query = query.filter(Asset.category_id == int(category))
+
+    # Filter: Standort (Dropdown)
+    location = request.args.get('location', '')
+    if location:
+        query = query.filter(Asset.location == location)
+
+    # Filter: Hersteller (Dropdown)
+    manufacturer_id = request.args.get('manufacturer', '')
+    if manufacturer_id:
+        query = query.filter(Asset.manufacturers.any(Manufacturer.id == int(manufacturer_id)))
+
+    # Filter: Lieferant (Dropdown)
+    supplier_id = request.args.get('supplier', '')
+    if supplier_id:
+        query = query.filter(Asset.suppliers.any(Supplier.id == int(supplier_id)))
+
+    # Filter: Zuordnung (Dropdown)
+    assignment_id = request.args.get('assignment', '')
+    if assignment_id:
+        query = query.filter(Asset.assignments.any(Assignment.id == int(assignment_id)))
+
+    # Filter: Nur mit Bild (Checkbox)
+    with_image = request.args.get('with_image', '')
+    if with_image:
+        query = query.filter(Asset.image_url != None)
+
+    assets = query.all()
+
+    # AssetForm instanziieren, um auf die Choices zuzugreifen
+    form = AssetForm()
+    categories = [(c[0], c[1]) for c in form.category.choices if c[0]]
+    locations = [(l[0], l[1]) for l in form.location.choices if l[0]]
+    manufacturers = [(str(m.id), m.name) for m in Manufacturer.query.order_by(Manufacturer.name).all()]
+    suppliers = [(str(s.id), s.name) for s in Supplier.query.order_by(Supplier.name).all()]
+    assignments = [(str(a.id), a.name) for a in Assignment.query.order_by(Assignment.name).all()]
+
+    return render_template(
+        'assets.html',
+        assets=assets,
+        categories=categories,
+        locations=locations,
+        manufacturers=manufacturers,
+        suppliers=suppliers,
+        assignments=assignments,
+        selected={
+            'name': name,
+            'category': category,
+            'location': location,
+            'manufacturer': manufacturer_id,
+            'supplier': supplier_id,
+            'assignment': assignment_id,
+            'with_image': with_image
+        }
+    )
+
+@main.route('/categories/add', methods=['POST'])
+def add_category():
+    from .models import Category
+    from . import db
+    data = request.get_json()
+    if not data or 'name' not in data:
+        return jsonify({'success': False, 'message': 'Name ist erforderlich'}), 400
+    if Category.query.filter_by(name=data['name']).first():
+        return jsonify({'success': False, 'message': 'Kategorie existiert bereits'}), 400
+    category = Category(name=data['name'])
+    db.session.add(category)
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'id': category.id, 'name': category.name})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+@main.route('/categories/delete', methods=['POST'])
+def delete_category():
+    from .models import Category
+    from . import db
+    data = request.get_json()
+    if not data or 'name' not in data:
+        return jsonify({'success': False, 'message': 'Name ist erforderlich'}), 400
+    category = Category.query.filter_by(name=data['name']).first()
+    if not category:
+        return jsonify({'success': False, 'message': 'Kategorie nicht gefunden'}), 404
+    db.session.delete(category)
+    try:
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 400
 
 @main.route('/add_asset', methods=['GET', 'POST'])
 def add_asset():
+    from .models import Assignment, Manufacturer, Supplier
     form = AssetForm()
     doc_form = DocumentForm()
     
     if form.validate_on_submit():
         asset = Asset(
             name=form.name.data,
-            category=form.category.data,
+            category_id=int(form.category.data) if form.category.data else None,
             value=form.value.data,
             status=form.status.data,
             location=form.location.data,
+            article_number=form.article_number.data,
+            ean=form.ean.data,
             serial_number=form.serial_number.data,
             purchase_date=form.purchase_date.data
         )
+        # IDs als Liste holen (Strings zu int)
+        assignment_ids = [int(i) for i in request.form.getlist('assignments')]
+        manufacturer_ids = [int(i) for i in request.form.getlist('manufacturers')]
+        supplier_ids = [int(i) for i in request.form.getlist('suppliers')]
+        # Relationen setzen
+        asset.assignments = Assignment.query.filter(Assignment.id.in_(assignment_ids)).all() if assignment_ids else []
+        asset.manufacturers = Manufacturer.query.filter(Manufacturer.id.in_(manufacturer_ids)).all() if manufacturer_ids else []
+        asset.suppliers = Supplier.query.filter(Supplier.id.in_(supplier_ids)).all() if supplier_ids else []
+        # Bild-Upload verarbeiten
+        if form.image.data:
+            filename = secure_filename(form.image.data.filename)
+            # Eindeutigen Dateinamen erzeugen
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"{timestamp}_{filename}"
+            img_folder = os.path.join(current_app.static_folder, 'images')
+            if not os.path.exists(img_folder):
+                os.makedirs(img_folder)
+            form.image.data.save(os.path.join(img_folder, filename))
+            asset.image_url = f"/static/images/{filename}"
         db.session.add(asset)
         db.session.commit()
         
@@ -294,20 +463,47 @@ def add_asset():
 
 @main.route('/edit_asset/<int:id>', methods=['GET', 'POST'])
 def edit_asset(id):
-    """Asset bearbeiten"""
+    from .models import Assignment, Manufacturer, Supplier
     asset = Asset.query.get_or_404(id)
-    
     form = AssetForm(obj=asset)
     doc_form = DocumentForm()
+    # Multi-Select-Felder mit aktuellen IDs befüllen
+    form.assignments.data = [str(a.id) for a in asset.assignments]
+    form.manufacturers.data = [str(m.id) for m in asset.manufacturers]
+    form.suppliers.data = [str(s.id) for s in asset.suppliers]
     
     if form.validate_on_submit():
         asset.name = form.name.data
-        asset.category = form.category.data
+        from .models import Category
+        asset.category = Category.query.get(int(form.category.data)) if form.category.data else None
         asset.value = form.value.data
         asset.status = form.status.data
         asset.location = form.location.data
+        asset.article_number = form.article_number.data
+        asset.ean = form.ean.data
         asset.serial_number = form.serial_number.data
         asset.purchase_date = form.purchase_date.data
+        # IDs als Liste holen (Strings zu int)
+        assignment_ids = request.form.getlist('assignments')
+        manufacturer_ids = request.form.getlist('manufacturers')
+        supplier_ids = request.form.getlist('suppliers')
+        # Relationen setzen (nur wenn IDs übergeben wurden, sonst unverändert lassen)
+        if assignment_ids:
+            asset.assignments = Assignment.query.filter(Assignment.id.in_(assignment_ids)).all()
+        if manufacturer_ids:
+            asset.manufacturers = Manufacturer.query.filter(Manufacturer.id.in_(manufacturer_ids)).all()
+        if supplier_ids:
+            asset.suppliers = Supplier.query.filter(Supplier.id.in_(supplier_ids)).all()
+        # Bild-Upload beim Bearbeiten
+        if form.image.data:
+            filename = secure_filename(form.image.data.filename)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"{timestamp}_{filename}"
+            img_folder = os.path.join(current_app.static_folder, 'images')
+            if not os.path.exists(img_folder):
+                os.makedirs(img_folder)
+            form.image.data.save(os.path.join(img_folder, filename))
+            asset.image_url = f"/static/images/{filename}"
         db.session.commit()
         flash('Asset wurde erfolgreich aktualisiert.', 'success')
         return redirect(url_for('main.assets'))
