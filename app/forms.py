@@ -70,7 +70,7 @@ class AssetForm(FlaskForm):
     assignments = SelectMultipleField('Zuordnungen', choices=[], validators=[Optional()])
     manufacturers = SelectMultipleField('Hersteller', choices=[], validators=[Optional()])
     suppliers = SelectMultipleField('Lieferanten', choices=[], validators=[Optional()])
-    location = SelectField('Standort', choices=LOCATIONS, validators=[Optional()])
+    location_id = SelectField('Standort', coerce=int, choices=[], validators=[Optional()])
     serial_number = StringField('Seriennummer', validators=[Optional(), Length(max=255)])
     purchase_date = DateField('Anschaffungsdatum', validators=[Optional()], format='%Y-%m-%d')
     submit = SubmitField('Speichern')
@@ -78,11 +78,26 @@ class AssetForm(FlaskForm):
     def __init__(self, *args, **kwargs):
         super(AssetForm, self).__init__(*args, **kwargs)
         # Die Choices für die SelectFields werden dynamisch aus der Datenbank geladen
-        from .models import Assignment, Manufacturer, Supplier, Category
+        from .models import Assignment, Manufacturer, Supplier, Category, Location
         self.assignments.choices = [(str(a.id), a.name) for a in Assignment.query.order_by(Assignment.name).all()]
         self.manufacturers.choices = [(str(m.id), m.name) for m in Manufacturer.query.order_by(Manufacturer.name).all()]
         self.suppliers.choices = [(str(s.id), s.name) for s in Supplier.query.order_by(Supplier.name).all()]
         self.category.choices = [(str(c.id), c.name) for c in Category.query.order_by(Category.name).all()]
+        self.location_id.choices = [(0, 'Standort wählen...')] + [(l.id, l.name) for l in Location.query.order_by(Location.name).all()]
+
+class LocationForm(FlaskForm):
+    name = StringField('Name', validators=[DataRequired(), Length(max=100)])
+    street = StringField('Straße', validators=[Optional(), Length(max=255)])
+    postal_code = StringField('PLZ', validators=[Optional(), Length(max=20)])
+    city = StringField('Stadt', validators=[Optional(), Length(max=100)])
+    state = StringField('Bundesland', validators=[Optional(), Length(max=100)])
+    size_sqm = FloatField('Größe (m²)', validators=[Optional()])
+    seats = IntegerField('Sitzplätze', validators=[Optional()])
+    description = TextAreaField('Beschreibung', validators=[Optional()])
+    image_url = StringField('Bild-URL', validators=[Optional(), Length(max=255)])
+    latitude = FloatField('Breitengrad', validators=[Optional()])
+    longitude = FloatField('Längengrad', validators=[Optional()])
+    submit = SubmitField('Speichern')
 
 class LoanForm(FlaskForm):
     """Formular für das Ausleihen von Assets"""
@@ -137,13 +152,18 @@ class InventorySessionForm(FlaskForm):
     name = StringField('Name der Inventur', validators=[DataRequired(), Length(max=100)])
     start_date = DateField('Startdatum', validators=[DataRequired()], format='%Y-%m-%d')
     end_date = DateField('Enddatum', validators=[DataRequired()], format='%Y-%m-%d')
-    location = SelectField('Standort', choices=LOCATIONS, validators=[DataRequired()])
+    location_id = SelectField('Standort', coerce=int, choices=[], validators=[DataRequired()])
     notes = TextAreaField('Notizen', validators=[Optional()])
     submit = SubmitField('Inventur planen')
 
+    def __init__(self, *args, **kwargs):
+        super(InventorySessionForm, self).__init__(*args, **kwargs)
+        from .models import Location
+        self.location_id.choices = [(0, 'Standort auswählen...')] + [(l.id, l.name) for l in Location.query.order_by(Location.name).all()]
+
+    # Stellt sicher, dass das Enddatum nach dem Startdatum liegt
     def validate_end_date(self, field):
-        """Stellt sicher, dass das Enddatum nach dem Startdatum liegt"""
-        if field.data <= self.start_date.data:
+        if self.start_date.data and field.data and field.data < self.start_date.data:
             raise ValidationError('Das Enddatum muss nach dem Startdatum liegen.')
 
 class InventoryTeamForm(FlaskForm):

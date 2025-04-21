@@ -24,6 +24,67 @@ import os
 
 main = Blueprint('main', __name__)
 
+@main.route('/locations')
+def locations():
+    from .models import Location
+    locations = Location.query.order_by(Location.name).all()
+    return render_template('locations.html', locations=locations)
+
+@main.route('/locations/add', methods=['GET', 'POST'])
+def add_location():
+    from .models import Location, db
+    from .forms import LocationForm
+    form = LocationForm()
+    if form.validate_on_submit():
+        location = Location(
+            name=form.name.data,
+            street=form.street.data,
+            postal_code=form.postal_code.data,
+            city=form.city.data,
+            state=form.state.data,
+            size_sqm=form.size_sqm.data,
+            seats=form.seats.data,
+            description=form.description.data,
+            image_url=form.image_url.data,
+            latitude=form.latitude.data,
+            longitude=form.longitude.data
+        )
+        db.session.add(location)
+        db.session.commit()
+        flash('Standort erfolgreich angelegt.', 'success')
+        return redirect(url_for('main.locations'))
+    return render_template('location_form.html', form=form)
+
+@main.route('/locations/<int:id>')
+def location_detail(id):
+    from .models import Location
+    location = Location.query.get_or_404(id)
+    return render_template('location_detail.html', location=location)
+
+@main.route('/locations/<int:id>/edit', methods=['GET', 'POST'])
+def edit_location(id):
+    from .models import Location, db
+    from .forms import LocationForm
+    location = Location.query.get_or_404(id)
+    form = LocationForm(obj=location)
+    if form.validate_on_submit():
+        form.populate_obj(location)
+        db.session.commit()
+        flash('Standort erfolgreich aktualisiert.', 'success')
+        return redirect(url_for('main.location_detail', id=location.id))
+    return render_template('location_form.html', form=form, edit=True, location=location)
+
+@main.route('/locations/<int:id>/delete', methods=['POST', 'GET'])
+def delete_location(id):
+    from .models import Location, db
+    location = Location.query.get_or_404(id)
+    if request.method == 'POST':
+        db.session.delete(location)
+        db.session.commit()
+        flash('Standort gelöscht.', 'success')
+        return redirect(url_for('main.locations'))
+    return render_template('confirm_delete.html', object=location, type='Standort', back_url=url_for('main.location_detail', id=id))
+
 @main.route('/assignments/add', methods=['POST'])
 def add_assignment():
     from .models import Assignment, db
@@ -281,11 +342,11 @@ def dashboard():
 
     # Kategorien-Statistiken (nur Klartextnamen)
     from .models import Category
-    # Zeige alle Kategorien (auch neue/ohne Assets) im Chart
+    # Zeige alle Kategorien (auch neue/ohne Assets) im Chart, aber zähle nur aktive Assets
     categories = db.session.query(
         Category.name,
         func.count(Asset.id)
-    ).outerjoin(Asset, Asset.category_id == Category.id)\
+    ).outerjoin(Asset, (Asset.category_id == Category.id) & (Asset.status == 'active'))\
      .group_by(Category.id, Category.name)\
      .order_by(Category.name)\
      .all()
@@ -293,11 +354,31 @@ def dashboard():
         'category': cat_name or 'Ohne Kategorie',
         'count': count
     } for cat_name, count in categories]
-    # Assets ohne Kategorie ergänzen (falls vorhanden)
-    no_category_count = Asset.query.filter(Asset.category == None).count()
+    # Assets ohne Kategorie ergänzen (nur aktive)
+    no_category_count = Asset.query.filter((Asset.category == None) & (Asset.status == 'active')).count()
     if no_category_count:
         category_data.append({'category': 'Ohne Kategorie', 'count': no_category_count})
 
+    # Debug-Ausgabe
+    print('Kategorie-Auswertung für Dashboard (nur aktive Assets):')
+    for entry in category_data:
+        print(entry)
+
+    # Standorte für die Karte (nur mit Koordinaten)
+    from .models import Location
+    location_objs = Location.query.filter(Location.latitude.isnot(None), Location.longitude.isnot(None)).all()
+    locations = [
+        {
+            'name': loc.name,
+            'latitude': loc.latitude,
+            'longitude': loc.longitude,
+            'street': loc.street,
+            'postal_code': loc.postal_code,
+            'city': loc.city,
+            'description': loc.description
+        }
+        for loc in location_objs
+    ]
     return render_template('dashboard.html',
         recent_assets=recent_assets,
         active_count=active,
@@ -307,7 +388,8 @@ def dashboard():
         values=values,
         category_data=category_data,
         cost_type_labels=cost_type_labels,
-        cost_amounts=cost_amounts
+        cost_amounts=cost_amounts,
+        locations=locations
     )
 
 @main.route('/assets')
@@ -356,7 +438,7 @@ def assets():
     # AssetForm instanziieren, um auf die Choices zuzugreifen
     form = AssetForm()
     categories = [(c[0], c[1]) for c in form.category.choices if c[0]]
-    locations = [(l[0], l[1]) for l in form.location.choices if l[0]]
+    locations = [(l[0], l[1]) for l in form.location_id.choices if l[0]]
     manufacturers = [(str(m.id), m.name) for m in Manufacturer.query.order_by(Manufacturer.name).all()]
     suppliers = [(str(s.id), s.name) for s in Supplier.query.order_by(Supplier.name).all()]
     assignments = [(str(a.id), a.name) for a in Assignment.query.order_by(Assignment.name).all()]
@@ -428,7 +510,7 @@ def add_asset():
             category_id=int(form.category.data) if form.category.data else None,
             value=form.value.data,
             status=form.status.data,
-            location=form.location.data,
+            location_id=form.location_id.data if form.location_id.data else None,
             article_number=form.article_number.data,
             ean=form.ean.data,
             serial_number=form.serial_number.data,
@@ -475,10 +557,10 @@ def edit_asset(id):
     if form.validate_on_submit():
         asset.name = form.name.data
         from .models import Category
-        asset.category = Category.query.get(int(form.category.data)) if form.category.data else None
+        asset.category_id = int(form.category.data) if form.category.data else None
         asset.value = form.value.data
         asset.status = form.status.data
-        asset.location = form.location.data
+        asset.location_id = int(form.location_id.data) if form.location_id.data else None
         asset.article_number = form.article_number.data
         asset.ean = form.ean.data
         asset.serial_number = form.serial_number.data
@@ -897,7 +979,7 @@ def inventory_planning_new():
             name=form.name.data,
             start_date=start_date,
             end_date=end_date,
-            location=form.location.data,
+            location_id=form.location_id.data if form.location_id.data != 0 else None,
             notes=form.notes.data,
             status='planned'
         )
@@ -905,12 +987,12 @@ def inventory_planning_new():
         db.session.commit()
         
         # Automatisch alle Assets am gewählten Standort zur Inventur hinzufügen
-        assets = Asset.query.filter_by(location=form.location.data).all()
+        assets = Asset.query.filter_by(location_id=form.location_id.data if form.location_id.data != 0 else None).all()
         for asset in assets:
             item = InventoryItem(
                 session_id=session.id,
                 asset_id=asset.id,
-                expected_location=asset.location
+                expected_location=asset.location  # String für Kompatibilität
             )
             db.session.add(item)
         

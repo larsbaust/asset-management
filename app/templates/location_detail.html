@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Standort: {{ location.name }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Standort: {{ location.name }}</h2>
+    <div class="box">
+        <strong>Adresse:</strong> {{ location.street }}, {{ location.postal_code }} {{ location.city }}<br>
+        <strong>Bundesland:</strong> {{ location.state or '-' }}<br>
+        <strong>Größe:</strong> {{ location.size_sqm or '-' }} m²<br>
+        <strong>Sitzplätze:</strong> {{ location.seats or '-' }}<br>
+        <strong>Beschreibung:</strong> {{ location.description or '-' }}<br>
+        {% if location.image_url %}
+            <img src="{{ location.image_url }}" alt="Bild Standort" style="max-width:300px; margin-top:10px;">
+        {% endif %}
+        <br>
+        {% if location.latitude and location.longitude %}
+            <strong>Koordinaten:</strong> {{ location.latitude }}, {{ location.longitude }}
+        {% endif %}
+    </div>
+    <div class="mb-3">
+        <a href="{{ url_for('main.edit_location', id=location.id) }}" class="button is-info">Bearbeiten</a>
+        <a href="{{ url_for('main.delete_location', id=location.id) }}" class="button is-danger" onclick="return confirm('Standort wirklich löschen?');">Löschen</a>
+        <a href="{{ url_for('main.locations') }}" class="button is-light">Zurück zur Übersicht</a>
+    </div>
+    <h4 class="mt-4">Assets an diesem Standort ({{ location.assets|length }})</h4>
+    <table class="table is-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Kategorie</th>
+                <th>Status</th>
+                <th>Wert</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for asset in location.assets %}
+            <tr>
+                <td><a href="{{ url_for('main.asset_details', id=asset.id) }}">{{ asset.name }}</a></td>
+                <td>{{ asset.category.name if asset.category else '-' }}</td>
+                <td>{{ asset.get_status_display() }}</td>
+                <td>{{ '%.2f'|format(asset.value or 0) }} €</td>
+                <td>
+                    <a href="{{ url_for('main.edit_asset', id=asset.id) }}" class="button is-small is-info">Bearbeiten</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">Keine Assets an diesem Standort.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

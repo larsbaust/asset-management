@@ -19,7 +19,7 @@
                         <dd class="col-sm-9">{{ asset.status }}</dd>
                         
                         <dt class="col-sm-3">Standort</dt>
-                        <dd class="col-sm-9">{{ asset.location or 'Kein Standort angegeben' }}</dd>
+                        <dd class="col-sm-9">{{ asset.location_obj.name if asset.location_obj else 'Kein Standort angegeben' }}</dd>
                         
                         <dt class="col-sm-3">Kaufdatum</dt>
                         <dd class="col-sm-9">{{ asset.purchase_date.strftime('%d.%m.%Y') if asset.purchase_date else 'Nicht angegeben' }}</dd>

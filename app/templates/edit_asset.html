@@ -192,10 +192,10 @@
                     </div>
 
                     <div class="field">
-                        <label class="label">{{ form.location.label }}</label>
+                        <label class="label">{{ form.location_id.label }}</label>
                         <div class="control is-flex">
                             <div class="select" style="flex-grow: 1;">
-                                {{ form.location(class="") }}
+                                {{ form.location_id(class="") }}
                             </div>
                             <div class="buttons ml-2">
                                 <button type="button" class="button is-primary" onclick="addNewLocation()" title="Neuen Standort hinzufügen">
@@ -210,7 +210,7 @@
                                 </button>
                             </div>
                         </div>
-                        {% for error in form.location.errors %}
+                        {% for error in form.location_id.errors %}
                         <p class="help is-danger">{{ error }}</p>
                         {% endfor %}
                     </div>

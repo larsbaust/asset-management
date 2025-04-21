@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}Standort anlegen{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Standort anlegen</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="field">
+            <label class="label">Name *</label>
+            <div class="control">
+                {{ form.name(class="input") }}
+            </div>
+            {% if form.name.errors %}
+                <p class="help is-danger">{{ form.name.errors[0] }}</p>
+            {% endif %}
+        </div>
+        <div class="field">
+            <label class="label">Straße</label>
+            <div class="control">
+                {{ form.street(class="input") }}
+            </div>
+        </div>
+        <div class="field is-horizontal">
+            <div class="field-body">
+                <div class="field">
+                    <label class="label">PLZ</label>
+                    <div class="control">
+                        {{ form.postal_code(class="input") }}
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">Stadt</label>
+                    <div class="control">
+                        {{ form.city(class="input") }}
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">Bundesland</label>
+                    <div class="control">
+                        {{ form.state(class="input") }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="field is-horizontal">
+            <div class="field-body">
+                <div class="field">
+                    <label class="label">Größe (m²)</label>
+                    <div class="control">
+                        {{ form.size_sqm(class="input") }}
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">Sitzplätze</label>
+                    <div class="control">
+                        {{ form.seats(class="input") }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="field">
+            <label class="label">Beschreibung</label>
+            <div class="control">
+                {{ form.description(class="textarea") }}
+            </div>
+        </div>
+        <div class="field">
+            <label class="label">Bild-URL</label>
+            <div class="control">
+                {{ form.image_url(class="input") }}
+            </div>
+        </div>
+        <div class="field is-horizontal">
+            <div class="field-body">
+                <div class="field">
+                    <label class="label">Breitengrad</label>
+                    <div class="control">
+                        {{ form.latitude(class="input") }}
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">Längengrad</label>
+                    <div class="control">
+                        {{ form.longitude(class="input") }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="field mt-4">
+            <div class="control">
+                <button type="submit" class="button is-primary">Speichern</button>
+                <a href="{{ url_for('main.locations') }}" class="button is-light">Abbrechen</a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

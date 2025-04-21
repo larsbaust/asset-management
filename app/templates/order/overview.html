@@ -24,21 +24,46 @@
             </div>
         </div>
         <div class="control">
+            <div class="select">
+                <select name="location">
+                    <option value="">Standort (alle)</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc }}" {% if selected_location == loc %}selected{% endif %}>{{ loc }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="control">
+            <input class="input" type="text" name="tracking_number" placeholder="Trackingnummer (enthält)" value="{{ selected_tracking_number or '' }}">
+        </div>
+        <div class="control">
             <button type="submit" class="button is-link">Filtern</button>
         </div>
     </div>
 </form>
+<div class="tabs is-toggle is-toggle-rounded mb-3">
+  <ul>
+    <li class="{% if not show_archived %}is-active{% endif %}"><a href="{{ url_for('order.order_overview', status=selected_status, supplier_id=selected_supplier_id, archived=0) }}">Aktive Bestellungen</a></li>
+    <li class="{% if show_archived %}is-active{% endif %}"><a href="{{ url_for('order.order_overview', status=selected_status, supplier_id=selected_supplier_id, archived=1) }}">Archiv</a></li>
+  </ul>
+</div>
+{% if show_archived %}
+  <div class="notification is-info is-light mb-4">Archivierte Bestellungen (nur Lesezugriff)</div>
+{% endif %}
 <div class="table-container">
     <table class="table is-striped is-hoverable is-fullwidth">
         <thead>
             <tr>
                 <th>ID</th>
                 <th>Lieferant</th>
+                <th>Standort</th>
+                <th>Trackingnummer</th>
                 <th>Datum</th>
                 <th>Status</th>
                 <th>Anzahl Positionen</th>
                 <th>Details</th>
                 <th>Export</th>
+                {% if not show_archived %}<th>Aktion</th>{% endif %}
             </tr>
         </thead>
         <tbody>
@@ -46,14 +71,48 @@
             <tr>
                 <td>{{ order.id }}</td>
                 <td>{{ order.supplier.name }}</td>
+                <td>{{ order.location_obj.name if order.location_obj else '-' }}</td>
+                <td>
+                  {% if order.tracking_number %}
+                    {% set tn = order.tracking_number.strip() %}
+                    {% if tn.startswith('1Z') %}
+                      <a href="https://www.ups.com/track?loc=de_DE&tracknum={{ tn }}" target="_blank">{{ tn }}</a>
+                    {% elif tn|length == 12 and tn.isdigit() %}
+                      <a href="https://www.dhl.de/de/privatkunden/dhl-sendungsverfolgung.html?piececode={{ tn }}" target="_blank">{{ tn }}</a>
+                    {% elif tn|length in [14, 15] and tn.isdigit() %}
+                      <a href="https://www.dpd.com/de/de/empfangen/sendungsverfolgung-und-live-tracking/?parcelNumber={{ tn }}" target="_blank">{{ tn }}</a>
+                    {% else %}
+                      {{ tn }}
+                    {% endif %}
+                  {% else %}-{% endif %}
+                </td>
                 <td>{{ order.order_date.strftime('%d.%m.%Y %H:%M') }}</td>
                 <td>{{ order.status }}</td>
                 <td>{{ order.items|length }}</td>
                 <td><a href="{{ url_for('order.order_detail', order_id=order.id) }}" class="button is-small is-info">Anzeigen</a></td>
                 <td><a href="{{ url_for('order.order_export', order_id=order.id) }}" class="button is-small is-success">CSV</a></td>
+                {% if not show_archived %}
+                <td>
+                  <form method="post" action="{{ url_for('order.archive_order', order_id=order.id) }}" style="display:inline;">
+                    <button class="button is-small is-warning" type="submit" onclick="return confirm('Bestellung wirklich archivieren?');">Archivieren</button>
+                  </form>
+                  <form method="post" action="{{ url_for('order.delete_order', order_id=order.id) }}" style="display:inline;">
+                    <button class="button is-small is-danger" type="submit" onclick="return confirm('Bestellung unwiderruflich löschen?');">Löschen</button>
+                  </form>
+                </td>
+                {% elif show_archived %}
+                <td>
+                  <form method="post" action="{{ url_for('order.restore_order', order_id=order.id) }}" style="display:inline;">
+                    <button class="button is-small is-success" type="submit" onclick="return confirm('Bestellung wiederherstellen?');">Wiederherstellen</button>
+                  </form>
+                  <form method="post" action="{{ url_for('order.delete_order', order_id=order.id) }}" style="display:inline;">
+                    <button class="button is-small is-danger" type="submit" onclick="return confirm('Bestellung unwiderruflich löschen?');">Löschen</button>
+                  </form>
+                </td>
+                {% endif %}
             </tr>
             {% else %}
-            <tr><td colspan="7">Keine Bestellungen vorhanden.</td></tr>
+            <tr><td colspan="8">Keine Bestellungen vorhanden.</td></tr>
             {% endfor %}
         </tbody>
     </table>

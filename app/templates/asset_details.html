@@ -116,7 +116,7 @@
                                     </tr>
                                     <tr>
                                         <th>Standort</th>
-                                        <td>{{ asset.location or 'Kein Standort' }}</td>
+                                        <td>{{ asset.location_obj.name if asset.location_obj else 'Kein Standort' }}</td>
                                     </tr>
                                     <tr>
                                         <th>Wert</th>

@@ -83,8 +83,13 @@ class Order(db.Model):
     order_date = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(30), default='offen')
     comment = db.Column(db.Text)
+    location = db.Column(db.String(100))  # ALT: Standort (wird migriert)
+    location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=True)  # NEU: Standort als ForeignKey
+    tracking_number = db.Column(db.String(100))  # NEU: Sendungsverfolgungsnummer
+    archived = db.Column(db.Boolean, default=False)  # NEU: Für Archivierung
     supplier = db.relationship('Supplier', backref='orders')
     items = db.relationship('OrderItem', backref='order', cascade="all, delete-orphan", lazy=True)
+    location_obj = db.relationship('Location', backref='orders')  # Relationship für Standort
 
     def __repr__(self):
         return f'<Order {self.id} von {self.supplier.name}>'
@@ -95,6 +100,7 @@ class OrderItem(db.Model):
     asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     asset = db.relationship('Asset')
+    serial_number = db.Column(db.String(100), nullable=True)  # Serial Number (optional)
 
     def __repr__(self):
         return f'<OrderItem {self.asset.name} x{self.quantity}>'
@@ -110,7 +116,8 @@ class Asset(db.Model):
     ean = db.Column(db.String(13))  # EAN-Nummer
     value = db.Column(db.Float)
     status = db.Column(db.String(20), nullable=False, default='active')
-    location = db.Column(db.String(100))
+    location = db.Column(db.String(100))  # Altes Feld für Migration
+    location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=True)  # NEU: FK auf Location
     serial_number = db.Column(db.String(255))
     purchase_date = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -296,7 +303,8 @@ class InventorySession(db.Model):
     """Eine Inventur-Session"""
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    location = db.Column(db.String(100))
+    location = db.Column(db.String(100))  # ALT: Standort (wird migriert)
+    location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=True)  # NEU: Standort als ForeignKey
     status = db.Column(db.String(20), default='planned')  # planned, active, completed
     start_date = db.Column(db.DateTime, nullable=False)
     end_date = db.Column(db.DateTime, nullable=False)
@@ -305,6 +313,7 @@ class InventorySession(db.Model):
     # Beziehungen
     items = db.relationship('InventoryItem', back_populates='session', cascade='all, delete-orphan')
     team = db.relationship('InventoryTeam', back_populates='session', uselist=False)
+    location_obj = db.relationship('Location')  # Relationship für Standort
 
     def __repr__(self):
         return f'<InventorySession {self.name}>'
@@ -354,3 +363,26 @@ class InventoryItem(db.Model):
 
     def __repr__(self):
         return f'<InventoryItem Asset:{self.asset_id}>'
+
+class Location(db.Model):
+    """Modell für Standorte (Stores, Filialen, etc.)"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    street = db.Column(db.String(255))
+    postal_code = db.Column(db.String(20))
+    city = db.Column(db.String(100))
+    state = db.Column(db.String(100))
+    size_sqm = db.Column(db.Float)  # Ladengröße in Quadratmetern
+    seats = db.Column(db.Integer)   # Sitzplätze
+    description = db.Column(db.Text)
+    image_url = db.Column(db.String(255))  # Foto/Bild vom Standort (optional)
+    latitude = db.Column(db.Float)  # Für Kartenanzeige
+    longitude = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationship zu Assets (wird nach Migration genutzt)
+    assets = db.relationship('Asset', backref='location_obj', lazy=True)
+
+    def __repr__(self):
+        return f'<Location {self.name}>'

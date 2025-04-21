@@ -4,9 +4,53 @@
 <form method="post">
     {{ form.hidden_tag() }}
     <div class="field mb-4">
+        <label class="label">Standort auswählen</label>
+        <div class="control">
+            {{ form.location(class_="select") }}
+            {% if form.location.errors %}
+                <p class="help is-danger">{{ form.location.errors[0] }}</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="field mb-4">
         <label class="label">Lieferant auswählen</label>
         <div class="control">
             {{ form.supplier(class_="select") }}
+        </div>
+    </div>
+    <div class="field mb-4">
+        <label class="label">Sendungsverfolgungsnummer (optional)</label>
+        <div class="control">
+            {{ form.tracking_number(class_="input") }}
+            {% if form.tracking_number.errors %}
+                <p class="help is-danger">{{ form.tracking_number.errors[0] }}</p>
+            {% endif %}
+        </div>
+    </div>
+    <!-- Filterleiste für Assets -->
+    <div class="box mb-4">
+        <div class="columns is-multiline">
+            <div class="column is-3">
+                {{ form.filter_name(class_="input", placeholder="Name", value=selected_filters.filter_name) }}
+            </div>
+            <div class="column is-2">
+                <div class="select is-fullwidth">
+                    {{ form.filter_category(class_="", value=selected_filters.filter_category) }}
+                </div>
+            </div>
+            <div class="column is-2">
+                <div class="select is-fullwidth">
+                    {{ form.filter_manufacturer(class_="", value=selected_filters.filter_manufacturer) }}
+                </div>
+            </div>
+            <div class="column is-2">
+                <div class="select is-fullwidth">
+                    {{ form.filter_assignment(class_="", value=selected_filters.filter_assignment) }}
+                </div>
+            </div>
+            <div class="column is-1">
+                <button class="button is-link is-fullwidth" type="submit" name="filter" value="1">Filtern</button>
+            </div>
         </div>
     </div>
     <div class="table-container">
@@ -15,7 +59,12 @@
                 <tr>
                     <th></th>
                     <th>Name</th>
+                    <th>Artikelnummer</th>
+                    <th>Seriennummer</th>
                     <th>Kategorie</th>
+                    <th>Hersteller</th>
+                    <th>Wert</th>
+                    <th>Zuordnung</th>
                     <th>Menge</th>
                 </tr>
             </thead>
@@ -25,7 +74,24 @@
                 <tr>
                     <td>{{ asset_form.select() }}</td>
                     <td>{{ asset.name }}</td>
+                    <td>{{ asset.article_number or '-' }}</td>
+                    <td>{{ asset_form.serial_number(class_='input is-small', placeholder='Seriennummer') }}</td>
                     <td>{{ asset.category or '-' }}</td>
+                    <td>
+                        {% if asset.manufacturers %}
+                            {% for manufacturer in asset.manufacturers %}
+                                <span class="tag is-dark is-light">{{ manufacturer.name }}</span>
+                            {% endfor %}
+                        {% else %}-{% endif %}
+                    </td>
+                    <td>{{ "%.2f €"|format(asset.value or 0) }}</td>
+                    <td>
+                        {% if asset.assignments %}
+                            {% for assignment in asset.assignments %}
+                                <span class="tag is-info is-light">{{ assignment.name }}</span>
+                            {% endfor %}
+                        {% else %}-{% endif %}
+                    </td>
                     <td>{{ asset_form.quantity(class_="input is-small", min=1) }}</td>
                 </tr>
                 {% endfor %}

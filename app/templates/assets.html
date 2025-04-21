@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container mt-4" style="max-width:98vw; width:100%;">
     <div class="level">
         <div class="level-left">
             <div class="level-item">
@@ -96,9 +96,9 @@
       </div>
     </form>
     {% if assets %}
-    <div class="box">
-        <div class="table-container">
-        <table class="table is-fullwidth is-striped is-hoverable">
+    <div class="box" style="max-width:98vw; width:100%; margin:0 auto;">
+        <div class="table-container" style="overflow-x: auto;">
+        <table class="table is-fullwidth is-striped is-hoverable" style="table-layout: auto; width: 100%;">
             <thead>
                 <tr>
                     <th>Bild</th>
@@ -121,22 +121,22 @@
                 <tr>
                     <td>
                         {% if asset.image_url %}
-                        <figure class="image is-48x48">
-                            <img src="{{ asset.image_url }}" alt="{{ asset.name }}" style="object-fit: cover;">
+                        <figure class="image is-48x48" style="max-width:60px;">
+                            <img src="{{ asset.image_url }}" alt="{{ asset.name }}" style="object-fit: cover; max-width:60px; max-height:48px;">
                         </figure>
                         {% else %}
-                        <figure class="image is-48x48">
-                            <img src="{{ url_for('static', filename='images/no-image.png') }}" alt="Kein Bild">
+                        <figure class="image is-48x48" style="max-width:60px;">
+                            <img src="{{ url_for('static', filename='images/no-image.png') }}" alt="Kein Bild" style="max-width:60px; max-height:48px;">
                         </figure>
                         {% endif %}
                     </td>
                     <td>
                         <a href="{{ url_for('main.asset_details', id=asset.id) }}">{{ asset.name }}</a>
                     </td>
-                    <td>{{ asset.article_number or '-' }}</td>
+                    <td style="word-break: break-all;">{{ asset.article_number or '-' }}</td>
                     <td>{{ asset.category.name if asset.category else 'Keine Kategorie' }}</td>
-                    <td>{{ asset.ean or '-' }}</td>
-                    <td>{{ asset.serial_number or '-' }}</td>
+                    <td style="word-break: break-all;">{{ asset.ean or '-' }}</td>
+                    <td style="word-break: break-all;">{{ asset.serial_number or '-' }}</td>
                     <td>
                         {% for assignment in asset.assignments %}
                         <span class="tag is-info is-light">{{ assignment.name }}</span>
@@ -158,14 +158,14 @@
                         -
                         {% endfor %}
                     </td>
-                    <td>{{ asset.location or 'Kein Standort' }}</td>
+                    <td>{{ asset.location_obj.name if asset.location_obj else 'Kein Standort' }}</td>
                     <td>
                         <span class="tag {% if asset.status == 'active' %}is-success{% elif asset.status == 'inactive' %}is-danger{% elif asset.status == 'on_loan' %}is-info{% endif %}">
                             {{ 'Aktiv' if asset.status == 'active' else 'Inaktiv' if asset.status == 'inactive' else 'Ausgeliehen' }}
                         </span>
                     </td>
                     <td>{{ "%.2f €"|format(asset.value or 0) }}</td>
-                    <td>
+                    <td style="min-width:90px; max-width:120px;">
                         <div class="buttons are-small">
                             <a href="{{ url_for('main.edit_asset', id=asset.id) }}" class="button is-warning" title="Bearbeiten">
                                 <span class="icon is-small">

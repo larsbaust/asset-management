@@ -53,13 +53,13 @@
                     </div>
 
                     <div class="field">
-                        <label class="label">{{ form.location.label }}</label>
+                        <label class="label">{{ form.location_id.label }}</label>
                         <div class="control">
                             <div class="select is-fullwidth">
-                                {{ form.location() }}
+                                {{ form.location_id() }}
                             </div>
                         </div>
-                        {% for error in form.location.errors %}
+                        {% for error in form.location_id.errors %}
                         <p class="help is-danger">{{ error }}</p>
                         {% endfor %}
                     </div>

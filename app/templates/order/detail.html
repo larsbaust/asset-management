@@ -3,6 +3,7 @@
 <h1>Bestellung #{{ order.id }}</h1>
 <p><strong>Lieferant:</strong> {{ order.supplier.name }}</p>
 <p><strong>Datum:</strong> {{ order.order_date.strftime('%d.%m.%Y %H:%M') }}</p>
+<p><strong>Standort:</strong> {{ order.location_obj.name if order.location_obj else '-' }}</p>
 <form method="POST">
     {{ form.hidden_tag() }}
     <div class="field">

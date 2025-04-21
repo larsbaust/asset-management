@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2tF7kGZl+5Q2QkYpX1r4Qh9pFzF7Qk1lFQ1r5v8=" crossorigin=""/>
 <style>
 .chart-container {
     position: relative;
@@ -110,7 +115,29 @@
 .btn-primary:hover {
     background: #0056b3;
 }
+#location-map-container {
+    width: 100%;
+    margin-bottom: 30px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 0;
+}
+#location-map {
+    width: 100%;
+    height: 400px;
+    min-height: 300px;
+    border-radius: 8px;
+    z-index: 1;
+}
 </style>
+
+
+<!-- Map Section -->
+<div id="location-map-container" class="chart-card" style="margin-bottom: 30px;">
+    <h5 class="card-title" style="text-align:center;">Standorte auf der Karte</h5>
+    <div id="location-map" style="height: 340px; width: 100%; border-radius: 8px;"></div>
+</div>
 
 <div class="dashboard-container">
     <div class="chart-grid">
@@ -403,7 +430,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            const count = context.parsed.x;
+                            const count = context.parsed.y;
                             return count === 1 ? '1 Asset' : count + ' Assets';
                         }
                     }
@@ -411,6 +438,46 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+});
+</script>
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let locations = [];
+    try {
+        locations = {{ locations|tojson|safe }};
+    } catch (e) {
+        locations = [];
+    }
+    if (Array.isArray(locations) && locations.length > 0) {
+        // Map-Container sichtbar machen (nur falls du das display:none wieder einfügst)
+        document.getElementById('location-map-container').style.display = '';
+        // Karte auf den ersten Standort zentrieren
+        const defaultLat = parseFloat(locations[0].latitude) || 51.1657;
+        const defaultLng = parseFloat(locations[0].longitude) || 10.4515;
+        const map = L.map('location-map').setView([defaultLat, defaultLng], 8);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        locations.forEach(function(loc) {
+            const lat = parseFloat(loc.latitude);
+            const lng = parseFloat(loc.longitude);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                let popup = `<b>${loc.name}</b>`;
+                if (loc.street || loc.city || loc.postal_code) {
+                    popup += `<br>${loc.street || ''}, ${loc.postal_code || ''} ${loc.city || ''}`;
+                }
+                if (loc.description) {
+                    popup += `<br><small>${loc.description}</small>`;
+                }
+                L.marker([lat, lng]).addTo(map).bindPopup(popup);
+            }
+        });
+    } else {
+        // Kein Standort mit Koordinaten vorhanden
+        document.getElementById('location-map-container').style.display = 'none';
+    }
 });
 </script>
 {% endblock %}
