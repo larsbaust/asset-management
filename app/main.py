@@ -227,6 +227,22 @@ def index():
     # Letzte Assets
     recent_assets = Asset.query.order_by(Asset.created_at.desc()).limit(5).all()
     
+    # Standorte für die Karte (wie im dashboard-View)
+    from .models import Location
+    location_objs = Location.query.filter(Location.latitude.isnot(None), Location.longitude.isnot(None)).all()
+    locations = [
+        {
+            'name': loc.name,
+            'latitude': loc.latitude,
+            'longitude': loc.longitude,
+            'street': loc.street,
+            'postal_code': loc.postal_code,
+            'city': loc.city,
+            'description': loc.description
+        }
+        for loc in location_objs
+    ]
+
     return render_template('dashboard.html',
         active_count=active_count,
         on_loan_count=on_loan_count,
@@ -236,7 +252,8 @@ def index():
         category_data=category_data,
         cost_type_labels=cost_type_labels,
         cost_amounts=cost_amounts,
-        recent_assets=recent_assets
+        recent_assets=recent_assets,
+        locations=locations
     )
 
 @main.route('/dashboard')
