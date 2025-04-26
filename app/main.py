@@ -1009,7 +1009,7 @@ def inventory_planning_new():
             item = InventoryItem(
                 session_id=session.id,
                 asset_id=asset.id,
-                expected_location=asset.location  # String für Kompatibilität
+                expected_location=session.location_obj.name if session.location_obj else asset.location
             )
             db.session.add(item)
         
@@ -1168,7 +1168,7 @@ def inventory_item_detail(id):
         item.actual_location = request.form.get('actual_location')
         item.condition = request.form.get('condition')
         item.condition_notes = request.form.get('condition_notes')
-        item.counted_by = current_user.username
+        item.counted_by = getattr(current_user, "username", "anonymous")
         item.counted_at = datetime.utcnow()
         
         # Location korrekt?
@@ -1192,7 +1192,7 @@ def inventory_item_detail(id):
         
         db.session.commit()
         flash('Asset wurde erfolgreich erfasst!', 'success')
-        return redirect(url_for('main.inventory_execute_session', session_id=item.session_id))
+        return redirect(url_for('main.inventory_execute_session', id=item.session_id))
     
     return render_template('inventory/item_detail.html', item=item)
 
@@ -1230,6 +1230,21 @@ def complete_inventory(id):
         flash(f'Es gibt noch {uncounted_items} ungezählte Assets in dieser Inventur.', 'warning')
         return redirect(url_for('main.inventory_execute'))
     
+    # Setze Status für alle Items
+    for item in session.items:
+        if item.counted_quantity is not None:
+            # Prüfe Zustand
+            if (item.condition is not None and (item.condition == 'damaged' or item.condition == 'repair_needed')):
+                item.status = 'damaged'
+            else:
+                item.status = 'found'
+        else:
+            item.status = 'missing'
+
+        # Standortprüfung
+        if item.actual_location and item.expected_location:
+            item.location_correct = (item.actual_location == item.expected_location)
+
     # Setze Status auf completed
     session.status = 'completed'
     session.end_date = datetime.utcnow()
@@ -1254,10 +1269,17 @@ def inventory_planning_add_items(id):
         for asset_id in asset_ids:
             # Prüfen ob das Asset bereits in der Inventur ist
             if not InventoryItem.query.filter_by(session_id=id, asset_id=asset_id).first():
+                # Die gewünschte Menge aus dem Formular auslesen (Default: 1)
+                qty_field = f"expected_quantity_{asset_id}"
+                try:
+                    expected_quantity = int(request.form.get(qty_field, 1))
+                except ValueError:
+                    expected_quantity = 1
                 item = InventoryItem(
                     session_id=id,
                     asset_id=asset_id,
-                    status='pending'
+                    status='pending',
+                    expected_quantity=expected_quantity
                 )
                 db.session.add(item)
         
@@ -1273,11 +1295,19 @@ def inventory_planning_add_items(id):
                          session=session,
                          assets=available_assets)
 
+from sqlalchemy.orm import joinedload
+
 @main.route('/inventory/reports')
 
 def inventory_reports():
     """Zeigt eine Übersicht aller abgeschlossenen Inventuren mit Berichten"""
-    completed_sessions = InventorySession.query.filter_by(status='completed').order_by(InventorySession.end_date.desc()).all()
+    completed_sessions = (
+        InventorySession.query
+        .options(joinedload(InventorySession.items))
+        .filter_by(status='completed')
+        .order_by(InventorySession.end_date.desc())
+        .all()
+    )
     return render_template('inventory/reports.html', completed_sessions=completed_sessions)
 
 @main.route('/inventory/reports/<int:id>')
@@ -1288,7 +1318,19 @@ def inventory_report_detail(id):
     if session.status != 'completed':
         flash('Diese Inventur ist noch nicht abgeschlossen.', 'warning')
         return redirect(url_for('main.inventory_reports'))
-    return render_template('inventory/report_detail.html', session=session)
+    # Gruppierung nach Asset-Name und Artikelnummer
+    from collections import defaultdict
+    asset_groups = defaultdict(lambda: {"name": "", "article_number": "", "expected": 0, "counted": 0, "diff": 0})
+    for item in session.items:
+        key = (item.asset.name, item.asset.article_number)
+        group = asset_groups[key]
+        group["name"] = item.asset.name
+        group["article_number"] = item.asset.article_number or "-"
+        group["expected"] += item.expected_quantity or 0
+        group["counted"] += item.counted_quantity or 0
+        group["diff"] += (item.counted_quantity or 0) - (item.expected_quantity or 0)
+    asset_groups_list = list(asset_groups.values())
+    return render_template('inventory/report_detail.html', session=session, asset_groups=asset_groups_list)
 
 @main.route('/inventory/reports/<int:id>/export')
 

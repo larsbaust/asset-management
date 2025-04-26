@@ -27,6 +27,7 @@
                                 <th>Kategorie</th>
                                 <th>Standort</th>
                                 <th>Seriennummer</th>
+<th>Soll-Menge</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -39,6 +40,7 @@
                                 <td>{{ asset.category }}</td>
                                 <td>{{ asset.location or '-' }}</td>
                                 <td>{{ asset.serial_number or '-' }}</td>
+<td><input type="number" name="expected_quantity_{{ asset.id }}" min="1" value="1" class="form-control" style="width: 80px;"></td>
                             </tr>
                             {% endfor %}
                         </tbody>

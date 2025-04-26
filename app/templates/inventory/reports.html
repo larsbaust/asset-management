@@ -95,7 +95,7 @@
                 <div class="card-body">
                     <h5 class="card-title">{{ session.name }}</h5>
                     <p class="card-text">
-                        <strong>Standort:</strong> {{ session.location }}<br>
+                        <strong>Standort:</strong> {{ session.location_obj.name if session.location_obj else '-' }}<br>
                         <strong>Zeitraum:</strong> {{ session.start_date.strftime('%d.%m.%Y') }} - {{ session.end_date.strftime('%d.%m.%Y') }}<br>
                         <strong>Status:</strong> {{ session.status }}
                     </p>

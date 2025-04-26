@@ -36,7 +36,7 @@
                             {% for session in active_sessions %}
                             <tr>
                                 <td>{{ session.name }}</td>
-                                <td>{{ session.location }}</td>
+                                <td>{{ session.location_obj.name if session.location_obj else '-' }}</td>
                                 <td>
                                     {{ session.start_date.strftime('%d.%m.%Y %H:%M') }} -<br>
                                     {{ session.end_date.strftime('%d.%m.%Y %H:%M') }}
@@ -106,7 +106,7 @@
                             {% for session in completed_sessions %}
                             <tr>
                                 <td>{{ session.name }}</td>
-                                <td>{{ session.location }}</td>
+                                <td>{{ session.location_obj.name if session.location_obj else '-' }}</td>
                                 <td>
                                     {{ session.start_date.strftime('%d.%m.%Y %H:%M') }} -<br>
                                     {{ session.end_date.strftime('%d.%m.%Y %H:%M') }}

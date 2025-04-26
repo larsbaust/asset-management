@@ -48,6 +48,7 @@
                 <thead>
                     <tr>
                         <th>Asset</th>
+                        <th>Seriennummer</th>
                         <th>Kategorie</th>
                         <th>Erwarteter Standort</th>
                         <th>Status</th>
@@ -60,7 +61,8 @@
                     {% for item in items %}
                     <tr>
                         <td>{{ item.asset.name }}</td>
-                        <td>{{ item.asset.category }}</td>
+                        <td>{{ item.asset.serial_number or '-' }}</td>
+                        <td>{{ item.asset.category.name if item.asset.category else '-' }}</td>
                         <td>{{ item.expected_location or '-' }}</td>
                         <td>
                             {% if item.status == 'pending' %}

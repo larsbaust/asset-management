@@ -101,6 +101,7 @@
 
     <div class="mb-4">
         <h1>Inventurbericht: {{ session.name }}</h1>
+        <p><b>Standort:</b> {{ session.location_obj.name if session.location_obj else '-' }}</p>
     </div>
 
     <div class="chart-grid">
@@ -129,8 +130,12 @@
                 <thead>
                     <tr>
                         <th>Asset</th>
+                        <th>Seriennummer</th>
                         <th>Status</th>
                         <th>Erfasst am</th>
+                        <th>Soll-Menge</th>
+                        <th>Gezählt</th>
+                        <th>Differenz</th>
                         <th>Aktueller Standort</th>
                         <th>Zustand</th>
                     </tr>
@@ -139,6 +144,7 @@
                     {% for item in session.items %}
                     <tr>
                         <td>{{ item.asset.name }}</td>
+                        <td>{{ item.asset.serial_number or '-' }}</td>
                         <td>
                             <span class="status-tag {% if item.status == 'found' %}status-found{% elif item.status == 'missing' %}status-missing{% elif item.status == 'damaged' %}status-damaged{% else %}status-pending{% endif %}">
                                 {% if item.status == 'found' %}
@@ -155,8 +161,40 @@
                             </span>
                         </td>
                         <td>{{ item.counted_at.strftime('%d.%m.%Y %H:%M') if item.counted_at else '-' }}</td>
+                        <td>{{ item.expected_quantity if item.expected_quantity is not none else '-' }}</td>
+                        <td>{{ item.counted_quantity if item.counted_quantity is not none else '-' }}</td>
+                        <td>{% if item.expected_quantity is not none and item.counted_quantity is not none %}{{ item.counted_quantity - item.expected_quantity }}{% else %}-{% endif %}</td>
                         <td>{{ item.actual_location or '-' }}</td>
                         <td>{{ item.condition or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Gruppierte Übersicht nach Asset-Art und Artikelnummer -->
+    <div class="asset-table">
+        <h2>Übersicht nach Asset-Art und Artikelnummer</h2>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Asset-Art</th>
+                        <th>Artikelnummer</th>
+                        <th>Soll-Bestand</th>
+                        <th>Gezählt</th>
+                        <th>Differenz</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for group in asset_groups %}
+                    <tr>
+                        <td>{{ group.name }}</td>
+                        <td>{{ group.article_number }}</td>
+                        <td>{{ group.expected }}</td>
+                        <td>{{ group.counted }}</td>
+                        <td>{{ group.diff }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

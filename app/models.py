@@ -342,6 +342,7 @@ class InventoryItem(db.Model):
     # Status und Mengen
     status = db.Column(db.String(20), default='pending')  # pending, found, missing, damaged
     counted_quantity = db.Column(db.Integer)
+    expected_quantity = db.Column(db.Integer)  # Soll-Menge laut System
     
     # Standort
     expected_location = db.Column(db.String(100))
