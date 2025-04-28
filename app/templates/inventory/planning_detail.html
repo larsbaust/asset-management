@@ -2,32 +2,38 @@
 
 {% block content %}
 <div class="container mt-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('main.inventory_planning') }}">Inventurplanung</a></li>
-            <li class="breadcrumb-item active">{{ session.name }}</li>
-        </ol>
+    <!-- Bulma Breadcrumb -->
+    <nav class="breadcrumb mb-4" aria-label="breadcrumbs">
+      <ul>
+        <li><a href="{{ url_for('main.inventory_planning') }}">Inventurplanung</a></li>
+        <li class="is-active"><a href="#" aria-current="page">{{ session.name }}</a></li>
+      </ul>
     </nav>
 
     <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">{{ session.name }}</h5>
-            <div>
-                {% if session.status == 'planned' %}
-                <form action="{{ url_for('main.inventory_start') }}" method="post" class="d-inline">
-                    <input type="hidden" name="id" value="{{ session.id }}">
-                    <button type="submit" class="btn btn-success">Inventur starten</button>
-                </form>
-                {% elif session.status == 'active' %}
-                <a href="{{ url_for('main.inventory_execute_session', id=session.id) }}" 
-                   class="btn btn-primary">Zur Erfassung</a>
-                <form action="{{ url_for('main.complete_inventory', id=session.id) }}" method="post" class="d-inline">
-                    <button type="submit" class="btn btn-success" 
-                            onclick="return confirm('Möchten Sie diese Inventur wirklich abschließen?')">
-                        Inventur abschließen
-                    </button>
-                </form>
-                {% endif %}
+        <!-- Bulma Level for Session Actions -->
+        <div class="level p-4">
+            <div class="level-left">
+                <div class="level-item">
+                    <h5 class="title is-5 mb-0">{{ session.name }}</h5>
+                </div>
+            </div>
+            <div class="level-right">
+                <div class="level-item">
+                    <div class="buttons">
+                        {% if session.status == 'planned' %}
+                        <form action="{{ url_for('main.inventory_start') }}" method="post" style="display:inline;">
+                            <input type="hidden" name="id" value="{{ session.id }}">
+                            <button type="submit" class="button is-success is-light">
+                                <span class="icon"><i class="fas fa-play"></i></span>
+                                <span>Inventur starten</span>
+                            </button>
+                        </form>
+                        {% elif session.status == 'active' %}
+<!-- Abschluss-Button jetzt im Formular unten -->
+{% endif %}
+                    </div>
+                </div>
             </div>
         </div>
         <div class="card-body">
@@ -43,62 +49,110 @@
                 </div>
             </div>
 
-            <h6 class="mb-3">Assets ({{ items|length }})</h6>
-            <table class="table">
-                <thead>
+            <h2 class="mb-4">Inventur: {{ session.name }}</h2>
+        <div class="mb-4">
+            <progress id="progress-bar" class="progress is-success" value="{{ progress }}" max="100">{{ "%.1f"|format(progress) }}%</progress>
+            <p class="has-text-centered is-size-7" id="progress-text">Fortschritt: {{ counted }} von {{ total }} Mengen erfasst ({{ "%.1f"|format(progress) }}%)</p>
+        </div>
+        <div class="columns is-mobile is-multiline mb-4">
+            <div class="column is-half-mobile">
+                <div class="notification is-success is-light has-text-centered">
+                    <p class="heading">Gefunden</p>
+                    <p class="title" id="found-count">{{ gefunden }}</p>
+                </div>
+            </div>
+            <div class="column is-half-mobile">
+                <div class="notification is-danger is-light has-text-centered">
+                    <p class="heading">Fehlend</p>
+                    <p class="title" id="missing-count">{{ missing }}</p>
+                </div>
+            </div>
+            <div class="column is-half-mobile">
+                <div class="notification is-warning is-light has-text-centered">
+                    <p class="heading">Beschädigt</p>
+                    <p class="title" id="damaged-count">{{ damaged }}</p>
+                </div>
+            </div>
+            <div class="column is-half-mobile">
+                <div class="notification is-info is-light has-text-centered">
+                    <p class="heading">Ausstehend</p>
+                    <p class="title" id="pending-count">{{ ausstehende_stueckzahl }} Stück</p>
+                </div>
+            </div>
+        </div>
+        <h6 class="mb-3">Assets ({{ items|length }})</h6>
+<form id="inventory-form" method="post" action="{{ url_for('main.inventory_planning_detail', id=session.id) }}">
+    <input type="hidden" name="group_count" value="{{ items_grouped|length }}">
+    <input type="hidden" id="complete_inventory" name="complete_inventory" value="0">
+    
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Asset</th>
+                <th>Kategorie</th>
+                <th>Erwarteter Standort</th>
+                <th>Soll-Menge</th>
+                <th>Gezählte Menge</th>
+                <th>Davon beschädigt</th>
+                <th>Tatsächlicher Standort</th>
+                <th>Notizen</th>
+                <th>Seriennummern</th>
+            </tr>
+        </thead>
+        <tbody>
+                    {% for group in items_grouped %}
                     <tr>
-                        <th>Asset</th>
-                        <th>Seriennummer</th>
-                        <th>Kategorie</th>
-                        <th>Erwarteter Standort</th>
-                        <th>Status</th>
-                        {% if session.status == 'active' %}
-                        <th>Aktionen</th>
-                        {% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in items %}
-                    <tr>
-                        <td>{{ item.asset.name }}</td>
-                        <td>{{ item.asset.serial_number or '-' }}</td>
-                        <td>{{ item.asset.category.name if item.asset.category else '-' }}</td>
-                        <td>{{ item.expected_location or '-' }}</td>
+    <input type="hidden" name="group_name_{{ loop.index0 }}" value="{{ group.name }}">
+    <input type="hidden" name="group_article_number_{{ loop.index0 }}" value="{{ group.article_number }}">
+    <td>{{ group.name }}</td>
+    <td>{{ group.category }}</td>
+                        <td>{{ group.expected_location }}</td>
+                        <td>{{ group.sum_expected_quantity }}</td>
                         <td>
-                            {% if item.status == 'pending' %}
-                            <span class="badge bg-secondary">Ausstehend</span>
-                            {% elif item.status == 'found' %}
-                            <span class="badge bg-success">Gefunden</span>
-                            {% elif item.status == 'missing' %}
-                            <span class="badge bg-danger">Fehlend</span>
-                            {% elif item.status == 'damaged' %}
-                            <span class="badge bg-warning text-dark">Beschädigt</span>
-                            {% endif %}
+                            <input type="number" name="counted_quantity_{{ loop.index0 }}" min="0" max="{{ group.sum_expected_quantity }}" class="form-control" value="{{ group.sum_counted_quantity or 0 }}">
                         </td>
-                        {% if session.status == 'active' %}
                         <td>
-                            <a href="{{ url_for('main.inventory_item_detail', id=item.id) }}" 
-                               class="btn btn-sm btn-primary">
-                                {% if item.status == 'pending' %}
-                                Erfassen
-                                {% else %}
-                                Bearbeiten
-                                {% endif %}
-                            </a>
+                            <input type="number" name="damaged_quantity_{{ loop.index0 }}" min="0" max="{{ group.sum_expected_quantity }}" class="form-control" value="{{ group.sum_damaged_quantity or 0 }}">
                         </td>
-                        {% endif %}
+                        <td>
+                            <input type="text" name="actual_location_{{ loop.index0 }}" class="form-control" value="">
+                        </td>
+                        <td>
+                            <input type="text" name="notes_{{ loop.index0 }}" class="form-control" value="">
+                        </td>
+                        <td>{% if group.serial_numbers %}{{ group.serial_numbers|join(', ') }}{% else %}-{% endif %}</td>
                     </tr>
                     {% endfor %}
-                </tbody>
-            </table>
-
             {% if session.status != 'completed' %}
             <div class="mt-3">
                 <a href="{{ url_for('main.inventory_planning_add_items', id=session.id) }}" 
                    class="btn btn-secondary">Assets hinzufügen</a>
+                <button type="button" id="complete-btn" class="button is-danger is-light ml-2">
+    <span class="icon"><i class="fas fa-check"></i></span>
+    <span>Inventur abschließen</span>
+</button>
             </div>
             {% endif %}
+</form>
         </div>
     </div>
 </div>
+
+<script src="{{ url_for('static', filename='js/inventory_live_update.js') }}"></script>
+<script>
+document.getElementById('complete-btn')?.addEventListener('click', function() {
+    if (confirm('Möchten Sie diese Inventur wirklich abschließen?')) {
+        document.getElementById('complete_inventory').value = '1';
+        document.getElementById('inventory-form').submit();
+    }
+});
+</script>
+<script>
+document.getElementById('complete-btn')?.addEventListener('click', function() {
+    if (confirm('Möchten Sie diese Inventur wirklich abschließen?')) {
+        document.getElementById('complete_inventory').value = '1';
+        document.getElementById('inventory-form').submit();
+    }
+});
+</script>
 {% endblock %}

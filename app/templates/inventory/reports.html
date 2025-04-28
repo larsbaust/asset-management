@@ -100,17 +100,12 @@
                         <strong>Status:</strong> {{ session.status }}
                     </p>
 
-                    {% set total = session.items|length %}
-                    {% set found = session.items|selectattr('status', 'equalto', 'found')|list|length %}
-                    {% set missing = session.items|selectattr('status', 'equalto', 'missing')|list|length %}
-                    {% set damaged = session.items|selectattr('status', 'equalto', 'damaged')|list|length %}
-
                     <div class="inventory-stats">
                         <h6>Zusammenfassung</h6>
                         <ul class="list-unstyled">
-                            <li><i class="fas fa-check text-success"></i> Gefunden: {{ found }} von {{ total }}</li>
-                            <li><i class="fas fa-exclamation-triangle text-danger"></i> Fehlend: {{ missing }}</li>
-                            <li><i class="fas fa-tools text-warning"></i> Beschädigt: {{ damaged }}</li>
+                            <li><i class="fas fa-check text-success"></i> Gefunden: {{ session_summaries[session.id].found }} von {{ session_summaries[session.id].total }}</li>
+                            <li><i class="fas fa-exclamation-triangle text-danger"></i> Fehlend: {{ session_summaries[session.id].missing }}</li>
+                            <li><i class="fas fa-tools text-warning"></i> Beschädigt: {{ session_summaries[session.id].damaged }}</li>
                         </ul>
                     </div>
 

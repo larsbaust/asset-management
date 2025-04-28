@@ -139,6 +139,7 @@
     <div id="location-map" style="height: 340px; width: 100%; border-radius: 8px;"></div>
 </div>
 
+<script id="locations-data" type="application/json">{{ locations_json|safe }}</script>
 <div class="dashboard-container">
     <div class="chart-grid">
         <!-- Status der Assets -->
@@ -209,9 +210,6 @@
         </div>
     </div>
 </div>
-
-<!-- Chart.js laden -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <!-- Chartdaten vom Server -->
 <script id="chart-data" type="application/json">

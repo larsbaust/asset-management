@@ -7,12 +7,27 @@ import os
 db = SQLAlchemy()
 login_manager = LoginManager()
 
+from jinja2 import ChoiceLoader, FileSystemLoader
+
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = 'your-secret-key'  # In production, use a secure key
+    app.config['SECRET_KEY'] = 'your-secret-key'
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+
+    # Beide Template-Ordner bekannt machen
+    app.jinja_loader = ChoiceLoader([
+        FileSystemLoader(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'deployment', 'app', 'templates')),
+        FileSystemLoader(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
+    ])
+
+    print("JINJA LOADER SUCHT IN:")
+    for loader in app.jinja_loader.loaders:
+        print("  -", getattr(loader, 'searchpath', None))
+    pfad = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'deployment', 'app', 'templates', 'inventory', 'check_item.html')
+    print("PFAD:", pfad)
+    print("EXISTIERT:", os.path.exists(pfad))
 
     # Ensure upload directory exists
     if not os.path.exists(app.config['UPLOAD_FOLDER']):

@@ -4,8 +4,8 @@
 <div class="container mt-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('main.inventory_execute') }}">Aktive Inventuren</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('main.inventory_execute_session', id=session.id) }}">{{ session.name }}</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.inventory_planning') }}">Inventurplanung</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.inventory_planning_detail', id=session.id) }}">{{ session.name }}</a></li>
             <li class="breadcrumb-item active">{{ item.asset.name }}</li>
         </ol>
     </nav>
@@ -40,20 +40,16 @@
                         <div class="mb-3">
                             <label for="actual_location" class="form-label">Tatsächlicher Standort</label>
                             <input type="text" class="form-control" id="actual_location" 
-                                   name="actual_location" value="{{ item.actual_location or '' }}">
+       name="actual_location" value="{{ item.actual_location or '' }}">
                         </div>
                         <div class="mb-3">
-                            <label for="counted_quantity" class="form-label">Gezählte Menge</label>
-                            <input type="number" class="form-control" id="counted_quantity" 
-                                   name="counted_quantity" value="{{ item.counted_quantity or 1 }}">
-                        </div>
-                        <div class="mb-3">
-                            <label for="condition" class="form-label">Zustand</label>
-                            <select class="form-select" id="condition" name="condition">
-                                <option value="good" {% if item.condition == 'good' %}selected{% endif %}>Gut</option>
-                                <option value="damaged" {% if item.condition == 'damaged' %}selected{% endif %}>Beschädigt</option>
-                                <option value="missing" {% if item.condition == 'missing' %}selected{% endif %}>Fehlend</option>
-                            </select>
+    <label class="form-label">Gezählte Menge (gesamt)</label>
+    <input type="number" class="form-control" min="0" name="counted_quantity_grouped" value="{{ item.counted_quantity or '' }}">
+</div>
+<div class="mb-3">
+    <label class="form-label">Davon beschädigt</label>
+    <input type="number" class="form-control" min="0" name="damaged_quantity_grouped" value="{{ item.damaged_quantity or 0 }}">
+</div>
                         </div>
                         <div class="mb-3">
                             <label for="notes" class="form-label">Notizen</label>
@@ -69,7 +65,7 @@
                 <!-- Aktionen -->
                 <div class="mt-4">
                     <button type="submit" class="btn btn-primary">Speichern</button>
-                    <a href="{{ url_for('main.inventory_execute_session', id=session.id) }}" 
+                    <a href="{{ url_for('main.inventory_planning_detail', id=session.id) }}" 
                        class="btn btn-secondary">Zurück</a>
                 </div>
             </form>

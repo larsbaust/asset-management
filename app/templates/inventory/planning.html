@@ -5,6 +5,15 @@
     <div class="columns">
         <div class="column">
             <h1 class="title">Inventurplanung</h1>
+            <!-- Bulma Breadcrumb -->
+            <nav class="breadcrumb mb-4" aria-label="breadcrumbs">
+              <ul>
+                <li><a href="{{ url_for('main.inventory_planning') }}">Inventurplanung</a></li>
+                {% if planning_session %}
+                  <li class="is-active"><a href="#" aria-current="page">{{ planning_session.name }}</a></li>
+                {% endif %}
+              </ul>
+            </nav>
             
             <!-- Neue Inventur Button -->
             <div class="buttons mb-5">
@@ -16,6 +25,32 @@
                 </a>
             </div>
 
+            <!-- Bulma Level for Session Actions (rote Markierung) -->
+            {% if planning_session %}
+            <nav class="level mb-4">
+              <div class="level-left">
+                <div class="level-item">
+                  <strong>{{ planning_session.name }}</strong>
+                </div>
+              </div>
+              <div class="level-right">
+                <div class="level-item">
+                  <div class="buttons">
+                    <a href="{{ url_for('main.inventory_planning_edit', id=planning_session.id) }}" class="button is-link is-light">
+                      <span class="icon"><i class="fas fa-edit"></i></span>
+                      <span>Bearbeiten</span>
+                    </a>
+                    <form method="POST" action="{{ url_for('main.inventory_planning_finish', id=planning_session.id) }}" style="display:inline;">
+                      <button type="submit" class="button is-danger is-light">
+                        <span class="icon"><i class="fas fa-check"></i></span>
+                        <span>Inventur abschließen</span>
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </nav>
+            {% endif %}
             <!-- Aktive und geplante Inventuren -->
             <div class="box">
                 <h2 class="subtitle">Aktive und geplante Inventuren</h2>
@@ -26,6 +61,7 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Standort</th>
+                                <th>Tatsächlicher Standort</th>
                                 <th>Zeitraum</th>
                                 <th>Status</th>
                                 <th>Teams</th>
@@ -37,6 +73,17 @@
                             <tr>
                                 <td>{{ session.name }}</td>
                                 <td>{{ session.location_obj.name if session.location_obj else '-' }}</td>
+                                <td>
+                                    {% set actual_locations = [] %}
+                                    {% for item in session.items %}
+                                        {% if item.actual_location %}
+                                            {% set _ = actual_locations.append(item.actual_location) %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if actual_locations|length > 0 %}
+                                        {{ actual_locations | join(', ') }}
+                                    {% else %}-{% endif %}
+                                </td>
                                 <td>
                                     {{ session.start_date.strftime('%d.%m.%Y %H:%M') }} -<br>
                                     {{ session.end_date.strftime('%d.%m.%Y %H:%M') }}
@@ -57,16 +104,9 @@
                                             </span>
                                         </a>
                                         {% if session.status == 'active' %}
-                                        <a href="{{ url_for('main.inventory_execute_session', id=session.id) }}" class="button is-success">
+                                        <a href="{{ url_for('main.inventory_planning_detail', id=session.id) }}" class="button is-success">
                                             Zur Erfassung
                                         </a>
-                                        {% endif %}
-                                        {% if session.status == 'planned' %}
-                                        <form method="POST" action="{{ url_for('main.inventory_execute_session', id=session.id) }}" style="display: inline;">
-                                            <button type="submit" class="button is-success" onclick="return confirm('Möchten Sie diese Inventur starten?')">
-                                                Inventur starten
-                                            </button>
-                                        </form>
                                         {% endif %}
                                         <form method="POST" action="{{ url_for('main.inventory_planning_cancel', id=session.id) }}" style="display: inline;">
                                             <button type="submit" class="button is-danger" onclick="return confirm('Möchten Sie diese Inventur wirklich abbrechen?')">

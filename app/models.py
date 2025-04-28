@@ -333,6 +333,9 @@ class InventoryTeam(db.Model):
     def __repr__(self):
         return f'<InventoryTeam {self.name}>'
 
+from sqlalchemy.ext.mutable import MutableList
+from sqlalchemy import JSON
+
 class InventoryItem(db.Model):
     """Ein Item in einer Inventur"""
     id = db.Column(db.Integer, primary_key=True)
@@ -361,6 +364,10 @@ class InventoryItem(db.Model):
     # Beziehungen
     session = db.relationship('InventorySession', back_populates='items')
     asset = db.relationship('Asset', back_populates='inventory_items')
+
+    # JSON-Feld für Seriennummer-Zustände
+    serial_statuses = db.Column(MutableList.as_mutable(JSON), default=list)
+
 
     def __repr__(self):
         return f'<InventoryItem Asset:{self.asset_id}>'

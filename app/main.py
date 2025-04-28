@@ -1009,8 +1009,10 @@ def inventory_planning_new():
             item = InventoryItem(
                 session_id=session.id,
                 asset_id=asset.id,
+                expected_quantity=1,  # Hier explizit Soll-Menge setzen
                 expected_location=session.location_obj.name if session.location_obj else asset.location
             )
+            print("CREATE InventoryItem:", asset.name, "expected_quantity:", item.expected_quantity)
             db.session.add(item)
         
         db.session.commit()
@@ -1026,6 +1028,57 @@ def inventory_planning_detail(id):
     session = InventorySession.query.get_or_404(id)
     
     if request.method == 'POST':
+        # Inline-Erfassung: Mengen und Felder für alle Gruppen übernehmen
+        group_count = int(request.form.get('group_count', 0))
+        updated_any = False
+        for i in range(group_count):
+            group_name = request.form.get(f'group_name_{i}')
+            group_article_number = request.form.get(f'group_article_number_{i}')
+            counted_quantity = int(request.form.get(f'counted_quantity_{i}', 0))
+            damaged_quantity = int(request.form.get(f'damaged_quantity_{i}', 0))
+            actual_location = request.form.get(f'actual_location_{i}', '')
+            notes = request.form.get(f'notes_{i}', '')
+
+            # Gruppensuche maximal tolerant
+            def norm(val):
+                return (val or '').strip().lower()
+            def is_no_artnr(val):
+                return val is None or str(val).strip() == '' or str(val).strip() == '-'
+            all_items = InventoryItem.query.filter_by(session_id=session.id).all()
+            key_name = norm(group_name)
+            key_artnr = norm(group_article_number)
+            if is_no_artnr(group_article_number):
+                items_same_type = [it for it in all_items if norm(it.asset.name) == key_name and is_no_artnr(it.asset.article_number)]
+            else:
+                items_same_type = [it for it in all_items if norm(it.asset.name) == key_name and norm(it.asset.article_number) == key_artnr]
+            # Mengen und Felder übernehmen
+            for idx, it in enumerate(items_same_type):
+                if idx < counted_quantity:
+                    if idx < damaged_quantity:
+                        it.status = 'damaged'
+                        it.condition = 'damaged'
+                    else:
+                        it.status = 'found'
+                        it.condition = 'good'
+                    it.counted_quantity = 1
+                else:
+                    it.status = 'missing'
+                    it.condition = 'missing'
+                    it.counted_quantity = 0
+                it.actual_location = actual_location
+                it.notes = notes
+                updated_any = True
+        if updated_any:
+            db.session.commit()
+            # Wenn Inventur abschließen ausgelöst wurde, leite weiter zur Abschlussroute
+            if request.form.get('complete_inventory') == '1':
+                # Abschluss-Logik direkt als Funktionsaufruf (POST bleibt erhalten)
+                return complete_inventory(session.id)
+            else:
+                flash('Alle Mengen und Felder wurden gespeichert.', 'success')
+                return redirect(url_for('main.inventory_planning_detail', id=session.id))
+
+        # Ursprüngliche Standortauswahl-Logik (Assets hinzufügen)
         location = request.form.get('location')
         if location:
             # Alle Assets am ausgewählten Standort zur Inventur hinzufügen
@@ -1054,11 +1107,96 @@ def inventory_planning_detail(id):
             .join(Asset)
             .filter(InventoryItem.session_id == id)
             .all())
-            
+
+    # Gruppierung nach Asset-Name und Artikelnummer (maximal tolerant)
+    from collections import defaultdict
+    def norm(val):
+        return (val or '').strip().lower()
+    def is_no_artnr(val):
+        return val is None or str(val).strip() == '' or str(val).strip() == '-'
+    items_grouped = defaultdict(lambda: {"name": None, "article_number": None, "category": None, "expected_location": None, "sum_expected_quantity": 0, "serial_numbers": [], "statuses": set()})
+    for item in items:
+        name = norm(item.asset.name)
+        artnr = item.asset.article_number
+        key_artnr = '-' if is_no_artnr(artnr) else norm(artnr)
+        key = (name, key_artnr)
+        group = items_grouped[key]
+        group["name"] = item.asset.name
+        group["article_number"] = item.asset.article_number
+        group["category"] = item.asset.category.name if item.asset.category else "-"
+        group["expected_location"] = item.expected_location or "-"
+        group["sum_expected_quantity"] += item.expected_quantity or 1
+        # Fix: Gezählte Menge korrekt aufsummieren, nicht überschreiben
+        if "sum_counted_quantity" not in group:
+            group["sum_counted_quantity"] = 0
+        group["sum_counted_quantity"] += item.counted_quantity or 0
+        if item.asset.serial_number:
+            group["serial_numbers"].append(item.asset.serial_number)
+        group["statuses"].add(item.status)
+    # sets zu listen für jinja
+    for group in items_grouped.values():
+        group["statuses"] = list(group["statuses"])
+    items_grouped = list(items_grouped.values())
+
+    # Neue Zähllogik: Summe der Soll- und Ist-Mengen
+    def safe_int(val):
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return 0
+
+    total = sum(safe_int(item.expected_quantity) for item in items)
+    counted = sum(safe_int(item.counted_quantity) for item in items)
+    gefunden = counted  # Die gezählte Menge ist die Anzahl der gefundenen Stücke
+    # Gruppiert nach Asset-Name: Zähle, wie viele Asset-Typen noch nicht vollständig gezählt sind
+    asset_groups = defaultdict(lambda: {"expected": 0, "counted": 0})
+    for item in items:
+        print("DEBUG item:", item.asset.name, "expected_quantity:", item.expected_quantity, "counted_quantity:", item.counted_quantity)
+        key = item.asset.name
+        asset_groups[key]["expected"] += safe_int(item.expected_quantity)
+        asset_groups[key]["counted"] += safe_int(item.counted_quantity)
+    # Debug-Ausgabe für asset_groups
+    print("DEBUG asset_groups:", dict(asset_groups))
+    # Ausstehende Stückzahl: Summe aller noch nicht gezählten Stücke
+    ausstehende_stueckzahl = sum(
+        max(int(group["expected"]) - int(group["counted"]), 0)
+        for group in asset_groups.values()
+        if int(group["expected"]) > 0 and int(group["counted"]) < int(group["expected"])
+    )
+    # Ausstehend: Anzahl Asset-Typen, bei denen noch nicht alles gezählt wurde
+    ausstehende_assets = sum(
+        1 for group in asset_groups.values()
+        if int(group["expected"]) > 0 and int(group["counted"]) < int(group["expected"])
+    )
+    # Fehlend: Summe aller fehlenden Stücke
+    fehlend = sum(
+        max(int(group["expected"]) - int(group["counted"]), 0)
+        for group in asset_groups.values()
+        if int(group["expected"]) > 0
+    )
+    missing = fehlend
+    damaged = len([item for item in items if item.status == 'damaged'])
+    progress = (counted / total * 100) if total > 0 else 0
+
+    # --- DEBUG: Ausgabe aller InventoryItems der Session ---
+    print("\n--- DEBUG InventoryItems für Session", id, "---")
+    for item in items:
+        print(f"ID: {item.id}, Asset-ID: {item.asset_id}, Asset-Name: {getattr(item.asset, 'name', None)}, Soll: {item.expected_quantity}, Ist: {item.counted_quantity}, Status: {item.status}")
+    print("--- ENDE DEBUG ---\n")
     return render_template('inventory/planning_detail.html',
                          session=session,
                          items=items,
-                         locations=locations)
+                         items_grouped=items_grouped,
+                         locations=locations,
+                         total=total,
+                         counted=counted,
+                         gefunden=gefunden,
+                         ausstehende_stueckzahl=ausstehende_stueckzahl,
+                         ausstehende_assets=ausstehende_assets,
+                         missing=missing,
+                         damaged=damaged,
+                         progress=progress)
+
 
 @main.route('/inventory/start', methods=['POST'])
 
@@ -1077,7 +1215,7 @@ def inventory_start():
     db.session.commit()
     
     flash('Inventur wurde gestartet.', 'success')
-    return redirect(url_for('main.inventory_execute_session', id=id))
+    return redirect(url_for('main.inventory_planning_detail', id=id))
 
 @main.route('/inventory/planning/<int:id>/cancel', methods=['POST'])
 def inventory_planning_cancel(id):
@@ -1118,43 +1256,77 @@ def inventory_execute_session(id):
             .order_by(Asset.name)
             .all())
     
-    # Statistiken berechnen
-    total_items = len(items)
-    counted_items = sum(1 for item in items if item.counted_at is not None)
-    progress = (counted_items / total_items * 100) if total_items > 0 else 0
-    
+    # Neue Zähllogik: Summe der Soll- und Ist-Mengen
+    def safe_int(val):
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return 0
+
+    total = sum(safe_int(item.expected_quantity) for item in items)
+    counted = sum(safe_int(item.counted_quantity) for item in items)
+    gefunden = counted
+    ausstehende_stueckzahl = max(total - counted, 0)
+    ausstehende_assets = sum(1 for item in items if safe_int(item.counted_quantity) < safe_int(item.expected_quantity))
+    progress = (counted / total * 100) if total > 0 else 0
+
     return render_template('inventory/execute_session.html',
                          session=session,
                          items=items,
+                         total=total,
+                         counted=counted,
+                         gefunden=gefunden,
+                         ausstehende_stueckzahl=ausstehende_stueckzahl,
+                         ausstehende_assets=ausstehende_assets,
                          progress=progress)
 
-@main.route('/inventory/check_item/<int:item_id>', methods=['GET', 'POST'])
 
-def inventory_check_item(item_id):
-    item = InventoryItem.query.get_or_404(item_id)
-    session = item.session  
-
+@main.route('/inventory/check_group/<int:session_id>/<group_name>/<article_number>', methods=['GET', 'POST'])
+def inventory_check_group(session_id, group_name, article_number):
+    session = InventorySession.query.get_or_404(session_id)
+    all_items = InventoryItem.query.filter_by(session_id=session.id).all()
+    def norm(val):
+        return (val or '').strip().lower()
+    key_name = norm(group_name)
+    key_artnr = norm(article_number)
+    # Maximale Toleranz: Alle Varianten von 'keine Artikelnummer' (None, '', '-') als gleich behandeln
+    def is_no_artnr(val):
+        return val is None or str(val).strip() == '' or str(val).strip() == '-'
+    if is_no_artnr(article_number):
+        items_same_type = [i for i in all_items if norm(i.asset.name) == key_name and is_no_artnr(i.asset.article_number)]
+    else:
+        items_same_type = [i for i in all_items if norm(i.asset.name) == key_name and norm(i.asset.article_number) == key_artnr]
+    print("DEBUG [GROUP] items_same_type (ID, Status):", [(i.id, i.status) for i in items_same_type])
+    if not items_same_type:
+        flash('Keine passenden Assets für diese Gruppe gefunden!', 'danger')
+        return redirect(url_for('main.inventory_planning_detail', id=session.id))
+    item = items_same_type[0]
     if request.method == 'POST':
-        item.actual_location = request.form.get('actual_location')
-        item.counted_quantity = request.form.get('counted_quantity', type=int)
-        item.condition = request.form.get('condition')
-        item.notes = request.form.get('notes')
-        item.counted_at = datetime.utcnow()
-        
-        # Bildverarbeitung
-        if 'image' in request.files:
-            file = request.files['image']
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
-                item.image_path = filename
-
+        counted_quantity_grouped = request.form.get('counted_quantity_grouped', type=int) or 0
+        damaged_quantity_grouped = request.form.get('damaged_quantity_grouped', type=int) or 0
+        for idx, i in enumerate(items_same_type):
+            if idx < counted_quantity_grouped:
+                if idx < damaged_quantity_grouped:
+                    i.status = 'damaged'
+                    i.condition = 'damaged'
+                else:
+                    i.status = 'found'
+                    i.condition = 'good'
+                i.counted_quantity = 1
+            else:
+                i.status = 'missing'
+                i.condition = 'missing'
+                i.counted_quantity = 0
         db.session.commit()
-        flash('Asset erfolgreich erfasst.', 'success')
-        return redirect(url_for('main.inventory_execute_session', id=session.id))
-
+        flash('Alle Mengen für diese Gruppe wurden gespeichert.', 'success')
+        return redirect(url_for('main.inventory_planning_detail', id=session.id))
+    # Übergabe der beiden Mengen an das Template (temporär, falls nicht im Modell)
+    for i in items_same_type:
+        i.counted_quantity1 = getattr(i, 'counted_quantity1', None)
+        i.counted_quantity2 = getattr(i, 'counted_quantity2', None)
     return render_template('inventory/check_item.html',
                          item=item,
+                         items_same_type=items_same_type,
                          session=session)
 
 @main.route('/inventory/check/item/<int:id>', methods=['GET', 'POST'])
@@ -1170,14 +1342,22 @@ def inventory_item_detail(id):
         item.condition_notes = request.form.get('condition_notes')
         item.counted_by = getattr(current_user, "username", "anonymous")
         item.counted_at = datetime.utcnow()
+
+        # Speichere die Zustände pro Seriennummer als JSON-Liste
+        serial_statuses = []
+        for serial in request.form.getlist('serial_numbers'):
+            status = request.form.get(f'status_{serial}')
+            if serial and status:
+                serial_statuses.append({'serial_number': serial, 'status': status})
+        item.serial_statuses = serial_statuses
         
         # Location korrekt?
         item.location_correct = (item.actual_location.lower() == item.expected_location.lower()) if item.actual_location and item.expected_location else False
         
-        # Status basierend auf den Eingaben setzen
+        # Status basierend auf den Eingaben setzen (mindestens einer damaged/repair_needed → damaged; sonst found)
         if item.counted_quantity == 0:
             item.status = 'missing'
-        elif item.condition in ['damaged', 'repair_needed']:
+        elif any(s['status'] in ['damaged', 'repair_needed'] for s in serial_statuses):
             item.status = 'damaged'
         else:
             item.status = 'found'
@@ -1192,9 +1372,22 @@ def inventory_item_detail(id):
         
         db.session.commit()
         flash('Asset wurde erfolgreich erfasst!', 'success')
-        return redirect(url_for('main.inventory_execute_session', id=item.session_id))
+        return redirect(url_for('main.inventory_planning_detail', id=item.session_id))
     
-    return render_template('inventory/item_detail.html', item=item)
+    # Seriennummern wie in der Planung-Ansicht aggregieren
+    serial_numbers = [
+        i.asset.serial_number
+        for i in InventoryItem.query.filter_by(session_id=item.session_id).all()
+        if i.asset and i.asset.name == item.asset.name and i.asset.serial_number
+    ]
+
+    # serial_statuses als Dict für das Template bereitstellen
+    serial_statuses_dict = {}
+    if item.serial_statuses:
+        for entry in item.serial_statuses:
+            serial_statuses_dict[entry['serial_number']] = entry['status']
+    return render_template('inventory/item_detail.html', item=item, serial_numbers=serial_numbers, serial_statuses=serial_statuses_dict)
+
 
 @main.route('/inventory/search', methods=['GET'])
 
@@ -1224,11 +1417,27 @@ def complete_inventory(id):
     """Schließt eine Inventur ab"""
     session = InventorySession.query.get_or_404(id)
     
-    # Prüfe ob alle Items gezählt wurden
-    uncounted_items = InventoryItem.query.filter_by(session_id=id, counted_quantity=None).count()
+    # Prüfe pro Asset nur das Item mit der höchsten gezählten Menge
+    from sqlalchemy import func, and_
+    subq = db.session.query(
+        InventoryItem.asset_id,
+        func.max(InventoryItem.counted_quantity).label('max_counted')
+    ).filter(
+        InventoryItem.session_id == id
+    ).group_by(InventoryItem.asset_id).subquery()
+
+    uncounted_items = db.session.query(InventoryItem).join(
+        subq,
+        and_(
+            InventoryItem.asset_id == subq.c.asset_id,
+            InventoryItem.counted_quantity == subq.c.max_counted
+        )
+    ).filter(
+        InventoryItem.counted_quantity == None
+    ).count()
     if uncounted_items > 0:
         flash(f'Es gibt noch {uncounted_items} ungezählte Assets in dieser Inventur.', 'warning')
-        return redirect(url_for('main.inventory_execute'))
+        return redirect(url_for('main.inventory_planning_detail', id=id))
     
     # Setze Status für alle Items
     for item in session.items:
@@ -1251,7 +1460,7 @@ def complete_inventory(id):
     db.session.commit()
     
     flash('Inventur wurde erfolgreich abgeschlossen!', 'success')
-    return redirect(url_for('main.inventory_execute'))
+    return redirect(url_for('main.inventory_reports'))
 
 @main.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -1267,19 +1476,20 @@ def inventory_planning_add_items(id):
     if request.method == 'POST':
         asset_ids = request.form.getlist('assets')
         for asset_id in asset_ids:
-            # Prüfen ob das Asset bereits in der Inventur ist
-            if not InventoryItem.query.filter_by(session_id=id, asset_id=asset_id).first():
-                # Die gewünschte Menge aus dem Formular auslesen (Default: 1)
-                qty_field = f"expected_quantity_{asset_id}"
-                try:
-                    expected_quantity = int(request.form.get(qty_field, 1))
-                except ValueError:
-                    expected_quantity = 1
+            qty_field = f"expected_quantity_{asset_id}"
+            try:
+                expected_quantity = int(request.form.get(qty_field, 1))
+            except ValueError:
+                expected_quantity = 1
+            # Prüfen wie viele Items es schon gibt
+            existing_items = InventoryItem.query.filter_by(session_id=id, asset_id=asset_id).count()
+            # Lege so viele neue Items an, dass insgesamt expected_quantity erreicht wird
+            for _ in range(existing_items, expected_quantity):
                 item = InventoryItem(
                     session_id=id,
                     asset_id=asset_id,
                     status='pending',
-                    expected_quantity=expected_quantity
+                    expected_quantity=1
                 )
                 db.session.add(item)
         
@@ -1308,7 +1518,42 @@ def inventory_reports():
         .order_by(InventorySession.end_date.desc())
         .all()
     )
-    return render_template('inventory/reports.html', completed_sessions=completed_sessions)
+    # Zusammenfassung nach Typ-Summen-Logik
+    session_summaries = {}
+    for session in completed_sessions:
+        # Aggregiere pro Typ (Name + Artikelnummer)
+        type_groups = {}
+        damaged = 0
+        for item in session.items:
+            key = (item.asset.name, item.asset.article_number or "-")
+            if key not in type_groups:
+                type_groups[key] = {"expected": 0, "counted": 0, "damaged": 0}
+            type_groups[key]["expected"] += item.expected_quantity or 0
+            type_groups[key]["counted"] += item.counted_quantity or 0
+            if item.status == 'damaged':
+                type_groups[key]["damaged"] += 1
+                damaged += 1
+        found = 0
+        missing = 0
+        total = 0
+        for stats in type_groups.values():
+            expected_sum = stats["expected"]
+            counted_sum = stats["counted"]
+            total += expected_sum  # Nur die Typ-Summe zählt!
+            if counted_sum >= expected_sum and expected_sum > 0:
+                found += expected_sum
+            else:
+                found += counted_sum if counted_sum > 0 else 0
+                missing += expected_sum - counted_sum if expected_sum > counted_sum else 0
+        session_summaries[session.id] = {
+            'found': found,
+            'missing': missing,
+            'damaged': damaged,
+            'total': total  # Nur die Typ-Summe, nicht die Einzel-Items!
+        }
+
+    return render_template('inventory/reports.html', completed_sessions=completed_sessions, session_summaries=session_summaries)
+
 
 @main.route('/inventory/reports/<int:id>')
 
@@ -1321,16 +1566,125 @@ def inventory_report_detail(id):
     # Gruppierung nach Asset-Name und Artikelnummer
     from collections import defaultdict
     asset_groups = defaultdict(lambda: {"name": "", "article_number": "", "expected": 0, "counted": 0, "diff": 0})
+    # Aggregiere pro Asset-ID die höchste gezählte Menge (counted_quantity) und die Summe der expected_quantity
+    from collections import defaultdict
+    # Einzel-Asset-Zusammenfassung (statt pro Typ)
+    found = sum(1 for item in session.items if item.status == 'found')
+    missing = sum(1 for item in session.items if item.status == 'missing')
+    damaged = sum(1 for item in session.items if item.status == 'damaged')
+    total = len(session.items)
+    summary = {'found': found, 'missing': missing, 'damaged': damaged, 'total': total}
+
+    # DEBUG-Ausgabe: Welche Items werden gezählt?
+    print('--- DEBUG für Bericht ---')
     for item in session.items:
-        key = (item.asset.name, item.asset.article_number)
-        group = asset_groups[key]
-        group["name"] = item.asset.name
-        group["article_number"] = item.asset.article_number or "-"
-        group["expected"] += item.expected_quantity or 0
-        group["counted"] += item.counted_quantity or 0
-        group["diff"] += (item.counted_quantity or 0) - (item.expected_quantity or 0)
-    asset_groups_list = list(asset_groups.values())
-    return render_template('inventory/report_detail.html', session=session, asset_groups=asset_groups_list)
+        print(f'ID: {item.id}, Asset: {item.asset.name}, Status: {item.status}, counted_quantity: {item.counted_quantity}')
+    print(f"Summary: found={summary['found']}, missing={summary['missing']}, damaged={summary['damaged']}, total={summary['total']}")
+    print('--- ENDE DEBUG Bericht ---')
+
+    # Aggregiere pro Typ für die Tabellenansicht
+    type_stats = {}
+    for item in session.items:
+        key = (item.asset.name, item.asset.article_number or "-")
+        if key not in type_stats:
+            type_stats[key] = {"expected": 0, "counted": 0, "damaged": False}
+        type_stats[key]["expected"] += item.expected_quantity or 0
+        type_stats[key]["counted"] += item.counted_quantity if item.counted_quantity is not None else 0
+        if item.status == 'damaged':
+            type_stats[key]["damaged"] = True
+    # Mappe Typen auf ihren Status
+    type_status = {}
+    for key, stats in type_stats.items():
+        if stats["damaged"]:
+            type_status[key] = 'damaged'
+        elif stats["counted"] >= stats["expected"] and stats["expected"] > 0:
+            type_status[key] = 'found'
+        else:
+            type_status[key] = 'missing'
+
+    # Gruppiere nach Gerätetyp (Name + Artikelnummer) und berechne Typ-Status
+    from collections import defaultdict
+    type_stats = {}
+    for item in session.items:
+        key = (item.asset.name, item.asset.article_number or "-")
+        if key not in type_stats:
+            type_stats[key] = {"expected": 0, "counted": 0, "damaged": False}
+        type_stats[key]["expected"] += item.expected_quantity or 0
+        type_stats[key]["counted"] += item.counted_quantity if item.counted_quantity is not None else 0
+        if item.status == 'damaged':
+            type_stats[key]["damaged"] = True
+    # Mappe Typen auf ihren Status
+    type_status = {}
+    for key, stats in type_stats.items():
+        if stats["damaged"]:
+            type_status[key] = 'damaged'
+        elif stats["counted"] >= stats["expected"] and stats["expected"] > 0:
+            type_status[key] = 'found'
+        else:
+            type_status[key] = 'missing'
+    # Erzeuge Asset-Liste mit dynamisch berechnetem Status
+    asset_list = []
+    for item in session.items:
+        key = (item.asset.name, item.asset.article_number or "-")
+        dyn_status = type_status[key]
+        stats = type_stats[key]
+        asset_list.append({
+            "item": item,
+            "dyn_status": dyn_status,
+            "expected": stats["expected"],
+            "counted": stats["counted"],
+            "diff": stats["counted"] - stats["expected"]
+        })
+    # Aggregierte Liste pro Asset-Typ für die Übersichtstabelle
+    asset_type_list = []
+    for key, stats in type_stats.items():
+        name, article_number = key
+        dyn_status = type_status[key]
+        asset_type_list.append({
+            "name": name,
+            "article_number": article_number,
+            "dyn_status": dyn_status,
+            "expected": stats["expected"],
+            "counted": stats["counted"],
+            "diff": stats["counted"] - stats["expected"]
+        })
+        # Zeitverlauf: Zählungen pro Tag
+    from collections import Counter
+    import datetime
+    timeline_counter = Counter()
+    for item in session.items:
+        if item.counted_at:
+            day = item.counted_at.strftime('%Y-%m-%d')
+            timeline_counter[day] += 1
+    timeline_labels = sorted(timeline_counter.keys())
+    timeline_data = [timeline_counter[day] for day in timeline_labels]
+
+    # Kategorien-Übersicht: Anzahl pro Kategorie
+    category_counter = Counter()
+    for item in session.items:
+        cat = getattr(item.asset, 'category', 'Unbekannt') or 'Unbekannt'
+        # Falls cat ein Objekt ist, nutze den Namen
+        if hasattr(cat, 'name'):
+            cat_label = cat.name
+        else:
+            cat_label = str(cat)
+        category_counter[cat_label] += 1
+    category_labels = list(category_counter.keys())
+    category_counts = [category_counter[cat] for cat in category_labels]
+
+    return render_template(
+        'inventory/report_detail.html',
+        session=session,
+        asset_list=asset_list,
+        summary=summary,
+        asset_type_list=asset_type_list,
+        timeline_labels=timeline_labels,
+        timeline_data=timeline_data,
+        category_labels=category_labels,
+        category_counts=category_counts
+    )
+
+
 
 @main.route('/inventory/reports/<int:id>/export')
 

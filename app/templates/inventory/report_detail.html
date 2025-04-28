@@ -103,15 +103,94 @@
         <h1>Inventurbericht: {{ session.name }}</h1>
         <p><b>Standort:</b> {{ session.location_obj.name if session.location_obj else '-' }}</p>
     </div>
+    <div class="inventory-stats" style="max-width: 400px; margin-bottom: 2rem;">
+        <h6>Zusammenfassung</h6>
+        <ul class="list-unstyled">
+            <li><i class="fas fa-check text-success"></i> Gefunden: {{ summary.found }} von {{ summary.total }}</li>
+            <li><i class="fas fa-exclamation-triangle text-danger"></i> Fehlend: {{ summary.missing }}</li>
+            <li><i class="fas fa-tools text-warning"></i> Beschädigt: {{ summary.damaged }}</li>
+        </ul>
+    </div>
 
     <div class="chart-grid">
         <div class="chart-box">
             <h2>Status-Übersicht</h2>
             <canvas id="statusChart"></canvas>
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const ctx = document.getElementById('statusChart').getContext('2d');
+                const found = {{ summary.found|default(0) }};
+                const missing = {{ summary.missing|default(0) }};
+                const damaged = {{ summary.damaged|default(0) }};
+                const total = {{ summary.total|default(0) }};
+                const open = Math.max(total - found - missing - damaged, 0);
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Gefunden', 'Fehlend', 'Beschädigt', 'Offen'],
+                        datasets: [{
+                            data: [found, missing, damaged, open],
+                            backgroundColor: [
+                                '#48c774', // grün
+                                '#f14668', // rot
+                                '#ffdd57', // gelb
+                                '#b5b5b5'  // grau
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    font: {size: 14}
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+            </script>
         </div>
         <div class="chart-box">
             <h2>Zeitlicher Verlauf</h2>
             <canvas id="timelineChart"></canvas>
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const timelineCtx = document.getElementById('timelineChart').getContext('2d');
+                const timelineLabels = {{ timeline_labels|tojson|safe }};
+                const timelineData = {{ timeline_data|tojson|safe }};
+                new Chart(timelineCtx, {
+                    type: 'line',
+                    data: {
+                        labels: timelineLabels,
+                        datasets: [{
+                            label: 'Gezählte Assets',
+                            data: timelineData,
+                            borderColor: '#3273dc',
+                            backgroundColor: 'rgba(50,115,220,0.1)',
+                            tension: 0.2,
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                        },
+                        scales: {
+                            x: { title: { display: true, text: 'Zeit' } },
+                            y: { title: { display: true, text: 'Gezählt' }, beginAtZero: true }
+                        }
+                    }
+                });
+            });
+            </script>
         </div>
         <div class="chart-box">
             <h2>Standort-Analyse</h2>
@@ -120,6 +199,36 @@
         <div class="chart-box">
             <h2>Kategorien-Übersicht</h2>
             <canvas id="categoryChart"></canvas>
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+                const categoryLabels = {{ category_labels|tojson|safe }};
+                const categoryCounts = {{ category_counts|tojson|safe }};
+                new Chart(categoryCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: categoryLabels,
+                        datasets: [{
+                            label: 'Anzahl',
+                            data: categoryCounts,
+                            backgroundColor: '#48c774',
+                            borderColor: '#3273dc',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                        },
+                        scales: {
+                            x: { title: { display: true, text: 'Kategorie' } },
+                            y: { title: { display: true, text: 'Anzahl' }, beginAtZero: true }
+                        }
+                    }
+                });
+            });
+            </script>
         </div>
     </div>
 
@@ -141,31 +250,27 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in session.items %}
+                    {% for asset in asset_list %}
                     <tr>
-                        <td>{{ item.asset.name }}</td>
-                        <td>{{ item.asset.serial_number or '-' }}</td>
+                        <td>{{ asset.item.asset.name }}</td>
+                        <td>{{ asset.item.asset.serial_number or '-' }}</td>
                         <td>
-                            <span class="status-tag {% if item.status == 'found' %}status-found{% elif item.status == 'missing' %}status-missing{% elif item.status == 'damaged' %}status-damaged{% else %}status-pending{% endif %}">
-                                {% if item.status == 'found' %}
-                                    <i class="fas fa-check"></i> Gefunden
-                                {% elif item.status == 'missing' %}
-                                    <i class="fas fa-exclamation-triangle"></i> Fehlend
-                                {% elif item.status == 'damaged' %}
-                                    <i class="fas fa-tools"></i> Beschädigt
-                                {% elif item.status == 'pending' %}
-                                    <i class="fas fa-clock"></i> Ausstehend
-                                {% else %}
-                                    <i class="fas fa-question"></i> {{ item.status }}
-                                {% endif %}
-                            </span>
+                            {% if asset.dyn_status == 'found' %}
+                                <span class="badge bg-success">Gefunden</span>
+                            {% elif asset.dyn_status == 'missing' %}
+                                <span class="badge bg-danger">Fehlend</span>
+                            {% elif asset.dyn_status == 'damaged' %}
+                                <span class="badge bg-warning text-dark">Beschädigt</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Offen</span>
+                            {% endif %}
                         </td>
-                        <td>{{ item.counted_at.strftime('%d.%m.%Y %H:%M') if item.counted_at else '-' }}</td>
-                        <td>{{ item.expected_quantity if item.expected_quantity is not none else '-' }}</td>
-                        <td>{{ item.counted_quantity if item.counted_quantity is not none else '-' }}</td>
-                        <td>{% if item.expected_quantity is not none and item.counted_quantity is not none %}{{ item.counted_quantity - item.expected_quantity }}{% else %}-{% endif %}</td>
-                        <td>{{ item.actual_location or '-' }}</td>
-                        <td>{{ item.condition or '-' }}</td>
+                        <td>{{ asset.item.counted_at.strftime('%d.%m.%Y %H:%M') if asset.item.counted_at else '-' }}</td>
+                        <td>{{ asset.expected }}</td>
+                        <td>{{ asset.counted }}</td>
+                        <td>{{ asset.diff }}</td>
+                        <td>{{ asset.item.actual_location or '-' }}</td>
+                        <td>{{ asset.item.condition or '-' }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -180,21 +285,33 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Asset-Art</th>
+                        <th>Asset</th>
                         <th>Artikelnummer</th>
-                        <th>Soll-Bestand</th>
+                        <th>Status</th>
+                        <th>Soll-Menge</th>
                         <th>Gezählt</th>
                         <th>Differenz</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for group in asset_groups %}
+                    {% for asset in asset_type_list %}
                     <tr>
-                        <td>{{ group.name }}</td>
-                        <td>{{ group.article_number }}</td>
-                        <td>{{ group.expected }}</td>
-                        <td>{{ group.counted }}</td>
-                        <td>{{ group.diff }}</td>
+                        <td>{{ asset.name }}</td>
+                        <td>{{ asset.article_number }}</td>
+                        <td>
+                            {% if asset.dyn_status == 'found' %}
+                                <span class="badge bg-success">Gefunden</span>
+                            {% elif asset.dyn_status == 'missing' %}
+                                <span class="badge bg-danger">Fehlend</span>
+                            {% elif asset.dyn_status == 'damaged' %}
+                                <span class="badge bg-warning text-dark">Beschädigt</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Offen</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ asset.expected }}</td>
+                        <td>{{ asset.counted }}</td>
+                        <td>{{ asset.diff }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -1,104 +1,185 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('main.inventory_planning') }}">Inventurplanung</a></li>
-            <li class="breadcrumb-item">
-                <a href="{{ url_for('main.inventory_planning_detail', id=item.session.id) }}">
-                    {{ item.session.name }}
-                </a>
-            </li>
-            <li class="breadcrumb-item">
-                <a href="{{ url_for('main.inventory_execute_session', id=item.session.id) }}">
-                    Erfassung
-                </a>
-            </li>
-            <li class="breadcrumb-item active">{{ item.asset.name }}</li>
+<div class="container mt-4 d-flex justify-content-center">
+    <div class="card w-75 p-4 mt-4">
+        <nav aria-label="breadcrumb">
+            <style>
+                .breadcrumb { display: none !important; }
+                body {
+                    font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+                    background: #f6f8fa;
+                }
+                .card {
+                    border-radius: 1rem;
+                    box-shadow: 0 4px 24px 0 rgba(0,0,0,0.06);
+                }
+                input, textarea, select {
+                    border-radius: .5rem !important;
+                    border: 1px solid #dee2e6;
+                    font-size: 1rem;
+                    transition: border-color 0.2s;
+                }
+                input:focus, textarea:focus, select:focus {
+                    border-color: #28a745;
+                    box-shadow: 0 0 0 2px rgba(40,167,69,0.15);
+                }
+                textarea {
+                    resize: none;
+                    min-height: 90px;
+                    max-height: 200px;
+                }
+                .input-group-text {
+                    background: #f1f3f6;
+                    font-size: .95rem;
+                }
+                
+
+                @media (max-width: 900px) {
+                    .row.g-3, .row {
+                        flex-direction: column !important;
+                    }
+                }
+            </style>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('main.inventory_planning') }}">Inventurplanung</a></li>
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('main.inventory_planning_detail', id=item.session.id) }}">
+                        {{ item.session.name }}
+                    </a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('main.inventory_planning_detail', id=item.session.id) }}">
+                        Erfassung
+                    </a>
+                </li>
+                <li class="breadcrumb-item active">{{ item.asset.name }}</li>
+            </ol>
+        </nav>
         </ol>
     </nav>
 
-    <div class="card">
-        <div class="card-body">
-            <h1 class="card-title">{{ item.asset.name }}</h1>
-            <p><b>Seriennummer:</b> {{ item.asset.serial_number or '-' }}</p>
-            
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <p><strong>Kategorie:</strong> {{ item.asset.category }}</p>
-                    <p><strong>Erwarteter Standort:</strong> {{ item.expected_location or '-' }}</p>
-                    <p><strong>Seriennummer:</strong> {{ item.asset.serial_number or '-' }}</p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Status:</strong>
-                        {% if item.status == 'pending' %}
-                        <span class="badge bg-secondary">Ausstehend</span>
-                        {% elif item.status == 'found' %}
-                        <span class="badge bg-success">Gefunden</span>
-                        {% elif item.status == 'missing' %}
-                        <span class="badge bg-danger">Fehlend</span>
-                        {% elif item.status == 'damaged' %}
-                        <span class="badge bg-warning text-dark">Beschädigt</span>
-                        {% endif %}
-                    </p>
-                    {% if item.counted_at %}
-                    <p><strong>Erfasst von:</strong> {{ item.counted_by }}</p>
-                    <p><strong>Erfasst am:</strong> {{ item.counted_at.strftime('%d.%m.%Y %H:%M') }}</p>
-                    {% endif %}
+    <!-- Asset-Info-Block jetzt in der großen Card, direkt über dem Formular -->
+    <div class="mb-4">
+        <h3 class="fw-bold mb-2">{{ item.asset.name }}</h3>
+        <div class="d-flex flex-wrap gap-4 align-items-center">
+            <div>
+                <strong>Status:</strong>
+                {% if item.status == 'pending' %}
+                    <span class="badge bg-secondary">Ausstehend</span>
+                {% elif item.status == 'found' %}
+                    <span class="badge bg-success">Gefunden</span>
+                {% elif item.status == 'missing' %}
+                    <span class="badge bg-danger">Fehlend</span>
+                {% elif item.status == 'damaged' %}
+                    <span class="badge bg-warning text-dark">Beschädigt</span>
+                {% endif %}
+            </div>
+            <div>
+                {% if item.counted_at %}
+                    <strong>Erfasst von:</strong> {{ item.counted_by }}<br>
+                    <strong>Erfasst am:</strong> {{ item.counted_at.strftime('%d.%m.%Y %H:%M') }}
+                {% endif %}
+            </div>
+        </div>
+        <hr>
+    </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="card-title mb-4">Erfassung</h2>
+                    <form method="POST" enctype="multipart/form-data">
+    <div class="columns is-multiline">
+        <div class="column is-half">
+            <div class="field">
+                <label for="counted_quantity" class="label">Gezählte Menge</label>
+                <div class="control">
+                    <input type="number" class="input" id="counted_quantity" name="counted_quantity"
+                           value="{{ item.counted_quantity or '' }}" min="0" required>
                 </div>
             </div>
-
-            <form method="POST" enctype="multipart/form-data">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="counted_quantity" class="form-label">Gezählte Menge</label>
-                            <input type="number" class="form-control" id="counted_quantity" name="counted_quantity"
-                                   value="{{ item.counted_quantity or '' }}" min="0" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="actual_location" class="form-label">Tatsächlicher Standort</label>
-                            <input type="text" class="form-control" id="actual_location" name="actual_location"
-                                   value="{{ item.actual_location or '' }}" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="condition" class="form-label">Zustand</label>
-                            <select class="form-select" id="condition" name="condition" required>
-                                <option value="good" {% if item.condition == 'good' %}selected{% endif %}>Gut</option>
-                                <option value="damaged" {% if item.condition == 'damaged' %}selected{% endif %}>Beschädigt</option>
-                                <option value="repair_needed" {% if item.condition == 'repair_needed' %}selected{% endif %}>Reparatur notwendig</option>
+            <div class="field">
+                <label for="actual_location" class="label">Tatsächlicher Standort</label>
+                <div class="control">
+                    <input type="text" class="input" id="actual_location" name="actual_location"
+                           value="{{ item.actual_location or '' }}">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">Zustand je Seriennummer</label>
+                {% for serial in serial_numbers %}
+                <div class="field is-grouped mb-1">
+                    <div class="control">
+                        <span class="tag is-light">{{ serial }}</span>
+                        <input type="hidden" name="serial_numbers" value="{{ serial }}">
+                    </div>
+                    <div class="control">
+                        <div class="select">
+                            <select name="status_{{ serial }}" required>
+                                <option value="good" {% if serial_statuses[serial] == 'good' %}selected{% endif %}>Gut</option>
+                                <option value="damaged" {% if serial_statuses[serial] == 'damaged' %}selected{% endif %}>Beschädigt</option>
+                                <option value="repair_needed" {% if serial_statuses[serial] == 'repair_needed' %}selected{% endif %}>Reparatur notwendig</option>
                             </select>
                         </div>
                     </div>
-
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="condition_notes" class="form-label">Anmerkungen zum Zustand</label>
-                            <textarea class="form-control" id="condition_notes" name="condition_notes" rows="3">{{ item.condition_notes or '' }}</textarea>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="image" class="form-label">Foto hochladen</label>
-                            <input type="file" class="form-control" id="image" name="image" accept="image/*">
-                            {% if item.image_path %}
-                            <div class="mt-2">
-                                <img src="{{ url_for('main.uploaded_file', filename=item.image_path) }}" 
-                                     class="img-fluid" alt="Asset Foto">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="column is-half">
+            <div class="field">
+                <label for="condition_notes" class="label">Anmerkungen zum Zustand</label>
+                <div class="control">
+                    <textarea class="textarea" id="condition_notes" name="condition_notes" rows="3">{{ item.condition_notes or '' }}</textarea>
+                </div>
+            </div>
+    <label for="image" class="form-label">Foto hochladen</label>
+    <div class="file is-success has-name is-fullwidth">
+        <label class="file-label">
+            <input class="file-input" type="file" name="image" id="image" accept="image/*">
+            <span class="file-cta">
+                <span class="file-icon">
+                    <i class="fas fa-upload"></i>
+                </span>
+                <span class="file-label">Datei auswählen</span>
+            </span>
+            <span class="file-name" id="file-name">Keine Datei ausgewählt</span>
+        </label>
+    </div>
+    {% if item.image_path %}
+        <div class="mt-2">
+            <img src="{{ url_for('main.uploaded_file', filename=item.image_path) }}" 
+                 class="img-fluid" alt="Asset Foto">
+        </div>
+    {% endif %}
+</div>
+<script>
+// Zeige Dateiname nach Auswahl an
+const fileInput = document.querySelector('#image');
+const fileName = document.querySelector('#file-name');
+if(fileInput && fileName) {
+    fileInput.addEventListener('change', function(){
+        fileName.textContent = this.files.length > 0 ? this.files[0].name : 'Keine Datei ausgewählt';
+    });
+}
+</script>
                             </div>
-                            {% endif %}
                         </div>
-                    </div>
-                </div>
 
-                <div class="mt-3">
-                    <button type="submit" class="btn btn-primary">Speichern</button>
-                    <a href="{{ url_for('main.inventory_execute_session', id=item.session.id) }}" 
-                       class="btn btn-secondary">Abbrechen</a>
+                        <div class="mt-3">
+                            <button type="submit" class="button is-success">
+    <span class="icon"><i class="fas fa-plus"></i></span>
+    <span>Speichern</span>
+</button>
+<a href="{{ url_for('main.inventory_planning_detail', id=item.session.id) }}" class="button is-danger ms-2">
+    <span class="icon"><i class="fas fa-times"></i></span>
+    <span>Abbrechen</span>
+</a>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
