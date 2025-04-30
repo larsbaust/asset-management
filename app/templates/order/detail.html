@@ -29,18 +29,30 @@
 <table class="table is-striped is-fullwidth">
     <thead>
         <tr>
-            <th>Asset</th>
+            <th>Artikelnummer</th>
+            <th>Bezeichnung</th>
+            <th>Kategorie</th>
+            <th>Hersteller</th>
             <th>Menge</th>
+            <th>Kommentar</th>
         </tr>
     </thead>
     <tbody>
         {% for item in order.items %}
         <tr>
+            <td>{{ item.asset.article_number or '-' }}</td>
             <td>{{ item.asset.name }}</td>
+            <td>{{ item.asset.category.name if item.asset.category else '-' }}</td>
+            <td>
+                {% if item.asset.manufacturers %}
+                    {% for manufacturer in item.asset.manufacturers %}{{ manufacturer.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                {% else %}-{% endif %}
+            </td>
             <td>{{ item.quantity }}</td>
+            <td>{{ item.comment or '' }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="2">Keine Positionen vorhanden.</td></tr>
+        <tr><td colspan="6">Keine Positionen vorhanden.</td></tr>
         {% endfor %}
     </tbody>
 </table>
