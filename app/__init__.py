@@ -2,7 +2,10 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from flask_mail import Mail  # Flask-Mail für E-Mail-Versand
 import os
+
+mail = Mail()  # Mail-Objekt global initialisieren
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -35,6 +38,9 @@ def create_app():
 
     db.init_app(app)
     migrate = Migrate(app, db)
+
+    # Flask-Mail initialisieren
+    mail.init_app(app)
 
     # Login manager setup
     login_manager.init_app(app)

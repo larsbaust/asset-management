@@ -44,5 +44,11 @@
         {% endfor %}
     </tbody>
 </table>
+{% if order.supplier.email %}
+<a href="{{ url_for('order.send_order_email', order_id=order.id) }}" class="button is-success">
+    <span class="icon"><i class="fas fa-envelope"></i></span>
+    <span>Bestellung per E-Mail an Lieferant senden</span>
+</a>
+{% endif %}
 <a href="{{ url_for('order.order_overview') }}" class="button">Zurück zur Übersicht</a>
 {% endblock %}

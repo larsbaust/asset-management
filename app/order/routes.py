@@ -3,6 +3,27 @@ from app.order import order
 from app.models import Supplier, Asset, Order, OrderItem
 from app import db
 from app.order.forms import OrderPlanForm, AssetOrderForm
+from flask_mail import Message
+from app import mail
+
+@order.route('/order/<int:order_id>/send_email')
+def send_order_email(order_id):
+    order_obj = Order.query.get_or_404(order_id)
+    supplier = order_obj.supplier
+    if not supplier.email:
+        flash('Lieferant hat keine E-Mail-Adresse hinterlegt.', 'danger')
+        return redirect(url_for('order.order_detail', order_id=order_id))
+    html = render_template('order/order_email.html', order=order_obj, supplier=supplier)
+    msg = Message(subject=f"Neue Bestellung #{order_obj.id}",
+                  recipients=[supplier.email],
+                  html=html,
+                  sender="noreply@example.com")  # Passe den Absender ggf. an
+    try:
+        mail.send(msg)
+        flash('Bestellung wurde per E-Mail an den Lieferanten gesendet.', 'success')
+    except Exception as e:
+        flash(f'Fehler beim Senden der E-Mail: {e}', 'danger')
+    return redirect(url_for('order.order_detail', order_id=order_id))
 
 @order.route('/order/plan', methods=['GET', 'POST'])
 def order_plan():
