@@ -76,7 +76,7 @@
                     <td>{{ asset.name }}</td>
                     <td>{{ asset.article_number or '-' }}</td>
                     <td>{{ asset_form.serial_number(class_='input is-small', placeholder='Seriennummer') }}</td>
-                    <td>{{ asset.category or '-' }}</td>
+                    <td>{{ asset.category.name if asset.category else '-' }}</td>
                     <td>
                         {% if asset.manufacturers %}
                             {% for manufacturer in asset.manufacturers %}

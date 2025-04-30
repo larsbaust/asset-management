@@ -1,9 +1,38 @@
 <h2>Bestellung Nr. {{ order.id }}</h2>
+<p><strong>Lieferant:</strong> {{ order.supplier.name }}</p>
+<p><strong>Datum:</strong> {{ order.order_date.strftime('%d.%m.%Y %H:%M') }}</p>
+{% if order.location_obj %}
+<p><strong>Lieferadresse:</strong> {{ order.location_obj.name }}</p>
+{% endif %}
+<hr>
 <p>Sehr geehrte Damen und Herren,</p>
 <p>bitte liefern Sie folgende Artikel:</p>
-<ul>
-  {% for item in order.items %}
-    <li>{{ item.asset.name }} – Menge: {{ item.quantity }}</li>
-  {% endfor %}
-</ul>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;">
+  <thead>
+    <tr>
+      <th>Artikelnummer</th>
+      <th>Bezeichnung</th>
+      <th>Kategorie</th>
+      <th>Hersteller</th>
+      <th>Menge</th>
+      <th>Kommentar</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in order.items %}
+    <tr>
+      <td>{{ item.asset.article_number or '-' }}</td>
+      <td>{{ item.asset.name }}</td>
+      <td>{{ item.asset.category.name if item.asset.category else '-' }}</td>
+      <td>
+        {% if item.asset.manufacturers %}
+          {% for manufacturer in item.asset.manufacturers %}{{ manufacturer.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% else %}-{% endif %}
+      </td>
+      <td>{{ item.quantity }}</td>
+      <td>{{ item.comment or '' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 <p>Mit freundlichen Grüßen,<br>Ihr Team</p>
