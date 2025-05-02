@@ -7,11 +7,13 @@
     <div class="box">
         <h2 class="subtitle">CSV-Datei hochladen</h2>
 
-        <form method="POST" enctype="multipart/form-data">
+        <!-- Datei-Upload-Formular -->
+        {% if not csv_headers %}
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('import_assets.import_assets_upload') }}">
             <div class="field">
                 <div class="file has-name is-boxed">
                     <label class="file-label">
-                        <input class="file-input" type="file" name="file" accept=".csv" onchange="updateFileName(this)">
+                        <input class="file-input" type="file" name="csvfile" accept=".csv" onchange="updateFileName(this)">
                         <span class="file-cta">
                             <span class="file-icon">
                                 <i class="fas fa-upload"></i>
@@ -26,24 +28,111 @@
                     </label>
                 </div>
             </div>
-
             <div class="field">
                 <div class="control">
                     <button type="submit" class="button is-primary">
                         <span class="icon">
-                            <i class="fas fa-file-import"></i>
+                            <i class="fas fa-upload"></i>
                         </span>
                         <span>Importieren</span>
                     </button>
-                    <a href="{{ url_for('main.assets') }}" class="button is-light">
-                        <span class="icon">
-                            <i class="fas fa-times"></i>
-                        </span>
-                        <span>Abbrechen</span>
-                    </a>
+                    <a href="{{ url_for('import_assets.import_assets_upload') }}" class="button is-light">Abbrechen</a>
                 </div>
             </div>
         </form>
+        {% endif %}
+
+        <!-- Mapping-UI -->
+        {% if csv_headers %}
+        <div class="box" style="margin-bottom:1em;">
+            <form method="post" action="{{ url_for('import_assets.import_assets_upload') }}" style="display:inline-block; margin-right:1em;">
+                <label for="template_select"><strong>Mapping-Vorlage laden:</strong></label>
+                <select name="template_name" id="template_select" onchange="this.form.submit()">
+                    <option value="">-- Vorlage wählen --</option>
+                    {% for tpl in mapping_templates %}
+                    <option value="{{ tpl }}">{{ tpl }}</option>
+                    {% endfor %}
+                </select>
+                <input type="hidden" name="load_template" value="1">
+            </form>
+            <form method="post" action="{{ url_for('import_assets.save_mapping_template_route') }}" style="display:inline-block;">
+                <input type="text" name="save_template_name" placeholder="Vorlagenname" required>
+                <button type="submit" class="button is-small is-link">Mapping als Vorlage speichern</button>
+            </form>
+        </div>
+        <div class="notification is-info">
+            <strong>Hinweis:</strong> Das Feld <strong>Name</strong> ist ein Pflichtfeld und muss mindestens einer CSV-Spalte zugeordnet werden!
+        </div>
+        <form method="post" action="{{ url_for('import_assets.import_assets_apply_mapping') }}">
+            <table class="table is-bordered">
+                <thead>
+                    <tr>
+                        <th>CSV-Spalte</th>
+                        <th>Zuordnung (Systemfeld) <span style="color:red">*</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for col in csv_headers %}
+                    <tr>
+                        <td>{{ col }}</td>
+                        <td>
+                            <select name="mapping_{{ loop.index0 }}" required style="{% if field_labels['name'] in col or 'name' in col|lower %}background:#ffe6e6;{% endif %}">
+    <option value="">Ignorieren</option>
+    {% for field in system_fields %}
+        <option value="{{ field }}"
+            {% if mapping_prefill is defined and mapping_prefill[loop.parent.loop.index0] == field %}selected{% elif mapping_prefill is not defined and field=='name' and ('name' in col|lower or 'bezeichnung' in col|lower or 'title' in col|lower) %}selected{% endif %}
+        >{{ field_labels[field] }}{% if field=='name' %} *{% endif %}</option>
+    {% endfor %}
+</select>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <div class="has-text-danger" id="mapping-warning" style="display:none;">Das Pflichtfeld <strong>Name</strong> ist noch keiner Spalte zugeordnet!</div>
+            <button type="submit" class="button is-success">Import starten</button>
+        </form>
+        <!-- Vorschau der ersten Datenzeilen -->
+        {% if csv_preview %}
+        <div class="box" style="margin-top:1em;">
+            <strong>Vorschau der ersten {{ csv_preview|length }} Datenzeilen:</strong>
+            <table class="table is-bordered is-narrow is-striped">
+                <thead>
+                    <tr>
+                        {% for col in csv_headers %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in csv_preview %}
+                    <tr>
+                        {% for val in row %}
+                        <td>{{ val }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+        <script>
+        // Optional: Warnung anzeigen, falls kein Pflichtfeld zugeordnet wurde
+        const form = document.querySelector('form[action*="import_assets_apply_mapping"]');
+        if(form) {
+            form.addEventListener('submit', function(e) {
+                let found = false;
+                form.querySelectorAll('select').forEach(sel => {
+                    if(sel.value === 'name') found = true;
+                });
+                if(!found) {
+                    document.getElementById('mapping-warning').style.display = 'block';
+                    e.preventDefault();
+                }
+            });
+        }
+        </script>
+        {% endif %}
     </div>
 
     <div class="box">

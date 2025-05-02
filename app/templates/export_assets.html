@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h1 class="title">Assets exportieren</h1>
+    <div class="box">
+        <h2 class="subtitle">Felder auswählen &amp; Spaltennamen anpassen</h2>
+        <form method="post">
+            <table class="table is-bordered">
+                <thead>
+                    <tr>
+                        <th>Exportieren</th>
+                        <th>Systemfeld</th>
+                        <th>Spaltenname im CSV</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for field in system_fields %}
+                    <tr>
+                        <td><input type="checkbox" name="fields" value="{{ field }}" checked></td>
+                        <td>{{ field_labels[field] }}</td>
+                        <td><input type="text" name="colname_{{ field }}" value="{{ field_labels[field] }}"></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <button type="submit" class="button is-success">Export starten</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

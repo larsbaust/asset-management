@@ -64,6 +64,12 @@ def create_app():
     from app.suppliers import suppliers as suppliers_blueprint
     app.register_blueprint(suppliers_blueprint)
 
+    # Import/Export Blueprints registrieren
+    from app.import_assets import import_assets
+    app.register_blueprint(import_assets)
+    from app.export_assets import export_assets
+    app.register_blueprint(export_assets)
+
     with app.app_context():
         db.create_all()
         # Create test user if it doesn't exist
