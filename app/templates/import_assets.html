@@ -64,6 +64,28 @@
             <strong>Hinweis:</strong> Das Feld <strong>Name</strong> ist ein Pflichtfeld und muss mindestens einer CSV-Spalte zugeordnet werden!
         </div>
         <form method="post" action="{{ url_for('import_assets.import_assets_apply_mapping') }}">
+    <div class="field">
+        <label for="location_id"><strong>Standort für alle importierten Assets:</strong></label>
+        <div class="control">
+            <select name="location_id" id="location_id" required>
+                <option value="">-- Standort wählen --</option>
+                {% for loc in locations %}
+                    <option value="{{ loc.id }}">{{ loc.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="field">
+        <label for="global_category_id"><strong>Kategorie für alle importierten Assets:</strong></label>
+        <div class="control">
+            <select name="global_category_id" id="global_category_id" required>
+                <option value="">-- Kategorie wählen --</option>
+                {% for cat in system_categories %}
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
             <table class="table is-bordered">
                 <thead>
                     <tr>
@@ -76,11 +98,11 @@
                     <tr>
                         <td>{{ col }}</td>
                         <td>
-                            <select name="mapping_{{ loop.index0 }}" required style="{% if field_labels['name'] in col or 'name' in col|lower %}background:#ffe6e6;{% endif %}">
+                            <select name="mapping_{{ loop.index0 }}" style="{% if field_labels['name'] in col or 'name' in col|lower %}background:#ffe6e6;{% endif %}">
     <option value="">Ignorieren</option>
     {% for field in system_fields %}
         <option value="{{ field }}"
-            {% if mapping_prefill is defined and mapping_prefill[loop.parent.loop.index0] == field %}selected{% elif mapping_prefill is not defined and field=='name' and ('name' in col|lower or 'bezeichnung' in col|lower or 'title' in col|lower) %}selected{% endif %}
+            {% if mapping_prefill is defined and mapping_prefill[loop.index0] == field %}selected{% elif mapping_prefill is not defined and field=='name' and ('name' in col|lower or 'bezeichnung' in col|lower or 'title' in col|lower) %}selected{% endif %}
         >{{ field_labels[field] }}{% if field=='name' %} *{% endif %}</option>
     {% endfor %}
 </select>
@@ -90,6 +112,46 @@
                 </tbody>
             </table>
             <div class="has-text-danger" id="mapping-warning" style="display:none;">Das Pflichtfeld <strong>Name</strong> ist noch keiner Spalte zugeordnet!</div>
+
+            {% if csv_categories and system_categories %}
+            <div class="box" style="margin-top:1em;">
+                <strong>Kategorie-Zuordnung (Mapping):</strong>
+                <p class="help">Ordne jede in der CSV vorkommende Kategorie einer bestehenden System-Kategorie zu.</p>
+                {% for csv_cat in csv_categories %}
+            <div class="field is-horizontal" style="margin-bottom:0.5em;">
+                <div class="field-label is-normal" style="min-width:180px;">
+                    <label class="label">{{ csv_cat }}</label>
+                </div>
+                <div class="field-body">
+                    <div class="control">
+                        <div class="select">
+                            <select name="category_mapping_{{ csv_cat }}" required>
+                                <option value="">-- System-Kategorie wählen --</option>
+                                {% for sys_cat in system_categories %}
+                                    <option value="{{ sys_cat.id }}">{{ sys_cat.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="control" style="margin-left:1em;">
+                        <div class="select">
+                            <select name="assignment_mapping_{{ csv_cat }}">
+                                <option value="">-- Zuordnung wählen --</option>
+                                {% for assignment in system_assignments %}
+                                    <option value="{{ assignment.id }}">{{ assignment.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="control" style="margin-left:0.5em;">
+                        <input type="text" name="assignment_mapping_new_{{ csv_cat }}" placeholder="Neue Zuordnung" class="input is-small" />
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            </div>
+            {% endif %}
+
             <button type="submit" class="button is-success">Import starten</button>
         </form>
         <!-- Vorschau der ersten Datenzeilen -->

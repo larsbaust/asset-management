@@ -1,0 +1,1 @@
+{"name": "API_Bestellung", "mapping": [null, null, null, null, null, null, null, null, null], "headers": ["sku", "currency", "price", "quantity", "priceTotal", "title", "manufacturer", "msku", "ean"]}
