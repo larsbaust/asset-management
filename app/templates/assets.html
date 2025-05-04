@@ -126,7 +126,7 @@
                         </figure>
                         {% else %}
                         <figure class="image is-48x48" style="max-width:60px;">
-                            <img src="{{ url_for('static', filename='images/no-image.png') }}" alt="Kein Bild" style="max-width:60px; max-height:48px;">
+                            <img src="{{ svg_placeholder(asset.name) }}" alt="{{ asset.name }}" style="max-width:60px; max-height:48px;">
                         </figure>
                         {% endif %}
                     </td>

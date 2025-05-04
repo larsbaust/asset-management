@@ -14,6 +14,9 @@ from jinja2 import ChoiceLoader, FileSystemLoader
 
 def create_app():
     app = Flask(__name__)
+    # SVG-Placeholder-Funktion für Templates bereitstellen
+    from app.utils import svg_placeholder
+    app.jinja_env.globals['svg_placeholder'] = svg_placeholder
     app.config['SECRET_KEY'] = 'your-secret-key'
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
