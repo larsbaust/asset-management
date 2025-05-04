@@ -270,6 +270,22 @@ def import_assets_apply_mapping():
                     db.session.flush()  # ID sofort verfügbar
                 if manufacturer not in asset.manufacturers:
                     asset.manufacturers.append(manufacturer)
+        # Zuordnung (Assignments) aus CSV übernehmen
+        assignments_value = asset_data.get('assignments')
+        if assignments_value:
+            assignment_names = [n.strip() for n in assignments_value.split(',')]
+            from app.models import Assignment
+            for name in assignment_names:
+                if not name:
+                    continue
+                assignment = Assignment.query.filter_by(name=name).first()
+                if not assignment:
+                    assignment = Assignment(name=name)
+                    db.session.add(assignment)
+                    db.session.flush()
+                if assignment not in asset.assignments:
+                    asset.assignments.append(assignment)
+
         # Lieferant-Zuordnung (global_supplier_id)
         if supplier_id:
             from app.models import Supplier
