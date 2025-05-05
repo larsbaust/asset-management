@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
 <!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2tF7kGZl+5Q2QkYpX1r4Qh9pFzF7Qk1lFQ1r5v8=" crossorigin=""/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
 .chart-container {
     position: relative;
@@ -173,7 +173,18 @@
                 <canvas id="categoryChart"></canvas>
             </div>
         </div>
+
+        <!-- Assets nach Hersteller -->
+        <div class="chart-card">
+            <h5 class="card-title">Assets nach Hersteller</h5>
+            <div class="chart-container category-chart-container">
+                <canvas id="manufacturerChart"></canvas>
+            </div>
+        </div>
     </div>
+
+    <!-- Herstellerdaten für Chart -->
+    <script id="manufacturer-data" type="application/json">{{ manufacturer_data|tojson }}</script>
 
     <!-- Letzte Assets Tabelle -->
     <div class="table-card">
@@ -213,24 +224,17 @@
 
 <!-- Chartdaten vom Server -->
 <script id="chart-data" type="application/json">
-    {
-        "status": {
-            "active": {{ active_count }},
-            "on_loan": {{ on_loan_count }},
-            "inactive": {{ inactive_count }}
-        },
-        "costs": {
-            "labels": {{ cost_type_labels|tojson }},
-            "data": {{ cost_amounts|tojson }}
-        },
-        "value_development": {
-            "months": {{ months|tojson }},
-            "values": {{ values|tojson }}
-        },
-        "categories": {{ category_data|tojson }}
-    }
+    {{ chart_data|tojson }}
 </script>
-
+<!-- DEBUG: Chartdaten anzeigen -->
+<script>
+    try {
+      var data = JSON.parse(document.getElementById('chart-data').textContent);
+      console.log("Chartdaten:", data);
+    } catch(e) {
+      console.error("Fehler beim Parsen der Chartdaten:", e);
+    }
+  </script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Daten aus dem JSON-Tag laden
@@ -298,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
         data: {
             labels: chartData.costs.labels,
             datasets: [{
-                data: chartData.costs.data,
+                data: chartData.costs.amounts,
                 backgroundColor: ['#28a745', '#007bff', '#dc3545', '#ffc107', '#17a2b8', '#6c757d']
             }]
         },
@@ -404,8 +408,29 @@ document.addEventListener('DOMContentLoaded', function() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+        }
+    });
+
+    // Hersteller Chart
+    const manufacturerData = JSON.parse(document.getElementById('manufacturer-data').textContent);
+    new Chart(document.getElementById('manufacturerChart'), {
+        type: 'bar',
+        data: {
+            labels: manufacturerData.map(item => item.manufacturer),
+            datasets: [{
+                label: 'Anzahl Assets',
+                data: manufacturerData.map(item => item.count),
+                backgroundColor: '#8e44ad',
+                borderRadius: 6,
+                maxBarThickness: 50
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
             scales: {
-                y: {
+                x: {
                     beginAtZero: true,
                     grid: {
                         color: 'rgba(0,0,0,0.05)'
@@ -415,7 +440,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         padding: 10
                     }
                 },
-                x: {
+                y: {
                     grid: {
                         display: false
                     },
@@ -425,10 +450,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             },
             plugins: {
+                legend: {
+                    display: false
+                },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            const count = context.parsed.y;
+                            const count = context.parsed.x;
                             return count === 1 ? '1 Asset' : count + ' Assets';
                         }
                     }

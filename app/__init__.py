@@ -42,6 +42,16 @@ def create_app():
     db.init_app(app)
     migrate = Migrate(app, db)
 
+    # CSP-Header für alle Antworten setzen
+    @app.after_request
+    def set_csp(response):
+        response.headers['Content-Security-Policy'] = (
+            "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://unpkg.com; "
+            "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:;"
+        )
+        return response
+
     # Flask-Mail initialisieren
     mail.init_app(app)
 

@@ -388,6 +388,19 @@ def dashboard():
     for entry in category_data:
         print(entry)
 
+    # Hersteller-Auswertung für Dashboard (nur aktive Assets)
+    from .models import Manufacturer
+    manufacturer_data = []
+    manufacturers = Manufacturer.query.order_by(Manufacturer.name).all()
+    for manufacturer in manufacturers:
+        count = Asset.query.filter(Asset.manufacturers.any(Manufacturer.id == manufacturer.id), Asset.status == 'active').count()
+        manufacturer_data.append({'manufacturer': manufacturer.name, 'count': count})
+    # Optional: Nur Hersteller mit mindestens einem Asset anzeigen
+    manufacturer_data = [m for m in manufacturer_data if m['count'] > 0]
+    print('Hersteller-Auswertung für Dashboard:')
+    for entry in manufacturer_data:
+        print(entry)
+
     # Standorte für die Karte (nur mit Koordinaten)
     from .models import Location
     location_objs = Location.query.filter(Location.latitude.isnot(None), Location.longitude.isnot(None)).all()
@@ -403,8 +416,26 @@ def dashboard():
         }
         for loc in location_objs
     ]
+    # Robustes chart_data-Objekt für das Dashboard-Template
+    chart_data = {
+        "status": {
+            "active": active if active is not None else 0,
+            "on_loan": on_loan if on_loan is not None else 0,
+            "inactive": inactive if inactive is not None else 0,
+        },
+        "costs": {
+            "labels": cost_type_labels if cost_type_labels is not None else [],
+            "amounts": cost_amounts if cost_amounts is not None else [],
+        },
+        "value_development": {
+            "months": months if months is not None else [],
+            "values": values if values is not None else [],
+        },
+        "categories": category_data if category_data is not None else [],
+    }
     return render_template('dashboard.html',
         recent_assets=recent_assets,
+        chart_data=chart_data,
         active_count=active,
         on_loan_count=on_loan,
         inactive_count=inactive,
@@ -413,7 +444,8 @@ def dashboard():
         category_data=category_data,
         cost_type_labels=cost_type_labels,
         cost_amounts=cost_amounts,
-        locations=locations
+        locations=locations,
+        manufacturer_data=manufacturer_data
     )
 
 @main.route('/assets')
@@ -429,27 +461,27 @@ def assets():
 
     # Filter: Kategorie (Dropdown)
     category = request.args.get('category', '')
-    if category:
+    if category not in ('', '0', 0, None):
         query = query.filter(Asset.category_id == int(category))
 
     # Filter: Standort (Dropdown)
     location = request.args.get('location', '')
-    if location:
-        query = query.filter(Asset.location == location)
+    if location not in ('', '0', 0, None):
+        query = query.filter(Asset.location_id == int(location))
 
     # Filter: Hersteller (Dropdown)
     manufacturer_id = request.args.get('manufacturer', '')
-    if manufacturer_id:
+    if manufacturer_id not in ('', '0', 0, None):
         query = query.filter(Asset.manufacturers.any(Manufacturer.id == int(manufacturer_id)))
 
     # Filter: Lieferant (Dropdown)
     supplier_id = request.args.get('supplier', '')
-    if supplier_id:
+    if supplier_id not in ('', '0', 0, None):
         query = query.filter(Asset.suppliers.any(Supplier.id == int(supplier_id)))
 
     # Filter: Zuordnung (Dropdown)
     assignment_id = request.args.get('assignment', '')
-    if assignment_id:
+    if assignment_id not in ('', '0', 0, None):
         query = query.filter(Asset.assignments.any(Assignment.id == int(assignment_id)))
 
     # Filter: Nur mit Bild (Checkbox)

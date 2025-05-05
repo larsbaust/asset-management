@@ -120,19 +120,19 @@
                 {% for asset in assets %}
                 <tr>
                     <td>
-                        {% if asset.image_url %}
-                        <figure class="image is-48x48" style="max-width:60px;">
-                            <img src="{{ asset.image_url }}" alt="{{ asset.name }}" style="object-fit: cover; max-width:60px; max-height:48px;">
-                        </figure>
-                        {% else %}
-                        <figure class="image is-48x48" style="max-width:60px;">
-                            <img src="{{ svg_placeholder(asset.name) }}" alt="{{ asset.name }}" style="max-width:60px; max-height:48px;">
-                        </figure>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="{{ url_for('main.asset_details', id=asset.id) }}">{{ asset.name }}</a>
-                    </td>
+    {% if asset.image_url %}
+    <figure class="image is-48x48" style="max-width:60px;">
+        <img src="{{ asset.image_url }}" alt="{{ asset.name }}" style="object-fit: cover; max-width:60px; max-height:48px;">
+    </figure>
+    {% else %}
+    <figure class="image is-48x48" style="max-width:60px;">
+        <img src="{{ svg_placeholder(asset.name) }}" alt="{{ asset.name }}" style="max-width:60px; max-height:48px;">
+    </figure>
+    {% endif %}
+</td>
+<td>
+    <a href="{{ url_for('main.asset_details', id=asset.id) }}">{{ asset.name }}</a>
+</td>
                     <td style="word-break: break-all;">{{ asset.article_number or '-' }}</td>
                     <td>{{ asset.category.name if asset.category else 'Keine Kategorie' }}</td>
                     <td style="word-break: break-all;">{{ asset.ean or '-' }}</td>
