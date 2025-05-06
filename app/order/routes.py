@@ -109,6 +109,7 @@ from flask import Response, request
 def archive_order(order_id):
     from flask import request, redirect, url_for, flash
     order = Order.query.get_or_404(order_id)
+    print(f"[DEBUG] Order-Export-Dialog für Order-ID: {order_id}, Items: {order.items}")
     if not order.archived:
         order.archived = True
         db.session.commit()
@@ -122,6 +123,7 @@ def archive_order(order_id):
 def restore_order(order_id):
     from flask import request, redirect, url_for, flash
     order = Order.query.get_or_404(order_id)
+    print(f"[DEBUG] Order-Export-Dialog für Order-ID: {order_id}, Items: {order.items}")
     if order.archived:
         order.archived = False
         db.session.commit()
@@ -135,6 +137,7 @@ def restore_order(order_id):
 def delete_order(order_id):
     from flask import request, redirect, url_for, flash
     order = Order.query.get_or_404(order_id)
+    print(f"[DEBUG] Order-Export-Dialog für Order-ID: {order_id}, Items: {order.items}")
     db.session.delete(order)
     db.session.commit()
     flash('Bestellung wurde gelöscht.', 'danger')
@@ -173,9 +176,123 @@ def order_overview():
     locations = sorted(set([o.location for o in Order.query.filter(Order.location != None).all() if o.location and o.location.strip() != '']))
     return render_template('order/overview.html', orders=orders, suppliers=suppliers, locations=locations, show_archived=show_archived, selected_status=selected_status, selected_supplier_id=selected_supplier_id, selected_location=selected_location, selected_tracking_number=selected_tracking_number)
 
+from flask import Response, request, render_template
+import csv
+from io import StringIO
+
+@order.route('/order/<int:order_id>/export_dialog', methods=['GET', 'POST'])
+def order_export_dialog(order_id):
+    import datetime
+    print("=== PREVIEW TEST ===", datetime.datetime.now(), dict(request.args), request.method)
+    print(">>> ALLE REQUEST ARGS:", dict(request.args))
+    print(">>> REQUEST METHOD:", request.method)
+    order = Order.query.get_or_404(order_id)
+    print(f"[DEBUG] Order-Export-Dialog für Order-ID: {order_id}, Items: {order.items}")
+    # Verfügbare Felder (kann beliebig erweitert werden)
+    available_fields = [
+        {'name': 'article_number', 'label': 'Artikelnummer', 'export_name': 'Artikelnummer', 'selected': True},
+        {'name': 'name', 'label': 'Bezeichnung', 'export_name': 'Bezeichnung', 'selected': True},
+        {'name': 'quantity', 'label': 'Menge', 'export_name': 'Menge', 'selected': True},
+        {'name': 'category', 'label': 'Kategorie', 'export_name': 'Kategorie', 'selected': False},
+        {'name': 'manufacturer', 'label': 'Hersteller', 'export_name': 'Hersteller', 'selected': True},
+        {'name': 'tracking_number', 'label': 'Trackingnummer', 'export_name': 'Trackingnummer', 'selected': False},
+        {'name': 'comment', 'label': 'Kommentar', 'export_name': 'Kommentar', 'selected': False},
+    ]
+    # Vorschau-API (AJAX):
+    if request.args.get('preview') == '1':
+        print('### PREVIEW-BRANCH WIRD AUSGEFÜHRT ###')
+        from flask import jsonify
+        # Felder aus Query-String übernehmen
+        selected_fields = []
+        for field in available_fields:
+            if request.args.get(f'export_{field["name"]}') == '1':
+                export_name = request.args.get(f'colname_{field["name"]}', field['export_name'])
+                selected_fields.append({'name': field['name'], 'export_name': export_name})
+        preview_rows = []
+        for item in order.items[:5]:
+            row = []
+            for f in selected_fields:
+                try:
+                    if f['name'] == 'article_number':
+                        row.append(getattr(item.asset, 'article_number', '') if item.asset else '')
+                    elif f['name'] == 'name':
+                        row.append(getattr(item.asset, 'name', '') if item.asset else '')
+                    elif f['name'] == 'quantity':
+                        row.append(getattr(item, 'quantity', ''))
+                    elif f['name'] == 'category':
+                        row.append(getattr(item.asset.category, 'name', '') if item.asset and getattr(item.asset, 'category', None) else '')
+                    elif f['name'] == 'manufacturer':
+                        # Robust: Hersteller kann fehlen oder nicht gesetzt sein
+                        mans = getattr(item.asset, 'manufacturers', None) if item.asset else None
+                        if mans:
+                            row.append(', '.join([getattr(m, 'name', '') for m in mans]))
+                        else:
+                            row.append('')
+                    elif f['name'] == 'tracking_number':
+                        row.append(getattr(order, 'tracking_number', ''))
+                    elif f['name'] == 'comment':
+                        row.append(getattr(item, 'comment', ''))
+                    else:
+                        row.append('')
+                except Exception as e:
+                    row.append('')
+            preview_rows.append(row)
+        only_empty = all(all(cell == '' for cell in row) for row in preview_rows) if preview_rows else True
+        return jsonify({
+            'header': [f['export_name'] for f in selected_fields],
+            'rows': preview_rows,
+            'only_empty': only_empty
+        })
+
+    # POST = Export generieren
+    if request.method == 'POST':
+        # Mapping aus Formular übernehmen
+        selected_fields = []
+        for field in available_fields:
+            if request.form.get(f'export_{field["name"]}'):
+                export_name = request.form.get(f'colname_{field["name"]}', field['export_name'])
+                selected_fields.append({'name': field['name'], 'export_name': export_name})
+        # CSV generieren
+        output = StringIO()
+        writer = csv.writer(output, delimiter=';')
+        # Kopfzeile
+        writer.writerow([f['export_name'] for f in selected_fields])
+        # Datenzeilen
+        for item in order.items:
+            row = []
+            for f in selected_fields:
+                if f['name'] == 'article_number':
+                    row.append(item.asset.article_number if item.asset else '')
+                elif f['name'] == 'name':
+                    row.append(item.asset.name if item.asset else '')
+                elif f['name'] == 'quantity':
+                    row.append(item.quantity)
+                elif f['name'] == 'category':
+                    row.append(item.asset.category.name if item.asset and item.asset.category else '')
+                elif f['name'] == 'manufacturer':
+                    if item.asset and item.asset.manufacturers:
+                        row.append(', '.join([m.name for m in item.asset.manufacturers]))
+                    else:
+                        row.append('')
+                elif f['name'] == 'tracking_number':
+                    row.append(order.tracking_number or '')
+                elif f['name'] == 'comment':
+                    row.append(item.comment if hasattr(item, 'comment') else '')
+                else:
+                    row.append('')
+            writer.writerow(row)
+        csv_data = output.getvalue()
+        output.close()
+        return Response(csv_data, mimetype='text/csv', headers={"Content-Disposition": f"attachment;filename=order_{order.id}_custom.csv"})
+    # GET: Dialog anzeigen
+    return render_template('order/export_dialog.html', order=order, available_fields=available_fields)
+
+
+# Die alte Einzelbestellungs-Exportfunktion bleibt erhalten
 @order.route('/order/<int:order_id>/export')
 def order_export(order_id):
     order = Order.query.get_or_404(order_id)
+    print(f"[DEBUG] Order-Export-Dialog für Order-ID: {order_id}, Items: {order.items}")
     def generate():
         yield 'Bestellung ID;Lieferant;Datum;Status;Kommentar\n'
         yield f'{order.id};{order.supplier.name};{order.order_date.strftime("%d.%m.%Y %H:%M")};{order.status};{order.comment or ""}\n'
@@ -189,12 +306,14 @@ from .forms import OrderEditForm
 @order.route('/order/<int:order_id>', methods=['GET', 'POST'])
 def order_detail(order_id):
     order = Order.query.get_or_404(order_id)
+    print(f"[DEBUG] Order-Export-Dialog für Order-ID: {order_id}, Items: {order.items}")
     form = OrderEditForm(obj=order)
     import sqlalchemy
     from app.models import Asset
     status_before = order.status
     if form.validate_on_submit():
         order.status = form.status.data
+        order.tracking_number = form.tracking_number.data
         order.comment = form.comment.data
         db.session.commit()
         # Automatischer Asset-Import bei Statuswechsel auf 'erledigt'
@@ -225,7 +344,13 @@ def order_detail(order_id):
                                 value = getattr(item.asset, 'ean', None)
                         if value:
                             asset_data[field] = value
-                    asset_data['location'] = order.location if hasattr(order, 'location') else None
+                    # Standort korrekt setzen (location_id bevorzugen, fallback auf location-String)
+                    if hasattr(order, 'location_id') and order.location_id:
+                        asset_data['location_id'] = order.location_id
+                    elif hasattr(order, 'location'):
+                        asset_data['location'] = order.location
+                    else:
+                        asset_data['location_id'] = None
                     # Prüfen, ob Name gesetzt ist (direkt oder über Asset)
                     asset_name = asset_data.get('name', None)
                     if asset_name and str(asset_name).strip():

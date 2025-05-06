@@ -37,4 +37,5 @@ class OrderPlanForm(FlaskForm):
 
 class OrderEditForm(FlaskForm):
     status = SelectField('Status', choices=[('offen', 'offen'), ('bestellt', 'bestellt'), ('erledigt', 'erledigt')], validators=[DataRequired()])
+    tracking_number = StringField('Sendungsverfolgungsnummer (optional)')
     comment = TextAreaField('Kommentar')

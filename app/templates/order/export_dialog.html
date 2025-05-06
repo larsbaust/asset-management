@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>CSV-Export konfigurieren</h2>
+<form method="POST">
+    <div class="field">
+        <label class="label">Spalten für Export auswählen und benennen:</label>
+        <table class="table is-fullwidth">
+            <thead>
+                <tr>
+                    <th>Exportieren?</th>
+                    <th>App-Feld</th>
+                    <th>Export-Spaltenname</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for field in available_fields %}
+                <tr>
+                    <td><input type="checkbox" name="export_{{ field.name }}" value="1" {% if field.selected %}checked{% endif %}></td>
+                    <td>{{ field.label }}</td>
+                    <td><input type="text" name="colname_{{ field.name }}" value="{{ field.export_name }}" class="input"></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <button type="submit" class="button is-primary">Export starten</button>
+    <a href="{{ url_for('order.order_overview') }}" class="button">Abbrechen</a>
+    <button id="preview-btn" type="button" class="button is-info mb-2">Vorschau aktualisieren</button>
+</form>
+    <hr>
+    <div id="export-preview">
+        <div class="mb-2"><strong>Vorschau (erste 5 Zeilen als CSV)</strong></div>
+        <pre id="export-preview-csv" style="background:#f7f7f7; color:#222; padding:1em; border-radius:6px; min-height:4em;"></pre>
+    </div>
+    <script src="{{ url_for('static', filename='js/order_export_dialog.js') }}"></script>
+{% endblock %}
