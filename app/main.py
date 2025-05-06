@@ -193,6 +193,21 @@ def index():
             'category': category,
             'count': count
         })
+
+    # Assets nach Zuordnung (Assignment)
+    assignment_data = []
+    assignments = {}
+    for asset in user_assets:
+        if asset.assignments:
+            for assignment in asset.assignments:
+                assignments[assignment.name] = assignments.get(assignment.name, 0) + 1
+        else:
+            assignments['Ohne Zuordnung'] = assignments.get('Ohne Zuordnung', 0) + 1
+    for assignment, count in assignments.items():
+        assignment_data.append({
+            'assignment': assignment,
+            'count': count
+        })
     
     # Kostenverteilung
     cost_types = {
@@ -479,6 +494,9 @@ def dashboard():
         },
         "categories": category_data if category_data is not None else [],
     }
+    # Fallback: assignment_data, falls oben nicht definiert
+    if 'assignment_data' not in locals():
+        assignment_data = []
     return render_template('dashboard.html',
         recent_assets=recent_assets,
         chart_data=chart_data,
@@ -488,6 +506,7 @@ def dashboard():
         months=months,
         values=values,
         category_data=category_data,
+        assignment_data=assignment_data,
         cost_type_labels=cost_type_labels,
         cost_amounts=cost_amounts,
         locations=locations,

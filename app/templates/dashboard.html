@@ -145,8 +145,19 @@
         <!-- Status der Assets -->
         <div class="chart-card">
             <h5 class="card-title">Asset Status</h5>
-            <div class="chart-container circle-chart">
-                <canvas id="statusChart"></canvas>
+            <div class="status-numbers-overview" style="display:flex; justify-content:space-around; align-items:center; padding:2em 0;">
+                <div style="text-align:center;">
+                    <div style="font-size:2.5em; font-weight:bold; color:#28a745;">{{ active_count }}</div>
+                    <div><span class="badge status-active" style="background:#28a745; color:#fff; padding:0.3em 1em; border-radius:1em;">Aktiv</span></div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:2.5em; font-weight:bold; color:#ffc107;">{{ on_loan_count }}</div>
+                    <div><span class="badge status-borrowed" style="background:#ffc107; color:#222; padding:0.3em 1em; border-radius:1em;">Ausgeliehen</span></div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:2.5em; font-weight:bold; color:#6c757d;">{{ inactive_count }}</div>
+                    <div><span class="badge status-inactive" style="background:#6c757d; color:#fff; padding:0.3em 1em; border-radius:1em;">Inaktiv</span></div>
+                </div>
             </div>
         </div>
 
@@ -168,7 +179,7 @@
 
         <!-- Assets nach Kategorie -->
         <div class="chart-card">
-            <h5 class="card-title">Assets nach Kategorie</h5>
+            <h5 class="card-title">Assets nach Kategorie und Zuordnung</h5>
             <div class="chart-container category-chart-container">
                 <canvas id="categoryChart"></canvas>
             </div>
@@ -256,15 +267,18 @@
 <script id="chart-data" type="application/json">
     {{ chart_data|tojson }}
 </script>
+<script id="assignment-data" type="application/json">{{ assignment_data|tojson }}</script>
 <!-- DEBUG: Chartdaten anzeigen -->
 <script>
     try {
       var data = JSON.parse(document.getElementById('chart-data').textContent);
       console.log("Chartdaten:", data);
+      var assignmentData = JSON.parse(document.getElementById('assignment-data').textContent);
+      console.log("Zuordnungsdaten:", assignmentData);
     } catch(e) {
-      console.error("Fehler beim Parsen der Chartdaten:", e);
+      console.error("Fehler beim Parsen der Chartdaten oder assignmentData:", e);
     }
-  </script>
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Daten aus dem JSON-Tag laden
@@ -422,22 +436,55 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Kategorien Chart
+    // Kategorien & Zuordnung Chart (gruppierte Balken)
+    let categoryLabels = chartData.categories.map(item => item.category);
+    let categoryCounts = chartData.categories.map(item => item.count);
+    let assignmentData = [];
+    try {
+        assignmentData = JSON.parse(document.getElementById('assignment-data').textContent);
+    } catch (e) {}
+    let assignmentLabels = assignmentData.map(item => item.assignment);
+    let assignmentCounts = assignmentData.map(item => item.count);
+    let allLabels = Array.from(new Set([...categoryLabels, ...assignmentLabels]));
+    let catData = allLabels.map(l => {
+        let idx = categoryLabels.indexOf(l);
+        return idx >= 0 ? categoryCounts[idx] : 0;
+    });
+    let assignData = allLabels.map(l => {
+        let idx = assignmentLabels.indexOf(l);
+        return idx >= 0 ? assignmentCounts[idx] : 0;
+    });
     new Chart(document.getElementById('categoryChart'), {
         type: 'bar',
         data: {
-            labels: chartData.categories.map(item => item.category),
-            datasets: [{
-                label: 'Anzahl Assets',
-                data: chartData.categories.map(item => item.count),
-                backgroundColor: '#3498db',
-                borderRadius: 6,
-                maxBarThickness: 50
-            }]
+            labels: allLabels,
+            datasets: [
+                {
+                    label: 'Kategorie',
+                    data: catData,
+                    backgroundColor: '#3498db',
+                    borderRadius: 6,
+                    maxBarThickness: 50
+                },
+                {
+                    label: 'Zuordnung',
+                    data: assignData,
+                    backgroundColor: '#6f42c1',
+                    borderRadius: 6,
+                    maxBarThickness: 50
+                }
+            ]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true },
+                tooltip: { enabled: true }
+            },
+            scales: {
+                x: { title: { display: true, text: 'Kategorie / Zuordnung' } },
+                y: { title: { display: true, text: 'Anzahl' }, beginAtZero: true }
+            }
         }
     });
 
