@@ -181,6 +181,36 @@
                 <canvas id="manufacturerChart"></canvas>
             </div>
         </div>
+
+        <!-- Standorte mit laufender Lieferung -->
+        <div class="chart-card">
+            <h5 class="card-title">Standorte mit laufender Lieferung</h5>
+            {% if location_delivery_status and location_delivery_status|length > 0 %}
+            <div class="table-responsive">
+                <table class="table is-striped is-hoverable is-fullwidth">
+                    <thead>
+                        <tr>
+                            <th>Standort</th>
+                            <th>Lieferstatus</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in location_delivery_status %}
+                        <tr>
+                            <td>{{ entry.location }}</td>
+                            <td>
+                                <span class="status-dot {{ entry.status_class }}" title="{{ entry.status_message }}"></span>
+                                <span class="tag is-light">{{ entry.status_tag }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+                <div style="text-align:center; color:#888; padding:2em;">Aktuell keine Standorte mit laufender Lieferung.</div>
+            {% endif %}
+        </div>
     </div>
 
     <!-- Herstellerdaten für Chart -->

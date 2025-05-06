@@ -384,6 +384,52 @@ def dashboard():
         category_data.append({'category': 'Ohne Kategorie', 'count': no_category_count})
 
     # Debug-Ausgabe
+
+    # --- Standort-Lieferstatus-Übersicht für Dashboard ---
+    from app.models import Order, Location
+    from app.aftership_tracking import get_tracking_status, add_tracking_number
+
+    # Hole alle aktiven Bestellungen mit Trackingnummer und Standort
+    active_orders = Order.query.filter(Order.archived == False, Order.tracking_number != None, Order.tracking_number != '', Order.location_id != None).all()
+    location_delivery_status = []
+    for order in active_orders:
+        status_tag = None
+        subtag_message = None
+        if order.tracking_number and order.tracking_carrier:
+            try:
+                tracking_info = get_tracking_status(order.tracking_number, order.tracking_carrier)
+            except Exception as e:
+                tracking_info = None
+                if "404" in str(e):
+                    add_tracking_number(order.tracking_number, order.tracking_carrier)
+                    try:
+                        tracking_info = get_tracking_status(order.tracking_number, order.tracking_carrier)
+                    except Exception:
+                        tracking_info = None
+            if tracking_info and 'data' in tracking_info and 'tracking' in tracking_info['data']:
+                status_tag = tracking_info['data']['tracking'].get('tag')
+                subtag_message = tracking_info['data']['tracking'].get('subtag_message')
+        # Status-Klasse für Farbdot
+        def tracking_status_class(tag):
+            return {
+                'Delivered': 'status-delivered',
+                'InTransit': 'status-intransit',
+                'OutForDelivery': 'status-intransit',
+                'AttemptFail': 'status-problem',
+                'Exception': 'status-problem',
+                'Expired': 'status-problem',
+                'InfoReceived': 'status-intransit',
+            }.get(tag, 'status-unknown')
+        status_class = tracking_status_class(status_tag)
+        # Standort-Name
+        location_name = order.location_obj.name if order.location_obj else (order.location or '-')
+        location_delivery_status.append({
+            'location': location_name,
+            'status_tag': status_tag or 'Unbekannt',
+            'status_class': status_class,
+            'status_message': subtag_message or '',
+        })
+
     print('Kategorie-Auswertung für Dashboard (nur aktive Assets):')
     for entry in category_data:
         print(entry)
@@ -445,7 +491,8 @@ def dashboard():
         cost_type_labels=cost_type_labels,
         cost_amounts=cost_amounts,
         locations=locations,
-        manufacturer_data=manufacturer_data
+        manufacturer_data=manufacturer_data,
+        location_delivery_status=location_delivery_status
     )
 
 @main.route('/assets')
