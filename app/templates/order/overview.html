@@ -1,4 +1,8 @@
 {% extends 'base.html' %}
+{% block styles %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tracking_status.css') }}">
+{% endblock %}
 {% block content %}
 <h1>Bestellungsübersicht</h1>
 <form method="get" class="mb-4">
@@ -87,7 +91,15 @@
                   {% else %}-{% endif %}
                 </td>
                 <td>{{ order.order_date.strftime('%d.%m.%Y %H:%M') }}</td>
-                <td>{{ order.status }}</td>
+                <td>
+  {% set status_class = order_status_classes[order.id] %}
+  <span class="status-dot {{ status_class }}" title="{{ order.tracking_subtag_message or '' }}"></span>
+  {% if order.tracking_tag %}
+    <span class="tag is-light">
+      {{ order.tracking_tag }}
+    </span>
+  {% endif %}
+</td>
                 <td>{{ order.items|length }}</td>
                 <td><a href="{{ url_for('order.order_detail', order_id=order.id) }}" class="button is-small is-info">Anzeigen</a></td>
                 <td><a href="{{ url_for('order.order_export_dialog', order_id=order.id) }}" class="button is-small is-success">CSV</a></td>

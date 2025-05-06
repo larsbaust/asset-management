@@ -5,6 +5,7 @@ from app import db
 from app.order.forms import OrderPlanForm, AssetOrderForm
 from flask_mail import Message
 from app import mail
+from datetime import datetime
 
 @order.route('/order/<int:order_id>/send_email')
 def send_order_email(order_id):
@@ -65,18 +66,23 @@ def order_plan():
                 form.assets.entries[i].asset_id.data = asset.id
     if form.validate_on_submit():
         # Bestellung anlegen
-        order = Order(
+        new_order = Order(
             supplier_id=form.supplier.data,
-            location_id=form.location.data,
-            tracking_number=form.tracking_number.data.strip() if form.tracking_number.data else None
+            location_id=form.location.data if form.location.data != 0 else None,
+            tracking_number=form.tracking_number.data,
+            tracking_carrier=form.tracking_carrier.data,
+            comment=form.comment.data,
+            order_date=datetime.utcnow(),
+            status='offen',
+            archived=False
         )
-        db.session.add(order)
+        db.session.add(new_order)
         db.session.flush()  # order.id verfügbar
         n_items = 0
         for asset_form in form.assets:
             if asset_form.select.data and asset_form.quantity.data > 0:
                 order_item = OrderItem(
-                    order_id=order.id,
+                    order_id=new_order.id,
                     asset_id=int(asset_form.asset_id.data),
                     quantity=asset_form.quantity.data,
                     serial_number=asset_form.serial_number.data.strip() if asset_form.serial_number.data else None
@@ -145,6 +151,21 @@ def delete_order(order_id):
     # Nach Löschen ins Archiv zurück, falls dort gelöscht wurde
     return redirect(url_for('order.order_overview', **args))
 
+def tracking_status_class(tag):
+    if tag == "Delivered":
+        return "status-delivered"
+    elif tag in ["InTransit", "OutForDelivery", "InfoReceived"]:
+        return "status-intransit"
+    elif tag in ["Exception", "Expired", "FailedAttempt"]:
+        return "status-problem"
+    else:
+        return "status-unknown"
+ 
+
+from flask import Response, request, render_template
+import csv
+from io import StringIO
+
 @order.route('/order/overview')
 def order_overview():
     show_archived = request.args.get('archived', type=int, default=0)
@@ -174,11 +195,45 @@ def order_overview():
     suppliers = Supplier.query.order_by(Supplier.name).all()
     # Alle Standorte für Dropdown (nur die, die in Orders verwendet werden)
     locations = sorted(set([o.location for o in Order.query.filter(Order.location != None).all() if o.location and o.location.strip() != '']))
-    return render_template('order/overview.html', orders=orders, suppliers=suppliers, locations=locations, show_archived=show_archived, selected_status=selected_status, selected_supplier_id=selected_supplier_id, selected_location=selected_location, selected_tracking_number=selected_tracking_number)
+    # Mapping: Tracking-Status-Klasse für jede Bestellung
+    from app.aftership_tracking import get_tracking_status, add_tracking_number
+    order_status_classes = {}
+    for order in orders:
+        tag = None
+        if order.tracking_number and order.tracking_carrier:
+            try:
+                tracking_info = get_tracking_status(order.tracking_number, order.tracking_carrier)
+                print(f"[TrackingMore] tracking_info für Order {order.id}: {tracking_info}")
+            except Exception as e:
+                tracking_info = None
+                if "404" in str(e):
+                    # Trackingnummer registrieren und erneut abfragen
+                    result = add_tracking_number(order.tracking_number, order.tracking_carrier)
+                    print(f"[TrackingMore] add_tracking_number({order.tracking_number}, {order.tracking_carrier}) response:", result)
+                    try:
+                        tracking_info = get_tracking_status(order.tracking_number, order.tracking_carrier)
+                        print(f"[TrackingMore] get_tracking_status after add_tracking_number response:", tracking_info)
+                    except Exception as e2:
+                        print(f"[TrackingMore] get_tracking_status after add_tracking_number: {e2}")
+                        tracking_info = None
+            tag = None
+            subtag_message = None
+            # AfterShip Antwort korrekt auswerten
+            if tracking_info and 'data' in tracking_info and 'tracking' in tracking_info['data']:
+                tag = tracking_info['data']['tracking'].get('tag')
+                subtag_message = tracking_info['data']['tracking'].get('subtag_message')
+            print(f"[AfterShip] tag für Order {order.id}: {tag}")
+            print(f"[AfterShip] subtag_message für Order {order.id}: {subtag_message}")
+            order.tracking_tag = tag
+            order.tracking_subtag_message = subtag_message
+        else:
+            order.tracking_tag = None
+            order.tracking_subtag_message = None
+        order_status_classes[order.id] = tracking_status_class(order.tracking_tag) if order.tracking_tag else "status-unknown"
+        print(f"[TrackingMore] order_status_classes für Order {order.id}: {order_status_classes[order.id]}")
 
-from flask import Response, request, render_template
-import csv
-from io import StringIO
+    return render_template('order/overview.html', orders=orders, suppliers=suppliers, locations=locations, show_archived=show_archived, selected_status=selected_status, selected_supplier_id=selected_supplier_id, selected_location=selected_location, selected_tracking_number=selected_tracking_number, order_status_classes=order_status_classes)
+
 
 @order.route('/order/<int:order_id>/export_dialog', methods=['GET', 'POST'])
 def order_export_dialog(order_id):
@@ -225,25 +280,23 @@ def order_export_dialog(order_id):
                         # Robust: Hersteller kann fehlen oder nicht gesetzt sein
                         mans = getattr(item.asset, 'manufacturers', None) if item.asset else None
                         if mans:
-                            row.append(', '.join([getattr(m, 'name', '') for m in mans]))
+                            row.append(', '.join([m.name for m in mans]))
                         else:
                             row.append('')
                     elif f['name'] == 'tracking_number':
-                        row.append(getattr(order, 'tracking_number', ''))
+                        row.append(order.tracking_number or '')
                     elif f['name'] == 'comment':
-                        row.append(getattr(item, 'comment', ''))
+                        row.append(item.comment if hasattr(item, 'comment') else '')
                     else:
                         row.append('')
                 except Exception as e:
-                    row.append('')
+                    row.append(f'Fehler: {e}')
             preview_rows.append(row)
-        only_empty = all(all(cell == '' for cell in row) for row in preview_rows) if preview_rows else True
         return jsonify({
             'header': [f['export_name'] for f in selected_fields],
             'rows': preview_rows,
-            'only_empty': only_empty
+            'only_empty': False
         })
-
     # POST = Export generieren
     if request.method == 'POST':
         # Mapping aus Formular übernehmen
@@ -322,6 +375,7 @@ def order_detail(order_id):
             return redirect(url_for('order.order_detail', order_id=order.id))
         order.status = form.status.data
         order.tracking_number = form.tracking_number.data
+        order.tracking_carrier = form.tracking_carrier.data
         order.comment = form.comment.data
         db.session.commit()
         # Automatischer Asset-Import bei Statuswechsel auf 'erledigt'

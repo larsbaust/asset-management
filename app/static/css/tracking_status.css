@@ -1,0 +1,12 @@
+.status-dot {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.status-delivered { background: #22c55e; box-shadow: 0 0 4px #22c55e88; }
+.status-intransit { background: #facc15; box-shadow: 0 0 4px #facc1588; }
+.status-problem { background: #ef4444; box-shadow: 0 0 4px #ef444488; }
+.status-unknown { background: #bdbdbd; box-shadow: 0 0 4px #bdbdbd88; }

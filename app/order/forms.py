@@ -13,13 +13,26 @@ class AssetOrderForm(FlaskForm):
 class OrderPlanForm(FlaskForm):
     supplier = SelectField('Lieferant', coerce=int, validators=[DataRequired()])
     location = SelectField('Standort', coerce=int, choices=[], validators=[DataRequired()])
-    tracking_number = StringField('Sendungsverfolgungsnummer (optional)')  # NEU
+    tracking_number = StringField('Sendungsverfolgungsnummer (optional)')
+    tracking_carrier = SelectField('Paketdienst', choices=[
+        ('', 'Bitte wählen...'),
+        ('dhl', 'DHL'),
+        ('dpd', 'DPD'),
+        ('ups', 'UPS'),
+        ('gls', 'GLS'),
+        ('hermes', 'Hermes'),
+        ('fedex', 'FedEx'),
+        ('bpost', 'bpost'),
+        ('usps', 'USPS'),
+        ('other', 'Andere')
+    ])
     # Filterfelder
     filter_name = StringField('Name')
     filter_category = SelectField('Kategorie', coerce=int, choices=[], default=0)
     filter_manufacturer = SelectField('Hersteller', coerce=int, choices=[], default=0)
     filter_assignment = SelectField('Zuordnung', coerce=int, choices=[], default=0)
     assets = FieldList(FormField(AssetOrderForm))
+    comment = TextAreaField('Kommentar (optional)')
     submit = SubmitField('Bestellung erstellen')
 
     def __init__(self, *args, **kwargs):
@@ -38,4 +51,16 @@ class OrderPlanForm(FlaskForm):
 class OrderEditForm(FlaskForm):
     status = SelectField('Status', choices=[('offen', 'offen'), ('bestellt', 'bestellt'), ('erledigt', 'erledigt')], validators=[DataRequired()])
     tracking_number = StringField('Sendungsverfolgungsnummer (optional)')
+    tracking_carrier = SelectField('Paketdienst', choices=[
+        ('', 'Bitte wählen...'),
+        ('dhl', 'DHL'),
+        ('dpd', 'DPD'),
+        ('ups', 'UPS'),
+        ('gls', 'GLS'),
+        ('hermes', 'Hermes'),
+        ('fedex', 'FedEx'),
+        ('bpost', 'bpost'),
+        ('usps', 'USPS'),
+        ('other', 'Andere')
+    ])
     comment = TextAreaField('Kommentar')

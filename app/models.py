@@ -96,7 +96,8 @@ class Order(db.Model):
     comment = db.Column(db.Text)
     location = db.Column(db.String(100))  # ALT: Standort (wird migriert)
     location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=True)  # NEU: Standort als ForeignKey
-    tracking_number = db.Column(db.String(100))  # NEU: Sendungsverfolgungsnummer
+    tracking_number = db.Column(db.String(100))
+    tracking_carrier = db.Column(db.String(50))  # AfterShip Carrier Slug, z.B. 'dhl', 'dpd', 'ups'  # NEU: Sendungsverfolgungsnummer
     archived = db.Column(db.Boolean, default=False)  # NEU: Für Archivierung
     supplier = db.relationship('Supplier', backref='orders')
     items = db.relationship('OrderItem', backref='order', cascade="all, delete-orphan", lazy=True)

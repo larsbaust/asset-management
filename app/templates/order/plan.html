@@ -27,6 +27,18 @@
             {% endif %}
         </div>
     </div>
+    <div class="field mb-4">
+        <label class="label">Paketdienst</label>
+        <div class="control">
+            {{ form.tracking_carrier(class_="select") }}
+        </div>
+    </div>
+    <div class="field mb-4">
+        <label class="label">Kommentar (optional)</label>
+        <div class="control">
+            {{ form.comment(class_="textarea") }}
+        </div>
+    </div>
     <!-- Filterleiste für Assets -->
     <div class="box mb-4">
         <div class="columns is-multiline">
