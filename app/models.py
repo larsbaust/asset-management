@@ -77,6 +77,17 @@ class Supplier(db.Model):
         return f'<Supplier {self.name}>'
 
 
+from datetime import datetime
+
+class OrderComment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    order = db.relationship('Order', back_populates='comments')
+
+
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     supplier_id = db.Column(db.Integer, db.ForeignKey('supplier.id'), nullable=False)
@@ -93,6 +104,8 @@ class Order(db.Model):
 
     def __repr__(self):
         return f'<Order {self.id} von {self.supplier.name}>'
+
+Order.comments = db.relationship('OrderComment', back_populates='order', lazy='dynamic', cascade='all, delete-orphan')
 
 class OrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)

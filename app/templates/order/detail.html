@@ -40,7 +40,7 @@
             <th>Kategorie</th>
             <th>Hersteller</th>
             <th>Menge</th>
-            <th>Kommentar</th>
+            <th>Wert</th>
         </tr>
     </thead>
     <tbody>
@@ -55,7 +55,7 @@
                 {% else %}-{% endif %}
             </td>
             <td>{{ item.quantity }}</td>
-            <td>{{ item.comment or '' }}</td>
+            <td>{{ item.asset.value if item.asset and item.asset.value is not none else '-' }}</td>
         </tr>
         {% else %}
         <tr><td colspan="6">Keine Positionen vorhanden.</td></tr>
@@ -69,4 +69,17 @@
 </a>
 {% endif %}
 <a href="{{ url_for('order.order_overview') }}" class="button">Zurück zur Übersicht</a>
+
+<hr>
+<h3>Kommentarverlauf</h3>
+<div>
+  {% for comment in order.comments.order_by(OrderComment.timestamp.desc()) %}
+    <div style="margin-bottom:1em;">
+      <strong>{{ comment.timestamp.strftime('%d.%m.%Y %H:%M') }}:</strong><br>
+      {{ comment.content }}
+    </div>
+  {% else %}
+    <em>Noch keine Kommentare dokumentiert.</em>
+  {% endfor %}
+</div>
 {% endblock %}

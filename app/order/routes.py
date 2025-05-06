@@ -312,6 +312,14 @@ def order_detail(order_id):
     from app.models import Asset
     status_before = order.status
     if form.validate_on_submit():
+        # Kommentar als OrderComment speichern
+        if form.comment.data and form.comment.data.strip():
+            from app.models import OrderComment
+            new_comment = OrderComment(order_id=order.id, content=form.comment.data.strip())
+            db.session.add(new_comment)
+            db.session.commit()
+            flash('Kommentar dokumentiert!', 'success')
+            return redirect(url_for('order.order_detail', order_id=order.id))
         order.status = form.status.data
         order.tracking_number = form.tracking_number.data
         order.comment = form.comment.data
@@ -372,7 +380,8 @@ def order_detail(order_id):
                 flash('Keine neuen Assets angelegt (Seriennummern bereits vorhanden oder leer).', 'info')
         flash('Bestellstatus und Kommentar aktualisiert!')
         return redirect(url_for('order.order_detail', order_id=order.id))
-    return render_template('order/detail.html', order=order, form=form)
+    from app.models import OrderComment
+    return render_template('order/detail.html', order=order, form=form, OrderComment=OrderComment)
 
 @order.route('/order/history')
 def order_history():

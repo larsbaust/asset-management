@@ -8,6 +8,7 @@ import os
 mail = Mail()  # Mail-Objekt global initialisieren
 
 db = SQLAlchemy()
+from app.models import OrderComment
 login_manager = LoginManager()
 
 from jinja2 import ChoiceLoader, FileSystemLoader
