@@ -30,3 +30,4 @@ typing_extensions==4.13.0
 Werkzeug==3.0.1
 WTForms==3.2.1
 gunicorn
+requests
