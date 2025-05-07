@@ -7,6 +7,9 @@ load_dotenv()
 AFTERSHIP_API_KEY = os.getenv("AFTERSHIP_API_KEY")
 
 def add_tracking_number(tracking_number, slug):
+    print("[DEBUG][add_tracking_number] AFTERSHIP_API_KEY:", AFTERSHIP_API_KEY)
+    print("[DEBUG][add_tracking_number] Trackingnummer:", tracking_number)
+    print("[DEBUG][add_tracking_number] Carrier Slug:", slug)
     """
     Legt eine neue Sendung bei AfterShip an.
     :param tracking_number: Die Paketnummer
@@ -30,6 +33,9 @@ def add_tracking_number(tracking_number, slug):
     return response.json()
 
 def get_tracking_status(tracking_number, slug):
+    print("[DEBUG][get_tracking_status] AFTERSHIP_API_KEY:", AFTERSHIP_API_KEY)
+    print("[DEBUG][get_tracking_status] Trackingnummer:", tracking_number)
+    print("[DEBUG][get_tracking_status] Carrier Slug:", slug)
     """
     Fragt den Sendungsstatus bei AfterShip ab.
     :param tracking_number: Die Paketnummer
