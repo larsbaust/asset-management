@@ -4,34 +4,43 @@
 <div class="container mt-4">
     <div class="row">
         <div class="col-md-8">
-            <h1>{{ asset.name }}</h1>
-            <div class="card mb-4">
-                <div class="card-body">
-                    <h5 class="card-title">Asset Details</h5>
-                    <dl class="row">
-                        <dt class="col-sm-3">Beschreibung</dt>
-                        <dd class="col-sm-9">{{ asset.description or 'Keine Beschreibung verfügbar' }}</dd>
-                        
-                        <dt class="col-sm-3">Kategorie</dt>
-                        <dd class="col-sm-9">{{ asset.category }}</dd>
-                        
-                        <dt class="col-sm-3">Status</dt>
-                        <dd class="col-sm-9">{{ asset.status }}</dd>
-                        
-                        <dt class="col-sm-3">Standort</dt>
-                        <dd class="col-sm-9">{{ asset.location_obj.name if asset.location_obj else 'Kein Standort angegeben' }}</dd>
-                        
-                        <dt class="col-sm-3">Kaufdatum</dt>
-                        <dd class="col-sm-9">{{ asset.purchase_date.strftime('%d.%m.%Y') if asset.purchase_date else 'Nicht angegeben' }}</dd>
-                        
-                        <dt class="col-sm-3">Kaufpreis</dt>
-                        <dd class="col-sm-9">{{ "%.2f €"|format(asset.purchase_price) if asset.purchase_price else 'Nicht angegeben' }}</dd>
-                        
-                        <dt class="col-sm-3">Aktueller Wert</dt>
-                        <dd class="col-sm-9">{{ "%.2f €"|format(asset.current_value) if asset.current_value else 'Nicht angegeben' }}</dd>
-                    </dl>
-                </div>
-            </div>
+    <div class="card mb-4 shadow" style="border-radius: 18px;">
+        <div class="card-body">
+            <h2 class="card-title mb-4" style="font-weight: 700; font-size: 2.1rem; color: #2c3e50;">{{ asset.name }}</h2>
+            <table class="table table-bordered" style="background: #fafbfc; border-radius: 12px; overflow: hidden;">
+                <tbody>
+                    <tr>
+                        <th style="width: 30%;">Beschreibung</th>
+                        <td>{{ asset.description or 'Keine Beschreibung verfügbar' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Kategorie</th>
+                        <td>{{ asset.category }}</td>
+                    </tr>
+                    <tr>
+                        <th>Status</th>
+                        <td><span class="badge bg-info text-dark" style="font-size: 1.1em;">{{ asset.status }}</span></td>
+                    </tr>
+                    <tr>
+                        <th>Standort</th>
+                        <td>{{ asset.location_obj.name if asset.location_obj else 'Kein Standort angegeben' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Kaufdatum</th>
+                        <td>{{ asset.purchase_date.strftime('%d.%m.%Y') if asset.purchase_date else 'Nicht angegeben' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Kaufpreis</th>
+                        <td>{{ "%.2f €"|format(asset.purchase_price) if asset.purchase_price else 'Nicht angegeben' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Aktueller Wert</th>
+                        <td>{{ "%.2f €"|format(asset.current_value) if asset.current_value else 'Nicht angegeben' }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 
             <!-- Wartungshistorie -->
             <div class="card mb-4">
@@ -104,28 +113,28 @@
             <!-- QR Code -->
             <div class="card mb-4">
                 <div class="card-body text-center">
-                    <h5 class="card-title">QR Code</h5>
-                    <img src="{{ url_for('main.asset_qr', id=asset.id) }}" alt="Asset QR Code" class="img-fluid">
-                </div>
+    <h5 class="card-title mb-3">QR Code</h5>
+    <img src="{{ url_for('main.asset_qr', id=asset.id) }}" alt="Asset QR Code" class="img-fluid" style="max-width: 220px; margin: 0 auto; display: block;">
+</div>
             </div>
 
             <!-- Aktionen -->
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Aktionen</h5>
-                    <div class="d-grid gap-2">
-                        {% if asset.status == 'active' %}
-                        <a href="{{ url_for('main.loan_asset', id=asset.id) }}" class="btn btn-success">
-                            <i class="fas fa-hand-holding"></i> Ausleihen
-                        </a>
-                        {% endif %}
-                        <a href="{{ url_for('main.edit_asset', id=asset.id) }}" class="btn btn-primary">
-                            <i class="fas fa-edit"></i> Bearbeiten
-                        </a>
-                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                            <i class="fas fa-trash"></i> Löschen
-                        </button>
-                    </div>
+                    <div class="d-grid gap-3">
+    {% if asset.status == 'active' %}
+    <a href="{{ url_for('main.loan_asset', id=asset.id) }}" class="btn btn-success btn-lg" style="margin-bottom: 0.5rem;">
+        <i class="fas fa-hand-holding"></i> Ausleihen
+    </a>
+    {% endif %}
+    <a href="{{ url_for('main.edit_asset', id=asset.id) }}" class="btn btn-primary btn-lg" style="margin-bottom: 0.5rem;">
+        <i class="fas fa-edit"></i> Bearbeiten
+    </a>
+    <button type="button" class="btn btn-danger btn-lg" data-bs-toggle="modal" data-bs-target="#deleteModal">
+        <i class="fas fa-trash"></i> Löschen
+    </button>
+</div>
                 </div>
             </div>
         </div>

@@ -3,8 +3,8 @@
 {% block content %}
 <div class="container">
     <div class="columns is-centered">
-        <div class="column is-6">
-            <div class="box">
+        <div class="column is-8">
+            <div class="box" style="padding: 2.5rem 2.5rem;">
                 <h1 class="title has-text-centered">{{ title }}</h1>
                 
                 <form method="POST">
@@ -85,14 +85,14 @@
                     </div>
 
                     <div class="field">
-                        <div class="control">
-                            <button type="submit" class="button is-primary is-fullwidth">
-                                <span class="icon">
-                                    <i class="fas fa-save"></i>
-                                </span>
-                                <span>Speichern</span>
-                            </button>
-                        </div>
+                        <div class="control has-text-centered" style="margin-top: 2rem;">
+    <button type="submit" class="button is-primary" style="min-width: 180px;">
+        <span class="icon">
+            <i class="fas fa-save"></i>
+        </span>
+        <span>Speichern</span>
+    </button>
+</div>
                     </div>
                 </form>
             </div>
