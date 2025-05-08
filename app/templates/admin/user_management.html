@@ -1,49 +1,137 @@
 {% extends "base.html" %}
 {% block content %}
+<style>
+  .user-card {
+    border-radius: 1rem;
+    box-shadow: 0 4px 24px rgba(56,178,172,0.10);
+    background: #fff;
+    border: none;
+    margin-bottom: 2rem;
+  }
+  .user-card-header {
+    background: linear-gradient(90deg, #38b2ac 0%, #4fd1c5 100%);
+    color: #fff;
+    border-radius: 1rem 1rem 0 0;
+    padding: 1.1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .user-card-header h3 {
+    margin: 0;
+    font-weight: 700;
+    font-size: 1.45rem;
+    letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .user-table {
+    width: 100%;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    margin-top: 1.2rem;
+  }
+  .user-table th, .user-table td {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+    font-size: 1.02rem;
+  }
+  .user-table th {
+    background: #e6fffa;
+    color: #319795;
+    border-bottom: 2px solid #c6f6f5;
+    font-weight: 700;
+  }
+  .user-table tbody tr {
+    background: #fff;
+    transition: background 0.15s;
+  }
+  .user-table tbody tr:hover {
+    background: #f0fdfa;
+  }
+  .user-actions a {
+    margin-right: 0.5rem;
+    font-size: 1.05rem;
+    padding: 0.35rem 0.7rem;
+    border-radius: 0.4rem;
+    transition: background 0.15s, color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .user-actions .btn-primary {
+    background: #3182ce;
+    color: #fff;
+    border: none;
+  }
+  .user-actions .btn-primary:hover {
+    background: #225ea8;
+    color: #fff;
+  }
+  .user-actions .btn-danger {
+    background: #e53e3e;
+    color: #fff;
+    border: none;
+  }
+  .user-actions .btn-danger:hover {
+    background: #9b2c2c;
+    color: #fff;
+  }
+  @media (max-width: 700px) {
+    .user-card { padding: 0.5rem; }
+    .user-card-header { flex-direction: column; gap: 0.6rem; }
+    .user-table th, .user-table td { padding: 0.5rem 0.4rem; }
+  }
+</style>
 <div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-10">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="mb-0">Benutzerverwaltung</h3>
-                    <a href="{{ url_for('admin.add_user') }}" class="btn btn-success">Neuen Benutzer anlegen</a>
-                </div>
-                <div class="card-body">
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                      {% if messages %}
-                        {% for category, message in messages %}
-                          <div class="notification is-{{ category }}">
-                            {{ message|safe }}
-                          </div>
-                        {% endfor %}
-                      {% endif %}
-                    {% endwith %}
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Benutzername</th>
-                                <th>Rolle</th>
-                                <th>Aktionen</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for user in users %}
-                            <tr>
-                                <td>{{ user.id }}</td>
-                                <td>{{ user.username }}</td>
-                                <td>{{ user.role|capitalize }}</td>
-                                <td>
-                                    <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="btn btn-sm btn-primary">Bearbeiten</a>
-                                    <a href="{{ url_for('admin.delete_user', user_id=user.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Benutzer wirklich löschen?');">Löschen</a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+  <div class="row justify-content-center">
+    <div class="col-md-10">
+      <div class="user-card">
+        <div class="user-card-header">
+          <h3><i class="fas fa-users-cog"></i> Benutzerverwaltung</h3>
+          <a href="{{ url_for('admin.add_user') }}" class="btn btn-success" style="font-weight:600;"><i class="fas fa-user-plus"></i> Neuen Benutzer anlegen</a>
         </div>
+        <div class="card-body" style="padding:2rem 1.5rem;">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="notification is-{{ category }}">
+                  {{ message|safe }}
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+          <div style="overflow-x:auto;">
+            <table class="user-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Benutzername</th>
+                  <th>Rolle</th>
+                  <th>Aktionen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for user in users %}
+                <tr>
+                  <td>{{ user.id }}</td>
+                  <td>{{ user.username }}</td>
+                  <td>{{ user.role|capitalize }}</td>
+                  <td class="user-actions">
+                    <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i> Bearbeiten</a>
+                    <a href="{{ url_for('admin.delete_user', user_id=user.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Benutzer wirklich löschen?');"><i class="fas fa-trash-alt"></i> Löschen</a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}

@@ -126,33 +126,86 @@
         </div>
             </div>
             <div class="navbar-end">
-                {% if current_user.is_authenticated %}
-                    <div class="navbar-item">
-                        <span class="icon"><i class="fas fa-user"></i></span>
-                        <span>{{ current_user.username }}</span>
-                        {% if current_user.role %}
-                            <span class="tag is-info ml-2">{{ current_user.role|capitalize }}</span>
-                        {% endif %}
-                        <a href="{{ url_for('auth.logout') }}" class="button is-light ml-3">
-                            <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
-                            <span>Logout</span>
-                        </a>
-                    </div>
-                {% else %}
-                    <div class="navbar-item">
-                        <div class="buttons">
-                            <a href="{{ url_for('auth.register') }}" class="button is-primary">
-                                <strong>Registrieren</strong>
-                            </a>
-                            <a href="{{ url_for('auth.login') }}" class="button is-light">
-                                Login
-                            </a>
-                        </div>
-                    </div>
-                {% endif %}
-            </div>
+  {% if current_user.is_authenticated %}
+    <div class="navbar-item has-dropdown is-hoverable">
+      <a class="navbar-link" style="display: flex; align-items: center; gap: 0.5rem;">
+        {% if current_user.profile_image %}
+          <img src="{{ url_for('static', filename='profile_images/' ~ current_user.profile_image) }}" alt="Profilbild" style="width:32px; height:32px; border-radius:50%; object-fit:cover; margin-right:0.5rem;">
+        {% else %}
+          <img src="https://ui-avatars.com/api/?name={{ current_user.vorname or '' }}+{{ current_user.nachname or current_user.username }}&background=38b2ac&color=fff&size=32" alt="Profilbild" style="width:32px; height:32px; border-radius:50%; object-fit:cover; margin-right:0.5rem;">
+        {% endif %}
+        <span>{{ current_user.username }}</span>
+        {% if current_user.role %}
+          <span class="tag is-info ml-2">{{ current_user.role|capitalize }}</span>
+        {% endif %}
+      </a>
+      <div class="navbar-dropdown is-right">
+        <div class="navbar-item" style="font-weight:600;">
+          <span class="icon"><i class="fas fa-user-circle"></i></span>
+          <span style="margin-left:0.5em;">{{ current_user.vorname or '' }} {{ current_user.nachname or current_user.username }}</span>
+        </div>
+        <hr class="navbar-divider">
+        <a class="navbar-item" href="{{ url_for('profile.profile') }}">
+          <span class="icon"><i class="fas fa-id-badge"></i></span>
+          <span style="margin-left:0.5em;">Mein Profil</span>
+        </a>
+        <a class="navbar-item" href="{{ url_for('auth.logout') }}">
+          <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
+          <span style="margin-left:0.5em;">Logout</span>
+        </a>
+      </div>
+    </div>
+  {% else %}
+    <div class="navbar-item">
+      <div class="buttons">
+        <a href="{{ url_for('auth.register') }}" class="button is-primary">
+          <strong>Registrieren</strong>
+        </a>
+        <a href="{{ url_for('auth.login') }}" class="button is-light">
+          Login
+        </a>
+      </div>
+    </div>
+  {% endif %}
+</div>
     </nav>
 
+    <!-- Flash Nachrichten -->
+    <div id="flash-container" class="flash-container" style="position:fixed; top:60px; left:0; right:0; z-index:9999; width:100%; pointer-events:none;">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="notification is-{{ category }} flash-message animate__animated animate__fadeInDown" style="max-width:480px; margin:0 auto 0.5rem auto; pointer-events:auto;">
+              <button class="delete"></button>
+              {{ message|safe }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Automatisches Ausblenden nach 3 Sekunden
+        document.querySelectorAll('.flash-message').forEach(function(msg) {
+          setTimeout(function() {
+            msg.classList.remove('animate__fadeInDown');
+            msg.classList.add('animate__fadeOutUp');
+            setTimeout(function() { msg.remove(); }, 800);
+          }, 3000);
+        });
+        // Manuelles Schließen
+        document.querySelectorAll('.flash-message .delete').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var msg = btn.closest('.flash-message');
+            msg.classList.remove('animate__fadeInDown');
+            msg.classList.add('animate__fadeOutUp');
+            setTimeout(function() { msg.remove(); }, 800);
+          });
+        });
+      });
+    </script>
     <style>
       .flash-container {
         position: fixed;

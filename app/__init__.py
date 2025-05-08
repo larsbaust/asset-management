@@ -36,6 +36,8 @@ def create_app():
     app.register_blueprint(main_blueprint)
     from .admin import admin as admin_blueprint
     app.register_blueprint(admin_blueprint)
+    from .routes_profile import profile_bp
+    app.register_blueprint(profile_bp)
 
     print("JINJA LOADER SUCHT IN:")
     for loader in app.jinja_loader.loaders:

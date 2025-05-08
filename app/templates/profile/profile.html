@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .profile-card {
+    border-radius: 1rem;
+    box-shadow: 0 4px 24px rgba(56,178,172,0.10);
+    background: #fff;
+    border: none;
+    margin-bottom: 2rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .profile-header {
+    background: linear-gradient(90deg, #3182ce 0%, #38b2ac 100%);
+    color: #fff;
+    border-radius: 1rem 1rem 0 0;
+    padding: 1.1rem 1.5rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+  }
+  .profile-image {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 50%;
+    margin: 1.5rem auto 1rem auto;
+    display: block;
+    border: 3px solid #38b2ac;
+    background: #f8fafc;
+  }
+</style>
+<div class="container mt-5">
+  <div class="profile-card">
+    <div class="profile-header">
+      <i class="fas fa-user-circle"></i> Mein Profil
+    </div>
+    <div class="card-body" style="padding:2rem 1.5rem;">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="notification is-{{ category }}">
+              {{ message|safe }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% if user.profile_image and image_exists %}
+        <img src="{{ url_for('static', filename='profile_images/' ~ user.profile_image) }}" class="profile-image" id="profileImage" alt="Profilbild" style="cursor:pointer;">
+      {% else %}
+        <img src="https://ui-avatars.com/api/?name={{ avatar_name|urlencode }}&background=38b2ac&color=fff&size=120" class="profile-image" id="profileImage" alt="Profilbild" style="cursor:pointer;">
+      {% endif %}
+
+      <!-- Modal für Bildzuschnitt -->
+      <div id="cropperModal" class="modal">
+        <div class="modal-background"></div>
+        <div class="modal-card" style="max-width:500px;">
+          <header class="modal-card-head">
+            <p class="modal-card-title">Profilbild zuschneiden</p>
+            <button class="delete" aria-label="close" id="closeCropper"></button>
+          </header>
+          <section class="modal-card-body">
+            <input type="file" id="modalFileInput" accept="image/*" style="display:block; margin: 0 auto 1rem auto;">
+            <img id="cropperImage" src="" style="max-width:100%; display:block; margin:auto;">
+          </section>
+          <footer class="modal-card-foot">
+            <button class="button" id="resetCropper">Reset</button>
+            <button class="button is-danger" id="deleteImage">Bild löschen</button>
+            <button class="button" id="cancelCropper">Abbrechen</button>
+            <button class="button is-success" id="saveCropped">Übernehmen</button>
+          </footer>
+        </div>
+      </div>
+
+      <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+      <script>
+        let cropper;
+        const profileImage = document.getElementById('profileImage');
+        const cropperModal = document.getElementById('cropperModal');
+        const cropperImage = document.getElementById('cropperImage');
+        const closeCropper = document.getElementById('closeCropper');
+        const cancelCropper = document.getElementById('cancelCropper');
+        const saveCropped = document.getElementById('saveCropped');
+
+        if(profileImage && profileImage.id === 'profileImage') {
+          profileImage.onclick = function() {
+            cropperModal.classList.add('is-active');
+            // Wenn eine temporäre Base64-Vorschau existiert, nimm diese, sonst das aktuelle Profilbild
+            const previewData = document.getElementById('croppedImageData').value;
+            if (previewData && previewData.startsWith('data:image/')) {
+              cropperImage.src = previewData;
+            } else if (profileImage.src) {
+              cropperImage.src = profileImage.src;
+            } else {
+              cropperImage.src = '';
+            }
+            if(cropper) cropper.destroy();
+            // Cropper erst initialisieren, wenn das Bild geladen ist
+            cropperImage.onload = function() {
+              if(cropper) cropper.destroy();
+              if (cropperImage.src) {
+                cropper = new Cropper(cropperImage, {
+                  aspectRatio: 1,
+                  viewMode: 1,
+                  background: false,
+                  movable: true,
+                  zoomable: true,
+                  rotatable: false,
+                  scalable: false
+                });
+              }
+            };
+          };
+        }
+        // Modal-FileInput Handling
+        const modalFileInput = document.getElementById('modalFileInput');
+        if(modalFileInput) {
+          modalFileInput.addEventListener('change', function(e) {
+            if(modalFileInput.files && modalFileInput.files[0]) {
+              const reader = new FileReader();
+              reader.onload = function(evt) {
+                cropperImage.src = evt.target.result;
+                if(cropper) cropper.destroy();
+                cropper = new Cropper(cropperImage, {
+                  aspectRatio: 1,
+                  viewMode: 1,
+                  background: false,
+                  movable: true,
+                  zoomable: true,
+                  rotatable: false,
+                  scalable: false
+                });
+              };
+              reader.readAsDataURL(modalFileInput.files[0]);
+            }
+          });
+        }
+        function closeModal() {
+          cropperModal.classList.remove('is-active');
+          if (cropper) { cropper.destroy(); cropper = null; }
+        }
+        closeCropper.onclick = closeModal;
+        cancelCropper.onclick = closeModal;
+        saveCropped.onclick = function() {
+          if (cropper && cropperImage.src && cropperImage.src.startsWith('data:image/')) {
+            const canvas = cropper.getCroppedCanvas({ width: 240, height: 240 });
+            const dataUrl = canvas.toDataURL('image/png');
+            if(profileImage) profileImage.src = dataUrl;
+            document.getElementById('croppedImageData').value = dataUrl;
+            // Bild löschen-Flag zurücksetzen
+            document.getElementById('deleteImageFlag').value = '';
+            closeModal();
+          } else {
+            alert('Bitte lade zuerst ein Bild hoch!');
+          }
+        };
+
+        // Reset-Button: Setze Bild im Cropper zurück auf das zuletzt gespeicherte Profilbild oder die letzte Vorschau
+        document.getElementById('resetCropper').onclick = function() {
+          const previewData = document.getElementById('croppedImageData').value;
+          if (previewData && previewData.startsWith('data:image/')) {
+            cropperImage.src = previewData;
+          } else if (profileImage && profileImage.src) {
+            cropperImage.src = profileImage.src;
+          }
+          if(cropper) cropper.destroy();
+        };
+
+        // Bild löschen-Button: Setzt das Bild im Profil und Cropper auf Avatar und setzt ein Hidden-Flag
+        document.getElementById('deleteImage').onclick = function() {
+          // Setze das Profilbild auf Avatar
+          if(profileImage) profileImage.src = "https://ui-avatars.com/api/?name={{ user.vorname }}+{{ user.nachname }}&background=38b2ac&color=fff&size=120";
+          cropperImage.src = "https://ui-avatars.com/api/?name={{ user.vorname }}+{{ user.nachname }}&background=38b2ac&color=fff&size=120";
+          document.getElementById('croppedImageData').value = '';
+          document.getElementById('deleteImageFlag').value = '1';
+          if(cropper) cropper.destroy();
+          closeModal();
+        };
+
+      </script>
+      <form method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <input type="hidden" name="cropped_image_data" id="croppedImageData">
+        <input type="hidden" name="delete_image_flag" id="deleteImageFlag" value="">
+
+        <div class="field mt-4">
+          <label class="label">Vorname</label>
+          <div class="control has-icons-left">
+            {{ form.vorname(class_="input") }}
+            <span class="icon is-small is-left"><i class="fas fa-user"></i></span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">Nachname</label>
+          <div class="control has-icons-left">
+            {{ form.nachname(class_="input") }}
+            <span class="icon is-small is-left"><i class="fas fa-user"></i></span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">E-Mail</label>
+          <div class="control has-icons-left">
+            {{ form.email(class_="input") }}
+            <span class="icon is-small is-left"><i class="fas fa-envelope"></i></span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">Straße</label>
+          <div class="control has-icons-left">
+            {{ form.street(class_="input") }}
+            <span class="icon is-small is-left"><i class="fas fa-road"></i></span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">PLZ</label>
+          <div class="control has-icons-left">
+            {{ form.postal_code(class_="input") }}
+            <span class="icon is-small is-left"><i class="fas fa-mail-bulk"></i></span>
+            {{ form.street(class="form-control", id="street") }}
+          </div>
+        </div>
+        <div class="form-group mb-3">
+          <label for="postal_code">PLZ</label>
+          <div class="input-icon">
+            <i class="fas fa-mail-bulk"></i>
+            {{ form.postal_code(class="form-control", id="postal_code") }}
+          </div>
+        </div>
+        <div class="form-group mb-3">
+          <label for="city">Stadt</label>
+          <div class="input-icon">
+            <i class="fas fa-city"></i>
+            {{ form.city(class="form-control", id="city") }}
+          </div>
+        </div>
+        <div class="form-group mb-3">
+          <label for="phone">Telefon</label>
+          <div class="input-icon">
+            <i class="fas fa-phone"></i>
+            {{ form.phone(class="form-control", id="phone") }}
+          </div>
+        </div>
+        <div class="d-grid mt-4">
+          {{ form.submit(class="btn btn-primary") }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

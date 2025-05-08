@@ -1,47 +1,192 @@
 {% extends "base.html" %}
 {% block content %}
+<style>
+  .edit-user-card {
+    border-radius: 1rem;
+    box-shadow: 0 4px 24px rgba(56,178,172,0.10);
+    background: #fff;
+    border: none;
+    margin-bottom: 2rem;
+  }
+  .edit-user-card-header {
+    background: linear-gradient(90deg, #38b2ac 0%, #4fd1c5 100%);
+    color: #fff;
+    border-radius: 1rem 1rem 0 0;
+    padding: 1.1rem 1.5rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+  }
+  .edit-user-form .form-group label {
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+  .edit-user-form .input-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .edit-user-form .input-icon input,
+  .edit-user-form .input-icon select {
+    padding-left: 2.2rem;
+    height: 2.3rem;
+    font-size: 1.07rem;
+  }
+  .edit-user-form .input-icon .fa {
+    position: absolute;
+    left: 0.7rem;
+    color: #38b2ac;
+    font-size: 1.1rem;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .edit-user-form .btn-primary {
+    background: linear-gradient(90deg, #3182ce 0%, #38b2ac 100%);
+    color: #fff;
+    font-weight: 600;
+    font-size: 1.14rem;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    box-shadow: 0 2px 6px rgba(56,178,172,0.08);
+    transition: background 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+  }
+  .edit-user-form .btn-primary:hover {
+    background: linear-gradient(90deg, #225ea8 0%, #319795 100%);
+    color: #fff;
+  }
+  @media (max-width: 700px) {
+    .edit-user-card { padding: 0.5rem; }
+    .edit-user-card-header { font-size: 1.1rem; }
+  }
+</style>
 <div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="text-center">Benutzer bearbeiten</h3>
-                </div>
-                <div class="card-body">
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                      {% if messages %}
-                        {% for category, message in messages %}
-                          <div class="notification is-{{ category }}">
-                            {{ message|safe }}
-                          </div>
-                        {% endfor %}
-                      {% endif %}
-                    {% endwith %}
-                    <form method="POST">
-                        {{ form.hidden_tag() }}
-                        <div class="form-group mb-3">
-                            <label for="username">Benutzername</label>
-                            {{ form.username(class="form-control", id="username") }}
-                        </div>
-                        <div class="form-group mb-3">
-                            <label for="password">Neues Passwort (leer lassen für unverändert)</label>
-                            {{ form.password(class="form-control", id="password") }}
-                        </div>
-                        <div class="form-group mb-3">
-                            <label for="confirm_password">Passwort bestätigen</label>
-                            {{ form.confirm_password(class="form-control", id="confirm_password") }}
-                        </div>
-                        <div class="form-group mb-3">
-                            <label for="role">Rolle</label>
-                            {{ form.role(class="form-select", id="role") }}
-                        </div>
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">Speichern</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+  <div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+      <div class="edit-user-card">
+        <div class="edit-user-card-header">
+          <i class="fas fa-user-edit"></i> Benutzer bearbeiten
         </div>
+        <div class="card-body" style="padding:2rem 1.5rem;">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="notification is-{{ category }}">
+                  {{ message|safe }}
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+          <form method="POST" class="edit-user-form">
+            {{ form.hidden_tag() }}
+            <div class="form-group mb-3">
+              <label for="username">Benutzername</label>
+              <div class="input-icon">
+                <i class="fas fa-user"></i>
+                {{ form.username(class="form-control", id="username") }}
+              </div>
+            </div>
+            <div class="form-group mb-3">
+              <label for="password">Neues Passwort (leer lassen für unverändert)</label>
+              <div class="input-icon">
+                <i class="fas fa-lock"></i>
+                {{ form.password(class="form-control", id="password") }}
+              </div>
+            </div>
+            <div class="form-group mb-3">
+              <label for="confirm_password">Passwort bestätigen</label>
+              <div class="input-icon">
+                <i class="fas fa-lock"></i>
+                {{ form.confirm_password(class="form-control", id="confirm_password") }}
+              </div>
+            </div>
+            <div class="form-group mb-3">
+              <label for="role">Rolle</label>
+              <div class="input-icon">
+                <i class="fas fa-user-tag"></i>
+                {{ form.role(class="form-select", id="role") }}
+              </div>
+            </div>
+
+            <div class="form-group mb-3">
+              <label for="vorname">Vorname</label>
+              <div class="input-icon">
+                <i class="fas fa-user"></i>
+                {{ form.vorname(class="form-control", id="vorname") }}
+              </div>
+            </div>
+            <div class="form-group mb-3">
+              <label for="nachname">Nachname</label>
+              <div class="input-icon">
+                <i class="fas fa-user"></i>
+                {{ form.nachname(class="form-control", id="nachname") }}
+              </div>
+            </div>
+            <div class="form-group mb-3">
+              <label for="email">E-Mail</label>
+              <div class="input-icon">
+                <i class="fas fa-envelope"></i>
+                {{ form.email(class="form-control", id="email") }}
+              </div>
+            </div>
+            <div class="form-group mb-3">
+              <label for="profile_image">Profilbild</label>
+              <div class="input-icon">
+                <i class="fas fa-image"></i>
+                {{ form.profile_image(class="form-control", id="profile_image") }}
+              </div>
+              {% if user and user.profile_image %}
+                <div class="mt-2">
+                  <img src="{{ url_for('static', filename='profile_images/' ~ user.profile_image) }}" alt="Profilbild" style="max-width:120px; border-radius:0.5rem;">
+                </div>
+              {% endif %}
+            </div>
+            <div class="form-group mb-3">
+              <label for="street">Straße</label>
+              <div class="input-icon">
+                <i class="fas fa-road"></i>
+                {{ form.street(class="form-control", id="street") }}
+              </div>
+            </div>
+            <div class="form-group mb-3">
+              <label for="postal_code">PLZ</label>
+              <div class="input-icon">
+                <i class="fas fa-mail-bulk"></i>
+                {{ form.postal_code(class="form-control", id="postal_code") }}
+              </div>
+            </div>
+            <div class="form-group mb-3">
+              <label for="city">Stadt</label>
+              <div class="input-icon">
+                <i class="fas fa-city"></i>
+                {{ form.city(class="form-control", id="city") }}
+              </div>
+            </div>
+            <div class="form-group mb-3">
+              <label for="phone">Telefon</label>
+              <div class="input-icon">
+                <i class="fas fa-phone"></i>
+                {{ form.phone(class="form-control", id="phone") }}
+              </div>
+            </div>
+
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Speichern</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}

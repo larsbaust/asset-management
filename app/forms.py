@@ -189,6 +189,14 @@ class RegisterForm(FlaskForm):
     password = PasswordField('Passwort', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Passwort bestätigen', validators=[DataRequired(), EqualTo('password')])
     role = SelectField('Rolle', choices=[('user', 'Benutzer'), ('admin', 'Admin')], validators=[DataRequired()])
+    vorname = StringField('Vorname', validators=[DataRequired(), Length(max=80)])
+    nachname = StringField('Nachname', validators=[DataRequired(), Length(max=80)])
+    email = StringField('E-Mail', validators=[DataRequired(), Length(max=120)])
+    profile_image = FileField('Profilbild', validators=[Optional(), FileAllowed(['jpg', 'jpeg', 'png', 'gif'], 'Nur Bilder erlaubt!')])
+    street = StringField('Straße', validators=[Optional(), Length(max=120)])
+    postal_code = StringField('PLZ', validators=[Optional(), Length(max=20)])
+    city = StringField('Stadt', validators=[Optional(), Length(max=80)])
+    phone = StringField('Telefon', validators=[Optional(), Length(max=40)])
     submit = SubmitField('Registrieren')
 
 class ResetPasswordForm(FlaskForm):
@@ -196,6 +204,18 @@ class ResetPasswordForm(FlaskForm):
     submit = SubmitField('Link zum Zurücksetzen senden')
 
 # --- ENDE AUTH FORMS ---
+
+class ProfileForm(FlaskForm):
+    vorname = StringField('Vorname', validators=[DataRequired(), Length(max=80)])
+    nachname = StringField('Nachname', validators=[DataRequired(), Length(max=80)])
+    email = StringField('E-Mail', validators=[DataRequired(), Length(max=120)])
+    # profile_image entfernt, da Upload über Modal läuft
+    street = StringField('Straße', validators=[Optional(), Length(max=120)])
+    postal_code = StringField('PLZ', validators=[Optional(), Length(max=20)])
+    city = StringField('Stadt', validators=[Optional(), Length(max=80)])
+    phone = StringField('Telefon', validators=[Optional(), Length(max=40)])
+    submit = SubmitField('Profil speichern')
+
 
 class InventoryCheckForm(FlaskForm):
     """Formular für die Erfassung eines Assets während der Inventur"""

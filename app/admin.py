@@ -27,13 +27,32 @@ def user_management():
 @login_required
 @admin_required
 def add_user():
+    import os
+    from werkzeug.utils import secure_filename
     form = RegisterForm()
     if form.validate_on_submit():
         if User.query.filter_by(username=form.username.data).first():
             flash('Benutzername bereits vergeben.', 'danger')
             return render_template('admin/add_user.html', form=form)
-        user = User(username=form.username.data, role=form.role.data)
+        user = User(
+            username=form.username.data,
+            role=form.role.data,
+            vorname=form.vorname.data,
+            nachname=form.nachname.data,
+            email=form.email.data,
+            street=form.street.data,
+            postal_code=form.postal_code.data,
+            city=form.city.data,
+            phone=form.phone.data
+        )
         user.set_password(form.password.data)
+        # Profilbild speichern
+        if form.profile_image.data:
+            filename = secure_filename(form.profile_image.data.filename)
+            img_path = os.path.join('static/profile_images', filename)
+            os.makedirs(os.path.dirname(img_path), exist_ok=True)
+            form.profile_image.data.save(img_path)
+            user.profile_image = filename
         db.session.add(user)
         db.session.commit()
         flash('Benutzer erfolgreich angelegt.', 'success')
@@ -44,13 +63,29 @@ def add_user():
 @login_required
 @admin_required
 def edit_user(user_id):
+    import os
+    from werkzeug.utils import secure_filename
     user = User.query.get_or_404(user_id)
     form = RegisterForm(obj=user)
     if request.method == 'POST' and form.validate_on_submit():
         user.username = form.username.data
         user.role = form.role.data
+        user.vorname = form.vorname.data
+        user.nachname = form.nachname.data
+        user.email = form.email.data
+        user.street = form.street.data
+        user.postal_code = form.postal_code.data
+        user.city = form.city.data
+        user.phone = form.phone.data
         if form.password.data:
             user.set_password(form.password.data)
+        # Profilbild speichern
+        if form.profile_image.data:
+            filename = secure_filename(form.profile_image.data.filename)
+            img_path = os.path.join('static/profile_images', filename)
+            os.makedirs(os.path.dirname(img_path), exist_ok=True)
+            form.profile_image.data.save(img_path)
+            user.profile_image = filename
         db.session.commit()
         flash('Benutzerdaten aktualisiert.', 'success')
         return redirect(url_for('admin.user_management'))

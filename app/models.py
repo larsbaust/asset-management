@@ -205,6 +205,14 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(120))
     role = db.Column(db.String(20), default='user')
+    vorname = db.Column(db.String(80))
+    nachname = db.Column(db.String(80))
+    email = db.Column(db.String(120), unique=True)
+    profile_image = db.Column(db.String(255))  # Dateiname oder URL zum Profilbild
+    street = db.Column(db.String(120))
+    postal_code = db.Column(db.String(20))
+    city = db.Column(db.String(80))
+    phone = db.Column(db.String(40))
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
