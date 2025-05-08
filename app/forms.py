@@ -1,4 +1,6 @@
 from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, SubmitField, SelectField
+from wtforms.validators import DataRequired, Length, EqualTo
 from wtforms import StringField, SelectField, SelectMultipleField, TextAreaField, FloatField, DateTimeField, BooleanField, SubmitField, FileField, IntegerField
 from wtforms.fields import DateField
 from wtforms.validators import DataRequired, Length, Optional, NumberRange
@@ -173,6 +175,22 @@ class InventoryTeamForm(FlaskForm):
     members = TextAreaField('Team Mitglieder (durch Komma getrennt)', validators=[Optional()])
     area = StringField('Zugewiesener Bereich', validators=[Optional(), Length(max=100)])
     submit = SubmitField('Team erstellen')
+
+
+
+class LoginForm(FlaskForm):
+    username = StringField('Benutzername', validators=[DataRequired(), Length(min=3, max=80)])
+    password = PasswordField('Passwort', validators=[DataRequired()])
+    submit = SubmitField('Login')
+
+class RegisterForm(FlaskForm):
+    username = StringField('Benutzername', validators=[DataRequired(), Length(min=3, max=80)])
+    password = PasswordField('Passwort', validators=[DataRequired(), Length(min=6)])
+    confirm_password = PasswordField('Passwort bestätigen', validators=[DataRequired(), EqualTo('password')])
+    role = SelectField('Rolle', choices=[('user', 'Benutzer'), ('admin', 'Admin')], validators=[DataRequired()])
+    submit = SubmitField('Registrieren')
+
+# --- ENDE AUTH FORMS ---
 
 class InventoryCheckForm(FlaskForm):
     """Formular für die Erfassung eines Assets während der Inventur"""

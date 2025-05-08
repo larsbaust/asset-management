@@ -9,7 +9,17 @@
                     <h3 class="text-center">Login</h3>
                 </div>
                 <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                      {% if messages %}
+                        {% for category, message in messages %}
+                          <div class="notification is-{{ category }}">
+                            {{ message }}
+                          </div>
+                        {% endfor %}
+                      {% endif %}
+                    {% endwith %}
                     <form method="POST">
+                        {{ form.hidden_tag() }}
                         <div class="form-group mb-3">
                             <label for="username">Benutzername</label>
                             <input type="text" class="form-control" id="username" name="username" required>

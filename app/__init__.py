@@ -86,14 +86,16 @@ def create_app():
 
     with app.app_context():
         db.create_all()
-        # Create test user if it doesn't exist
+    # Create test user if it doesn't exist
+    with app.app_context():
         if not User.query.filter_by(username='admin').first():
-            user = User(username='admin')
+            user = User(username='admin', role='admin')
             user.set_password('admin')
             db.session.add(user)
             db.session.commit()
 
-        # Beispiel-Lieferanten anlegen
+    # Beispiel-Lieferanten anlegen im Application Context
+    with app.app_context():
         from app.models import Supplier
         if Supplier.query.count() == 0:
             beispiel_lieferanten = [
@@ -105,6 +107,7 @@ def create_app():
             ]
             db.session.bulk_save_objects(beispiel_lieferanten)
             db.session.commit()
+
 
     return app
 

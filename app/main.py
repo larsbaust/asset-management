@@ -141,68 +141,8 @@ def allowed_file(filename):
 
 @main.route('/')
 def index():
-    """Dashboard-Ansicht"""
-    # Hole die Assets des Benutzers
-    user_assets = Asset.query.all()
-    
-    # Status-Zähler
-    active_count = len([a for a in user_assets if a.status == 'active'])
-    on_loan_count = len([a for a in user_assets if a.status == 'on_loan'])
-    inactive_count = len([a for a in user_assets if a.status == 'inactive'])
-    
-    # Wertentwicklung über die letzten 6 Monate
-    today = datetime.utcnow()
-    months = []
-    values = []
-    
-    # Für jeden Monat die Wertentwicklung berechnen
-    for i in range(5, -1, -1):
-        date = today.replace(day=1) - relativedelta(months=i)
-        next_date = date + relativedelta(months=1)
-        months.append(date.strftime('%B %Y'))
-        
-        # Gesamtwert für diesen Monat berechnen (acquisition_date bevorzugen, sonst created_at)
-        all_assets = Asset.query.all()
-        total_value = 0
-        for asset in all_assets:
-            
-            asset_date = getattr(asset, 'purchase_date', None) or asset.created_at
-            if asset_date and asset_date < next_date:
-                try:
-                    if asset.value is not None:
-                        total_value += float(asset.value)
-                except (ValueError, TypeError):
-                    print(f"Warnung: Ungültiger Wert für Asset {asset.name}: {asset.value}")
-                    continue
-        values.append(total_value)
-    
-    # Kategorien
-    category_data = []
-    categories = {}
-    for asset in user_assets:
-        cat = asset.category.name if asset.category else 'Ohne Kategorie'
-        categories[cat] = categories.get(cat, 0) + 1
-    
-    for category, count in categories.items():
-        category_data.append({
-            'category': category,
-            'count': count
-        })
-
-    # Assets nach Zuordnung (Assignment)
-    assignment_data = []
-    assignments = {}
-    for asset in user_assets:
-        if asset.assignments:
-            for assignment in asset.assignments:
-                assignments[assignment.name] = assignments.get(assignment.name, 0) + 1
-        else:
-            assignments['Ohne Zuordnung'] = assignments.get('Ohne Zuordnung', 0) + 1
-    for assignment, count in assignments.items():
-        assignment_data.append({
-            'assignment': assignment,
-            'count': count
-        })
+    # Weiterleitung auf das Dashboard
+    return redirect(url_for('main.dashboard'))
     
     # Kostenverteilung
     cost_types = {

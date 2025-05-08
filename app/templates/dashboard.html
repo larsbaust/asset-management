@@ -225,7 +225,7 @@
     </div>
 
     <!-- Herstellerdaten für Chart -->
-    <script id="manufacturer-data" type="application/json">{{ manufacturer_data|tojson }}</script>
+    <script id="manufacturer-data" type="application/json">{{ manufacturer_data|default([])|tojson }}</script>
 
     <!-- Letzte Assets Tabelle -->
     <div class="table-card">
@@ -265,9 +265,9 @@
 
 <!-- Chartdaten vom Server -->
 <script id="chart-data" type="application/json">
-    {{ chart_data|tojson }}
+    {{ chart_data|default({})|tojson }}
 </script>
-<script id="assignment-data" type="application/json">{{ assignment_data|tojson }}</script>
+<script id="assignment-data" type="application/json">{{ assignment_data|default({})|tojson }}</script>
 <!-- DEBUG: Chartdaten anzeigen -->
 <script>
     try {

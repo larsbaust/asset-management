@@ -118,6 +118,33 @@
                 </a>
             </div>
         </div>
+            </div>
+            <div class="navbar-end">
+                {% if current_user.is_authenticated %}
+                    <div class="navbar-item">
+                        <span class="icon"><i class="fas fa-user"></i></span>
+                        <span>{{ current_user.username }}</span>
+                        {% if current_user.role %}
+                            <span class="tag is-info ml-2">{{ current_user.role|capitalize }}</span>
+                        {% endif %}
+                        <a href="{{ url_for('auth.logout') }}" class="button is-light ml-3">
+                            <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
+                            <span>Logout</span>
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="navbar-item">
+                        <div class="buttons">
+                            <a href="{{ url_for('auth.register') }}" class="button is-primary">
+                                <strong>Registrieren</strong>
+                            </a>
+                            <a href="{{ url_for('auth.login') }}" class="button is-light">
+                                Login
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
     </nav>
 
     {% with messages = get_flashed_messages(with_categories=true) %}

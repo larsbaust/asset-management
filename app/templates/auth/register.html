@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="section">
+    <div class="container" style="max-width: 400px;">
+        <h1 class="title">Registrieren</h1>
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="field">
+                {{ form.username.label(class="label") }}
+                <div class="control">
+                    {{ form.username(class="input") }}
+                </div>
+                {% for error in form.username.errors %}
+                    <p class="help is-danger">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div class="field">
+                {{ form.password.label(class="label") }}
+                <div class="control">
+                    {{ form.password(class="input") }}
+                </div>
+                {% for error in form.password.errors %}
+                    <p class="help is-danger">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div class="field">
+                {{ form.confirm_password.label(class="label") }}
+                <div class="control">
+                    {{ form.confirm_password(class="input") }}
+                </div>
+                {% for error in form.confirm_password.errors %}
+                    <p class="help is-danger">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div class="field">
+                {{ form.role.label(class="label") }}
+                <div class="control">
+                    {{ form.role(class="select") }}
+                </div>
+                {% for error in form.role.errors %}
+                    <p class="help is-danger">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div class="field">
+                <div class="control">
+                    {{ form.submit(class="button is-primary is-fullwidth") }}
+                </div>
+            </div>
+        </form>
+        <p class="mt-4">Schon registriert? <a href="{{ url_for('auth.login') }}">Zum Login</a></p>
+    </div>
+</section>
+{% endblock %}
