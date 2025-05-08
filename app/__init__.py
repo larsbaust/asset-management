@@ -25,9 +25,17 @@ def create_app():
 
     # Beide Template-Ordner bekannt machen
     app.jinja_loader = ChoiceLoader([
-        FileSystemLoader(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'deployment', 'app', 'templates')),
-        FileSystemLoader(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
+        FileSystemLoader(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')),
+        FileSystemLoader(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'templates'))
     ])
+
+    # Blueprints registrieren
+    from .auth import auth as auth_blueprint
+    app.register_blueprint(auth_blueprint)
+    from .main import main as main_blueprint
+    app.register_blueprint(main_blueprint)
+    from .admin import admin as admin_blueprint
+    app.register_blueprint(admin_blueprint)
 
     print("JINJA LOADER SUCHT IN:")
     for loader in app.jinja_loader.loaders:
@@ -65,12 +73,6 @@ def create_app():
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    # Register blueprints
-    from app.main import main as main_blueprint
-    app.register_blueprint(main_blueprint)
-
-    from app.auth import auth as auth_blueprint
-    app.register_blueprint(auth_blueprint)
 
     from app.order import order as order_blueprint
     app.register_blueprint(order_blueprint)

@@ -181,6 +181,7 @@ class InventoryTeamForm(FlaskForm):
 class LoginForm(FlaskForm):
     username = StringField('Benutzername', validators=[DataRequired(), Length(min=3, max=80)])
     password = PasswordField('Passwort', validators=[DataRequired()])
+    remember_me = BooleanField('Angemeldet bleiben')
     submit = SubmitField('Login')
 
 class RegisterForm(FlaskForm):
@@ -189,6 +190,10 @@ class RegisterForm(FlaskForm):
     confirm_password = PasswordField('Passwort bestätigen', validators=[DataRequired(), EqualTo('password')])
     role = SelectField('Rolle', choices=[('user', 'Benutzer'), ('admin', 'Admin')], validators=[DataRequired()])
     submit = SubmitField('Registrieren')
+
+class ResetPasswordForm(FlaskForm):
+    email = StringField('E-Mail-Adresse', validators=[DataRequired(), Length(max=120)])
+    submit = SubmitField('Link zum Zurücksetzen senden')
 
 # --- ENDE AUTH FORMS ---
 

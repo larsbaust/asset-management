@@ -110,6 +110,12 @@
                     <span class="icon"><i class="fas fa-truck"></i></span>
                     <span>Lieferanten</span>
                 </a>
+                {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                <a href="{{ url_for('admin.user_management') }}" class="navbar-item">
+                    <span class="icon"><i class="fas fa-users-cog"></i></span>
+                    <span>Benutzerverwaltung</span>
+                </a>
+                {% endif %}
                 <a href="{{ url_for('main.import_assets') }}" class="navbar-item">
                     <span class="icon">
                         <i class="fas fa-file-import"></i>
@@ -147,16 +153,58 @@
             </div>
     </nav>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
+    <style>
+      .flash-container {
+        position: fixed;
+        top: 1.5rem;
+        right: 1.5rem;
+        z-index: 1050;
+        min-width: 320px;
+        max-width: 420px;
+      }
+      .flash-animate {
+        animation: fadein 0.5s, fadeout 0.5s 4.5s;
+        transition: opacity 0.4s;
+      }
+      @keyframes fadein { from { opacity: 0; right: 0; } to { opacity: 1; right: 1.5rem; } }
+      @keyframes fadeout { from { opacity: 1; } to { opacity: 0; } }
+    </style>
+    <div class="flash-container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            {% for category, message in messages %}
-                <div class="notification is-{{ category }}">
-                    <button class="delete"></button>
-                    {{ message }}
-                </div>
-            {% endfor %}
+          {% for category, message in messages %}
+            <div class="notification is-{{ category }} flash-animate" style="box-shadow: 0 2px 8px rgba(0,0,0,0.13); margin-bottom: 1rem;">
+              <button class="delete"></button>
+              {% if category == 'success' %}
+                <span class="icon has-text-success"><i class="fas fa-check-circle"></i></span>
+              {% elif category == 'danger' %}
+                <span class="icon has-text-danger"><i class="fas fa-exclamation-triangle"></i></span>
+              {% elif category == 'warning' %}
+                <span class="icon has-text-warning"><i class="fas fa-exclamation-circle"></i></span>
+              {% elif category == 'info' %}
+                <span class="icon has-text-info"><i class="fas fa-info-circle"></i></span>
+              {% endif %}
+              <span style="margin-left:0.5em">{{ message|safe }}</span>
+            </div>
+          {% endfor %}
         {% endif %}
-    {% endwith %}
+      {% endwith %}
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.notification .delete').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            btn.parentElement.style.display = 'none';
+          });
+        });
+        setTimeout(function() {
+          document.querySelectorAll('.flash-animate').forEach(function(el) {
+            el.style.opacity = 0;
+            setTimeout(function() { el.remove(); }, 500);
+          });
+        }, 5000);
+      });
+    </script>
 
     <section class="section">
         <div class="container">
