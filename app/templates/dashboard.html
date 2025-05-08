@@ -147,15 +147,15 @@
             <h5 class="card-title">Asset Status</h5>
             <div class="status-numbers-overview" style="display:flex; justify-content:space-around; align-items:center; padding:2em 0;">
                 <div style="text-align:center;">
-                    <div style="font-size:2.5em; font-weight:bold; color:#28a745;">{{ active_count }}</div>
+                    <div id="count-active" style="font-size:2.5em; font-weight:bold; color:#28a745;">{{ active_count }}</div>
                     <div><span class="badge status-active" style="background:#28a745; color:#fff; padding:0.3em 1em; border-radius:1em;">Aktiv</span></div>
                 </div>
                 <div style="text-align:center;">
-                    <div style="font-size:2.5em; font-weight:bold; color:#ffc107;">{{ on_loan_count }}</div>
+                    <div id="count-onloan" style="font-size:2.5em; font-weight:bold; color:#ffc107;">{{ on_loan_count }}</div>
                     <div><span class="badge status-borrowed" style="background:#ffc107; color:#222; padding:0.3em 1em; border-radius:1em;">Ausgeliehen</span></div>
                 </div>
                 <div style="text-align:center;">
-                    <div style="font-size:2.5em; font-weight:bold; color:#6c757d;">{{ inactive_count }}</div>
+                    <div id="count-inactive" style="font-size:2.5em; font-weight:bold; color:#6c757d;">{{ inactive_count }}</div>
                     <div><span class="badge status-inactive" style="background:#6c757d; color:#fff; padding:0.3em 1em; border-radius:1em;">Inaktiv</span></div>
                 </div>
             </div>
@@ -581,6 +581,31 @@ document.addEventListener('DOMContentLoaded', function() {
         // Kein Standort mit Koordinaten vorhanden
         document.getElementById('location-map-container').style.display = 'none';
     }
+});
+</script>
+<script>
+function animateCountUp(id, target, duration = 1200) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const start = 0;
+    const startTime = performance.now();
+    function update(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const value = Math.floor(progress * (target - start) + start);
+        el.textContent = value;
+        if (progress < 1) {
+            requestAnimationFrame(update);
+        } else {
+            el.textContent = target;
+        }
+    }
+    requestAnimationFrame(update);
+}
+window.addEventListener('DOMContentLoaded', function() {
+    animateCountUp('count-active', {{ active_count|int }}, 1000);
+    animateCountUp('count-onloan', {{ on_loan_count|int }}, 1000);
+    animateCountUp('count-inactive', {{ inactive_count|int }}, 1000);
 });
 </script>
 {% endblock %}

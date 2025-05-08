@@ -161,27 +161,20 @@ def index():
         next_date = date + relativedelta(months=1)
         months.append(date.strftime('%B %Y'))
         
-        # Assets finden, die bis zu diesem Monat erstellt wurden
-        month_assets = Asset.query.filter(
-            Asset.created_at < next_date
-        ).all()
-        
-        # Gesamtwert für diesen Monat berechnen
+        # Gesamtwert für diesen Monat berechnen (acquisition_date bevorzugen, sonst created_at)
+        all_assets = Asset.query.all()
         total_value = 0
-        for asset in month_assets:
-            try:
-                if asset.value is not None:
-                    total_value += float(asset.value)
-            except (ValueError, TypeError):
-                print(f"Warnung: Ungültiger Wert für Asset {asset.name}: {asset.value}")
-                continue
-        
+        for asset in all_assets:
+            
+            asset_date = getattr(asset, 'purchase_date', None) or asset.created_at
+            if asset_date and asset_date < next_date:
+                try:
+                    if asset.value is not None:
+                        total_value += float(asset.value)
+                except (ValueError, TypeError):
+                    print(f"Warnung: Ungültiger Wert für Asset {asset.name}: {asset.value}")
+                    continue
         values.append(total_value)
-        print(f"\nMonat {date.strftime('%B %Y')}:")
-        print(f"Gefundene Assets: {len(month_assets)}")
-        print(f"Gesamtwert: {total_value}")
-        for asset in month_assets:
-            print(f"- {asset.name}: {asset.value} (Erstellt: {asset.created_at})")
     
     # Kategorien
     category_data = []
@@ -309,27 +302,20 @@ def dashboard():
         next_date = date + relativedelta(months=1)
         months.append(date.strftime('%B %Y'))
         
-        # Assets finden, die bis zu diesem Monat erstellt wurden
-        month_assets = Asset.query.filter(
-            Asset.created_at < next_date
-        ).all()
-        
-        # Gesamtwert für diesen Monat berechnen
+        # Gesamtwert für diesen Monat berechnen (acquisition_date bevorzugen, sonst created_at)
+        all_assets = Asset.query.all()
         total_value = 0
-        for asset in month_assets:
-            try:
-                if asset.value is not None:
-                    total_value += float(asset.value)
-            except (ValueError, TypeError):
-                print(f"Warnung: Ungültiger Wert für Asset {asset.name}: {asset.value}")
-                continue
-        
+        for asset in all_assets:
+            
+            asset_date = getattr(asset, 'purchase_date', None) or asset.created_at
+            if asset_date and asset_date < next_date:
+                try:
+                    if asset.value is not None:
+                        total_value += float(asset.value)
+                except (ValueError, TypeError):
+                    print(f"Warnung: Ungültiger Wert für Asset {asset.name}: {asset.value}")
+                    continue
         values.append(total_value)
-        print(f"\nMonat {date.strftime('%B %Y')}:")
-        print(f"Gefundene Assets: {len(month_assets)}")
-        print(f"Gesamtwert: {total_value}")
-        for asset in month_assets:
-            print(f"- {asset.name}: {asset.value} (Erstellt: {asset.created_at})")
         
         print("\nBerechnete Werte:")
         print("Monate:", months)
