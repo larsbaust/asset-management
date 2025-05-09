@@ -25,6 +25,7 @@
 
         <div id="mainNavbar" class="navbar-menu">
             <div class="navbar-start">
+              {% if current_user.is_authenticated %}
                 <a href="{{ url_for('main.dashboard') }}" class="navbar-item">
                     <span class="icon">
                         <i class="fas fa-chart-line"></i>
@@ -110,7 +111,7 @@
                     <span class="icon"><i class="fas fa-truck"></i></span>
                     <span>Lieferanten</span>
                 </a>
-                {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                {% if current_user.role == 'admin' %}
                 <a href="{{ url_for('admin.user_management') }}" class="navbar-item">
                     <span class="icon"><i class="fas fa-users-cog"></i></span>
                     <span>Benutzerverwaltung</span>
@@ -122,6 +123,7 @@
                     </span>
                     <span>CSV Import</span>
                 </a>
+              {% endif %}
             </div>
         </div>
             </div>
@@ -130,15 +132,13 @@
     <div class="navbar-item has-dropdown is-hoverable">
       <a class="navbar-link" style="display: flex; align-items: center; gap: 0.5rem;">
         {% if current_user.profile_image %}
-          <img src="{{ url_for('static', filename='profile_images/' ~ current_user.profile_image) }}" alt="Profilbild" style="width:32px; height:32px; border-radius:50%; object-fit:cover; margin-right:0.5rem;">
+          <img src="{{ url_for('test_serve_profile_image', filename=current_user.profile_image) }}" alt="Profilbild" style="width:32px; height:32px; border-radius:50%; object-fit:cover; margin-right:0.5rem;">
         {% else %}
-          <img src="https://ui-avatars.com/api/?name={{ current_user.vorname or '' }}+{{ current_user.nachname or current_user.username }}&background=38b2ac&color=fff&size=32" alt="Profilbild" style="width:32px; height:32px; border-radius:50%; object-fit:cover; margin-right:0.5rem;">
+          <img src="https://ui-avatars.com/api/?name={{ current_user.username|urlencode }}&background=38b2ac&color=fff&size=32" alt="Profilbild" style="width:32px; height:32px; border-radius:50%; object-fit:cover; margin-right:0.5rem;">
         {% endif %}
-        <span>{{ current_user.username }}</span>
-        {% if current_user.role %}
+      </a>  {% if current_user.role %}
           <span class="tag is-info ml-2">{{ current_user.role|capitalize }}</span>
         {% endif %}
-      </a>
       <div class="navbar-dropdown is-right">
         <div class="navbar-item" style="font-weight:600;">
           <span class="icon"><i class="fas fa-user-circle"></i></span>
@@ -170,19 +170,22 @@
 </div>
     </nav>
 
-    <!-- Flash Nachrichten -->
-    <div id="flash-container" class="flash-container" style="position:fixed; top:60px; left:0; right:0; z-index:9999; width:100%; pointer-events:none;">
+    <!-- Flash Nachrichten (nur eine, rechts oben) -->
+    {% if request.endpoint != 'auth.login' %}
+    <div id="flash-container" class="flash-container" style="position:fixed; top:1.5rem; right:1.5rem; z-index:1050; min-width:320px; max-width:420px; pointer-events:none;">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          {% for category, message in messages %}
-            <div class="notification is-{{ category }} flash-message animate__animated animate__fadeInDown" style="max-width:480px; margin:0 auto 0.5rem auto; pointer-events:auto;">
+          {% set last_message = messages[-1] if messages %}
+          {% if last_message %}
+            <div class="notification is-{{ last_message[0] }} flash-message animate__animated animate__fadeInDown" style="pointer-events:auto; text-align:left;">
               <button class="delete"></button>
-              {{ message|safe }}
+              {{ last_message[1]|safe }}
             </div>
-          {% endfor %}
+          {% endif %}
         {% endif %}
       {% endwith %}
     </div>
+    {% endif %}
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <script>

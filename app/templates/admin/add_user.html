@@ -87,7 +87,7 @@
               {% endfor %}
             {% endif %}
           {% endwith %}
-          <form method="POST" class="add-user-form">
+          <form method="POST" enctype="multipart/form-data" class="add-user-form">
             {{ form.hidden_tag() }}
             <div class="form-group mb-3">
               <label for="username">Benutzername</label>

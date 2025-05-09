@@ -1,9 +1,12 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from .models import db, User
 from .forms import ProfileForm
 import os
-from werkzeug.utils import secure_filename
+print('--- FLASK STARTUP DEBUG ---')
+print('Aktuelles Arbeitsverzeichnis:', os.getcwd())
+print('Erwarteter Static-Pfad:', os.path.abspath(os.path.join(os.getcwd(), 'static')))
+print('----------------------------')
 
 profile_bp = Blueprint('profile', __name__, url_prefix='/profile')
 
@@ -39,12 +42,16 @@ def profile():
                 from datetime import datetime
                 img_data = base64.b64decode(cropped_image_data.split(',')[1])
                 filename = f"{user.username}_profile_{datetime.now().strftime('%Y%m%d%H%M%S')}.png"
-                img_path = os.path.join('static/profile_images', filename)
+                # Profilbild immer im Projekt-Root-static/profile_images speichern
+                static_root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'profile_images')
+                img_path = os.path.join(static_root, filename)
                 os.makedirs(os.path.dirname(img_path), exist_ok=True)
                 with open(img_path, 'wb') as f:
                     f.write(img_data)
-                # Altes Bild löschen, falls vorhanden und nicht Default
-                if user.profile_image and user.profile_image != '' and os.path.exists(os.path.join('static/profile_images', user.profile_image)):
+                print('Profilbild gespeichert:', img_path)
+                print('Datei existiert nach dem Speichern:', os.path.exists(img_path))
+                # Altes Bild nur löschen, wenn es nicht das neue ist
+                if user.profile_image and user.profile_image != filename and os.path.exists(os.path.join('static/profile_images', user.profile_image)):
                     try:
                         os.remove(os.path.join('static/profile_images', user.profile_image))
                     except Exception:
@@ -66,9 +73,15 @@ def profile():
     if user.profile_image:
         img_path = os.path.join('static/profile_images', user.profile_image)
         image_exists = os.path.exists(img_path)
+        if not image_exists:
+            user.profile_image = ''
+            db.session.commit()
+            image_exists = False
     # Avatar-Name robust bestimmen
     if user.vorname or user.nachname:
         avatar_name = f"{user.vorname or ''} {user.nachname or ''}".strip()
     else:
-        avatar_name = user.username or "User"
-    return render_template('profile/profile.html', form=form, user=user, image_exists=image_exists, avatar_name=avatar_name)
+        avatar_name = user.username if user.username else "User"
+    from random import randint
+    cache_buster = randint(0, 1000000)
+    return render_template('profile/profile.html', form=form, user=user, image_exists=image_exists, avatar_name=avatar_name, cache_buster=cache_buster)

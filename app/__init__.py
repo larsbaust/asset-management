@@ -113,6 +113,23 @@ def create_app():
             db.session.commit()
 
 
+    # Eigene Route für Profilbilder, falls Flask Static nicht greift
+    @app.route('/static/profile_images/<filename>')
+    def serve_profile_image(filename):
+        print("Custom static route called for:", filename)
+        import os
+        from flask import send_from_directory
+        static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'profile_images')
+        return send_from_directory(static_dir, filename)
+
+    @app.route('/test_static/<filename>')
+    def test_serve_profile_image(filename):
+        print("TEST STATIC ROUTE:", filename)
+        import os
+        from flask import send_from_directory
+        static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'static', 'profile_images')
+        return send_from_directory(static_dir, filename)
+
     return app
 
 if __name__ == '__main__':

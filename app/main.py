@@ -140,6 +140,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @main.route('/')
+@login_required
 def index():
     # Weiterleitung auf das Dashboard
     return redirect(url_for('main.dashboard'))
@@ -214,6 +215,7 @@ def index():
     )
 
 @main.route('/dashboard')
+@login_required
 def dashboard():
     # Hole die letzten 5 Assets des Benutzers
     recent_assets = Asset.query.order_by(Asset.id.desc()).limit(5).all()

@@ -34,6 +34,9 @@ def add_user():
         if User.query.filter_by(username=form.username.data).first():
             flash('Benutzername bereits vergeben.', 'danger')
             return render_template('admin/add_user.html', form=form)
+        if User.query.filter_by(email=form.email.data).first():
+            flash('E-Mail-Adresse bereits vergeben.', 'danger')
+            return render_template('admin/add_user.html', form=form)
         user = User(
             username=form.username.data,
             role=form.role.data,

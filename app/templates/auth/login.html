@@ -1,6 +1,17 @@
 {% extends "base.html" %}
 
 {% block content %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% set last_message = messages[-1] if messages %}
+      {% if last_message %}
+        <div class="notification is-{{ last_message[0] }} flash-message animate__animated animate__fadeInDown" style="max-width: 400px; margin: 2rem auto 1.5rem auto; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.13);">
+          <button class="delete"></button>
+          {{ last_message[1]|safe }}
+        </div>
+      {% endif %}
+    {% endif %}
+  {% endwith %}
 <style>
   body {
     background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);

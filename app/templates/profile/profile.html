@@ -51,8 +51,9 @@
           {% endfor %}
         {% endif %}
       {% endwith %}
+
       {% if user.profile_image and image_exists %}
-        <img src="{{ url_for('static', filename='profile_images/' ~ user.profile_image) }}" class="profile-image" id="profileImage" alt="Profilbild" style="cursor:pointer;">
+        <img src="{{ url_for('test_serve_profile_image', filename=user.profile_image) }}?v={{ cache_buster }}" class="profile-image" id="profileImage" alt="Profilbild" style="cursor:pointer;">
       {% else %}
         <img src="https://ui-avatars.com/api/?name={{ avatar_name|urlencode }}&background=38b2ac&color=fff&size=120" class="profile-image" id="profileImage" alt="Profilbild" style="cursor:pointer;">
       {% endif %}
@@ -218,33 +219,33 @@
             <span class="icon is-small is-left"><i class="fas fa-road"></i></span>
           </div>
         </div>
-        <div class="field">
-          <label class="label">PLZ</label>
-          <div class="control has-icons-left">
-            {{ form.postal_code(class_="input") }}
-            <span class="icon is-small is-left"><i class="fas fa-mail-bulk"></i></span>
-            {{ form.street(class="form-control", id="street") }}
+        <div class="columns is-mobile">
+          <div class="column">
+            <div class="field">
+              <label class="label">PLZ</label>
+              <div class="control has-icons-left">
+                {{ form.postal_code(class_="input") }}
+                <span class="icon is-small is-left"><i class="fas fa-mail-bulk"></i></span>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="form-group mb-3">
-          <label for="postal_code">PLZ</label>
-          <div class="input-icon">
-            <i class="fas fa-mail-bulk"></i>
-            {{ form.postal_code(class="form-control", id="postal_code") }}
+          <div class="column">
+            <div class="field">
+              <label class="label">Stadt</label>
+              <div class="control has-icons-left">
+                {{ form.city(class_="input") }}
+                <span class="icon is-small is-left"><i class="fas fa-city"></i></span>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="form-group mb-3">
-          <label for="city">Stadt</label>
-          <div class="input-icon">
-            <i class="fas fa-city"></i>
-            {{ form.city(class="form-control", id="city") }}
-          </div>
-        </div>
-        <div class="form-group mb-3">
-          <label for="phone">Telefon</label>
-          <div class="input-icon">
-            <i class="fas fa-phone"></i>
-            {{ form.phone(class="form-control", id="phone") }}
+          <div class="column">
+            <div class="field">
+              <label class="label">Telefon</label>
+              <div class="control has-icons-left">
+                {{ form.phone(class_="input") }}
+                <span class="icon is-small is-left"><i class="fas fa-phone"></i></span>
+              </div>
+            </div>
           </div>
         </div>
         <div class="d-grid mt-4">
