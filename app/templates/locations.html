@@ -7,6 +7,7 @@
     <table class="table table-striped">
         <thead>
             <tr>
+                <th>Profilbild</th>
                 <th>Name</th>
                 <th>Adresse</th>
                 <th>Größe (m²)</th>
@@ -18,7 +19,14 @@
         <tbody>
             {% for location in locations %}
             <tr>
-                <td><a href="{{ url_for('main.location_detail', id=location.id) }}">{{ location.name }}</a></td>
+                <td>
+    {% if location.image_url %}
+        <img src="/{{ location.image_url }}" alt="Profilbild" style="width:48px; height:48px; object-fit:cover; border-radius:6px;">
+    {% else %}
+        <span style="display:inline-block;width:48px;height:48px;background:#eee;border-radius:6px;text-align:center;line-height:48px;color:#aaa;font-size:20px;">—</span>
+    {% endif %}
+</td>
+<td><a href="{{ url_for('main.location_detail', id=location.id) }}">{{ location.name }}</a></td>
                 <td>{{ location.street }}, {{ location.postal_code }} {{ location.city }}</td>
                 <td>{{ location.size_sqm or '-' }}</td>
                 <td>{{ location.seats or '-' }}</td>

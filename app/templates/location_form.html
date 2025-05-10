@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container mt-4">
     <h2>Standort anlegen</h2>
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
         <div class="field">
             <label class="label">Name *</label>
@@ -65,9 +65,9 @@
             </div>
         </div>
         <div class="field">
-            <label class="label">Bild-URL</label>
+            <label class="label">Standort-Bild hochladen</label>
             <div class="control">
-                {{ form.image_url(class="input") }}
+                {{ form.image(class="input") }}
             </div>
         </div>
         <div class="field is-horizontal">
@@ -93,5 +93,6 @@
             </div>
         </div>
     </form>
+<!-- Hinweis für Bild-Upload: Nur JPG, PNG, GIF erlaubt. -->
 </div>
 {% endblock %}

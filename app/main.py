@@ -45,6 +45,14 @@ def add_location():
     from .forms import LocationForm
     form = LocationForm()
     if form.validate_on_submit():
+        image_url = None
+        if form.image.data:
+            filename = secure_filename(form.image.data.filename)
+            image_folder = os.path.join(current_app.root_path, 'static', 'location_images')
+            os.makedirs(image_folder, exist_ok=True)
+            image_path = os.path.join(image_folder, filename)
+            form.image.data.save(image_path)
+            image_url = f'static/location_images/{filename}'
         location = Location(
             name=form.name.data,
             street=form.street.data,
@@ -54,7 +62,7 @@ def add_location():
             size_sqm=form.size_sqm.data,
             seats=form.seats.data,
             description=form.description.data,
-            image_url=form.image_url.data,
+            image_url=image_url,
             latitude=form.latitude.data,
             longitude=form.longitude.data
         )
@@ -66,9 +74,51 @@ def add_location():
 
 @main.route('/locations/<int:id>')
 def location_detail(id):
-    from .models import Location
+    from .models import Location, LocationImage
+    from .forms import LocationImageForm
     location = Location.query.get_or_404(id)
-    return render_template('location_detail.html', location=location)
+    form = LocationImageForm()
+    images = LocationImage.query.filter_by(location_id=id).order_by(LocationImage.upload_date.desc()).all()
+    return render_template('location_detail.html', location=location, gallery_form=form, gallery_images=images)
+
+@main.route('/locations/<int:id>/upload_image', methods=['GET', 'POST'])
+def upload_location_image(id):
+    from .models import Location, LocationImage, db
+    from .forms import LocationImageForm
+    from flask_login import current_user
+    location = Location.query.get_or_404(id)
+    form = LocationImageForm()
+    if form.validate_on_submit():
+        files = request.files.getlist('file')
+        if not files or files[0].filename == '':
+            flash('Bitte mindestens eine Datei auswählen.', 'danger')
+            return redirect(url_for('main.location_detail', id=location.id))
+        folder = os.path.join(current_app.root_path, 'static', 'location_gallery', str(location.id))
+        os.makedirs(folder, exist_ok=True)
+        uploaded = 0
+        for file in files:
+            filename = secure_filename(file.filename)
+            mimetype = file.mimetype
+            file_path = os.path.join(folder, filename)
+            file.save(file_path)
+            new_image = LocationImage(
+                location_id=location.id,
+                filename=f'location_gallery/{location.id}/{filename}',
+                mimetype=mimetype,
+                description=form.description.data,
+                comment=form.comment.data,
+                uploader=getattr(current_user, 'username', 'Unbekannt')
+            )
+            db.session.add(new_image)
+            uploaded += 1
+        db.session.commit()
+        flash(f'{uploaded} Datei(en) erfolgreich hochgeladen.', 'success')
+        return redirect(url_for('main.location_detail', id=location.id))
+    else:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f'Fehler im Feld {field}: {error}', 'danger')
+    return redirect(url_for('main.location_detail', id=location.id))
 
 @main.route('/locations/<int:id>/edit', methods=['GET', 'POST'])
 def edit_location(id):
@@ -77,6 +127,13 @@ def edit_location(id):
     location = Location.query.get_or_404(id)
     form = LocationForm(obj=location)
     if form.validate_on_submit():
+        if form.image.data:
+            filename = secure_filename(form.image.data.filename)
+            image_folder = os.path.join(current_app.root_path, 'static', 'location_images')
+            os.makedirs(image_folder, exist_ok=True)
+            image_path = os.path.join(image_folder, filename)
+            form.image.data.save(image_path)
+            location.image_url = f'static/location_images/{filename}'
         form.populate_obj(location)
         db.session.commit()
         flash('Standort erfolgreich aktualisiert.', 'success')

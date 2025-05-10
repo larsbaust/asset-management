@@ -2,6 +2,11 @@
 {% block title %}Standort: {{ location.name }}{% endblock %}
 {% block content %}
 <div class="container mt-4">
+    {% if location.image_url %}
+        <img src="/{{ location.image_url }}" alt="Profilbild" style="width:120px; height:120px; object-fit:cover; border-radius:12px; margin-bottom: 16px;">
+    {% else %}
+        <div style="width:120px;height:120px;background:#eee;border-radius:12px;text-align:center;line-height:120px;color:#aaa;font-size:48px;margin-bottom:16px;">—</div>
+    {% endif %}
     <h2>Standort: {{ location.name }}</h2>
     <div class="box">
         <strong>Adresse:</strong> {{ location.street }}, {{ location.postal_code }} {{ location.city }}<br>
@@ -10,7 +15,7 @@
         <strong>Sitzplätze:</strong> {{ location.seats or '-' }}<br>
         <strong>Beschreibung:</strong> {{ location.description or '-' }}<br>
         {% if location.image_url %}
-            <img src="{{ location.image_url }}" alt="Bild Standort" style="max-width:300px; margin-top:10px;">
+            <img src="/{{ location.image_url }}" alt="Bild Standort" style="max-width:300px; margin-top:10px;">
         {% endif %}
         <br>
         {% if location.latitude and location.longitude %}
@@ -21,6 +26,62 @@
         <a href="{{ url_for('main.edit_location', id=location.id) }}" class="button is-info">Bearbeiten</a>
         <a href="{{ url_for('main.delete_location', id=location.id) }}" class="button is-danger" onclick="return confirm('Standort wirklich löschen?');">Löschen</a>
         <a href="{{ url_for('main.locations') }}" class="button is-light">Zurück zur Übersicht</a>
+    </div>
+
+    <h4 class="mt-5">Standort Dokumentation / Galerie</h4>
+    <form method="POST" action="{{ url_for('main.upload_location_image', id=location.id) }}" enctype="multipart/form-data" class="box mb-4">
+        {{ gallery_form.hidden_tag() }}
+        <div class="field is-horizontal">
+            <div class="field-body">
+                <div class="field">
+                    <label class="label">Datei (Bild oder PDF)</label>
+                    <div class="control">
+                        {{ gallery_form.file(class="input", multiple=True) }}
+<p class="help">Mehrere Dateien auswählbar (Bilder/PDFs, max. 10 auf einmal)</p>
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">Beschreibung</label>
+                    <div class="control">
+                        {{ gallery_form.description(class="input") }}
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">Kommentar</label>
+                    <div class="control">
+                        {{ gallery_form.comment(class="input") }}
+                    </div>
+                </div>
+                <div class="field is-align-self-end">
+                    <div class="control">
+                        {{ gallery_form.submit(class="button is-primary") }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div class="gallery-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 18px; margin-bottom: 2rem;">
+        {% for img in gallery_images %}
+            <div class="box" style="text-align:center; padding: 10px;">
+                {% if img.mimetype.startswith('image') %}
+                    <a href="{{ url_for('static', filename=img.filename) }}" target="_blank"><img src="{{ url_for('static', filename=img.filename) }}" alt="Dokumentation" style="max-width: 100%; max-height: 120px; object-fit: cover; border-radius: 8px;"></a>
+                {% elif img.mimetype == 'application/pdf' %}
+                    <a href="{{ url_for('static', filename=img.filename) }}" target="_blank" style="display:block; font-size:32px; color:#b53;">
+                        <i class="fas fa-file-pdf"></i><br>PDF
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('static', filename=img.filename) }}" target="_blank">Dokument anzeigen</a>
+                {% endif %}
+                <div style="margin-top:8px; font-size:0.95em; color:#555;">
+                    <strong>{{ img.description or '' }}</strong>
+                    <div style="font-size:0.9em; color:#888;">{{ img.comment or '' }}</div>
+                    <div style="font-size:0.8em; color:#aaa;">{{ img.uploader or '' }}<br>{{ img.upload_date.strftime('%d.%m.%Y %H:%M') if img.upload_date else '' }}</div>
+                </div>
+            </div>
+        {% else %}
+            <div>Keine Dokumentationsbilder/Dokumente vorhanden.</div>
+        {% endfor %}
     </div>
     <h4 class="mt-4">Assets an diesem Standort ({{ location.assets|length }})</h4>
     <table class="table is-striped">

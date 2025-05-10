@@ -414,6 +414,20 @@ class Location(db.Model):
 
     # Relationship zu Assets (wird nach Migration genutzt)
     assets = db.relationship('Asset', backref='location_obj', lazy=True)
+    images = db.relationship('LocationImage', backref='location', lazy=True, cascade='all, delete-orphan')
 
     def __repr__(self):
         return f'<Location {self.name}>'
+
+class LocationImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    mimetype = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(255))
+    comment = db.Column(db.Text)
+    upload_date = db.Column(db.DateTime, default=datetime.utcnow)
+    uploader = db.Column(db.String(100))
+
+    def __repr__(self):
+        return f'<LocationImage {self.filename}>'

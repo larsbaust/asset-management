@@ -136,9 +136,10 @@
         {% else %}
           <img src="https://ui-avatars.com/api/?name={{ current_user.username|urlencode }}&background=38b2ac&color=fff&size=32" alt="Profilbild" style="width:32px; height:32px; border-radius:50%; object-fit:cover; margin-right:0.5rem;">
         {% endif %}
-      </a>  {% if current_user.role %}
-          <span class="tag is-info ml-2">{{ current_user.role|capitalize }}</span>
-        {% endif %}
+      </a>
+      {% if current_user.role %}
+        <span class="tag is-info ml-2">{{ current_user.role|capitalize }}</span>
+      {% endif %}
       <div class="navbar-dropdown is-right">
         <div class="navbar-item" style="font-weight:600;">
           <span class="icon"><i class="fas fa-user-circle"></i></span>
@@ -155,6 +156,7 @@
         </a>
       </div>
     </div>
+    
   {% else %}
     <div class="navbar-item">
       <div class="buttons">
@@ -166,9 +168,13 @@
         </a>
       </div>
     </div>
+    
   {% endif %}
 </div>
     </nav>
+
+
+
 
     <!-- Flash Nachrichten (nur eine, rechts oben) -->
     {% if request.endpoint != 'auth.login' %}

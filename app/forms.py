@@ -96,7 +96,7 @@ class LocationForm(FlaskForm):
     size_sqm = FloatField('Größe (m²)', validators=[Optional()])
     seats = IntegerField('Sitzplätze', validators=[Optional()])
     description = TextAreaField('Beschreibung', validators=[Optional()])
-    image_url = StringField('Bild-URL', validators=[Optional(), Length(max=255)])
+    image = FileField('Standort-Bild', validators=[Optional(), FileAllowed(['jpg', 'jpeg', 'png', 'gif'], 'Nur Bilder erlaubt!')])
     latitude = FloatField('Breitengrad', validators=[Optional()])
     longitude = FloatField('Längengrad', validators=[Optional()])
     submit = SubmitField('Speichern')
@@ -113,6 +113,12 @@ class LoanForm(FlaskForm):
         """Validiere, dass das Rückgabedatum nach dem Ausleihdatum liegt"""
         if field.data <= self.start_date.data:
             raise ValidationError('Das Rückgabedatum muss nach dem Ausleihdatum liegen.')
+
+class LocationImageForm(FlaskForm):
+    file = FileField('Datei (Bild oder PDF)', validators=[DataRequired(), FileAllowed(['jpg', 'jpeg', 'png', 'gif', 'pdf'], 'Nur Bilder oder PDFs erlaubt!')])
+    description = StringField('Beschreibung', validators=[Optional(), Length(max=255)])
+    comment = TextAreaField('Kommentar', validators=[Optional()])
+    submit = SubmitField('Hochladen')
 
 class DocumentForm(FlaskForm):
     title = StringField('Titel', validators=[DataRequired(), Length(max=100)])
