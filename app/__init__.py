@@ -18,6 +18,11 @@ def create_app():
     # SVG-Placeholder-Funktion für Templates bereitstellen
     from app.utils import svg_placeholder
     app.jinja_env.globals['svg_placeholder'] = svg_placeholder
+
+    # Rechte-Check als Jinja-Global
+    def has_permission(user, perm_name):
+        return user and user.role and any(p.name == perm_name for p in user.role.permissions)
+    app.jinja_env.globals['has_permission'] = has_permission
     app.config['SECRET_KEY'] = 'your-secret-key'
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -92,11 +97,22 @@ def create_app():
         db.create_all()
     # Create test user if it doesn't exist
     with app.app_context():
-        if not User.query.filter_by(username='admin').first():
-            user = User(username='admin', role='admin')
-            user.set_password('admin')
-            db.session.add(user)
+        from app.models import Role
+        admin_role = Role.query.filter_by(name='Admin').first()
+        if not admin_role:
+            admin_role = Role(name='Admin', description='Vollzugriff auf alle Funktionen')
+            db.session.add(admin_role)
             db.session.commit()
+        admin_user = User.query.filter_by(username='admin').first()
+        if not admin_user:
+            admin_user = User(username='admin', role=admin_role)
+            admin_user.set_password('admin')
+            db.session.add(admin_user)
+            db.session.commit()
+        else:
+            if not admin_user.role_id or admin_user.role_id != admin_role.id:
+                admin_user.role = admin_role
+                db.session.commit()
 
     # Beispiel-Lieferanten anlegen im Application Context
     with app.app_context():

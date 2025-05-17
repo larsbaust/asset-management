@@ -14,6 +14,7 @@ import io
 from sqlalchemy import func, or_
 from dateutil.relativedelta import relativedelta
 from flask_login import login_required, current_user
+from .admin import admin_required
 from datetime import datetime
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -141,6 +142,8 @@ def edit_location(id):
     return render_template('location_form.html', form=form, edit=True, location=location)
 
 @main.route('/locations/<int:id>/delete', methods=['POST', 'GET'])
+@login_required
+@admin_required
 def delete_location(id):
     from .models import Location, db
     location = Location.query.get_or_404(id)
@@ -819,7 +822,11 @@ def delete_document(document_id):
     flash('Dokument wurde erfolgreich gelöscht.', 'success')
     return redirect(url_for('main.edit_asset', id=asset_id))
 
+
+
 @main.route('/assets/<int:id>/delete', methods=['POST'])
+@login_required
+@admin_required
 def delete_asset(id):
     """Asset und alle verknüpften Daten löschen"""
     asset = Asset.query.filter_by(id=id).first_or_404()
@@ -857,6 +864,8 @@ def delete_asset(id):
     return jsonify({'success': True})
 
 @main.route('/import_assets', methods=['GET', 'POST'])
+@login_required
+@admin_required
 def import_assets():
     """CSV Import für Assets"""
     if request.method == 'POST':

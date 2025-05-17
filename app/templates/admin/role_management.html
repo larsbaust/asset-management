@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Rollenverwaltung</h2>
+    <a href="{{ url_for('admin.add_role') }}" class="btn btn-success mb-3">Neue Rolle anlegen</a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Beschreibung</th>
+                <th>Rechte</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for role in roles %}
+            <tr>
+                <td>{{ role.name }}</td>
+                <td>{{ role.description }}</td>
+                <td>
+                    {% for perm in role.permissions %}
+                        <span class="badge bg-info text-dark">{{ perm.name }}</span>
+                    {% endfor %}
+                </td>
+                <td>
+                    <a href="{{ url_for('admin.edit_role', role_id=role.id) }}" class="btn btn-sm btn-primary">Bearbeiten</a>
+                    <a href="{{ url_for('admin.delete_role', role_id=role.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Wirklich löschen?');">Löschen</a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

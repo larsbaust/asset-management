@@ -194,7 +194,7 @@ class RegisterForm(FlaskForm):
     username = StringField('Benutzername', validators=[DataRequired(), Length(min=3, max=80)])
     password = PasswordField('Passwort', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Passwort bestätigen', validators=[DataRequired(), EqualTo('password')])
-    role = SelectField('Rolle', choices=[('user', 'Benutzer'), ('admin', 'Admin')], validators=[DataRequired()])
+    role = SelectField('Rolle', coerce=int, validators=[DataRequired()])
     vorname = StringField('Vorname', validators=[DataRequired(), Length(max=80)])
     nachname = StringField('Nachname', validators=[DataRequired(), Length(max=80)])
     email = StringField('E-Mail', validators=[DataRequired(), Length(max=120)])
@@ -205,6 +205,10 @@ class RegisterForm(FlaskForm):
     phone = StringField('Telefon', validators=[Optional(), Length(max=40)])
     submit = SubmitField('Registrieren')
 
+    def __init__(self, *args, **kwargs):
+        super(RegisterForm, self).__init__(*args, **kwargs)
+        from .models import Role
+        self.role.choices = [(r.id, r.name) for r in Role.query.order_by(Role.name).all()]
 class ResetPasswordForm(FlaskForm):
     email = StringField('E-Mail-Adresse', validators=[DataRequired(), Length(max=120)])
     submit = SubmitField('Link zum Zurücksetzen senden')
@@ -222,6 +226,23 @@ class ProfileForm(FlaskForm):
     phone = StringField('Telefon', validators=[Optional(), Length(max=40)])
     submit = SubmitField('Profil speichern')
 
+
+from wtforms import widgets, SelectMultipleField
+
+class MultiCheckboxField(SelectMultipleField):
+    widget = widgets.ListWidget(prefix_label=False)
+    option_widget = widgets.CheckboxInput()
+
+class RoleForm(FlaskForm):
+    name = StringField('Rollenname', validators=[DataRequired(), Length(max=50)])
+    description = StringField('Beschreibung', validators=[Optional(), Length(max=255)])
+    permissions = MultiCheckboxField('Rechte', coerce=int)
+    submit = SubmitField('Speichern')
+
+    def __init__(self, *args, **kwargs):
+        super(RoleForm, self).__init__(*args, **kwargs)
+        from .models import Permission
+        self.permissions.choices = [(p.id, p.name) for p in Permission.query.order_by(Permission.name).all()]
 
 class InventoryCheckForm(FlaskForm):
     """Formular für die Erfassung eines Assets während der Inventur"""

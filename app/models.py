@@ -200,11 +200,36 @@ class Asset(db.Model):
     def __repr__(self):
         return f'<Asset {self.name}>'
 
+# Mapping-Tabelle: Rollen und Rechte (n:m)
+role_permissions = db.Table('role_permissions',
+    db.Column('role_id', db.Integer, db.ForeignKey('role.id'), primary_key=True),
+    db.Column('permission_id', db.Integer, db.ForeignKey('permission.id'), primary_key=True)
+)
+
+class Role(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    description = db.Column(db.String(255))
+    permissions = db.relationship('Permission', secondary=role_permissions, backref=db.backref('roles', lazy='dynamic'))
+    users = db.relationship('User', back_populates='role')
+
+    def __repr__(self):
+        return f'<Role {self.name}>'
+
+class Permission(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.String(255))
+
+    def __repr__(self):
+        return f'<Permission {self.name}>'
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(120))
-    role = db.Column(db.String(20), default='user')
+    role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
+    role = db.relationship('Role', back_populates='users')
     vorname = db.Column(db.String(80))
     nachname = db.Column(db.String(80))
     email = db.Column(db.String(120), unique=True)
