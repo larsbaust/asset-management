@@ -1,17 +1,42 @@
-# Changelog
+# Changelog (automatisch generiert)
 
-Alle wichtigen Änderungen, Erweiterungen und Bugfixes werden hier chronologisch dokumentiert.
-
-## [18.05.2025]
-- Backup & Restore-Funktionalität mit granularen Rechten (backup_data, restore_data)
-- ZIP-Backup inkl. Datenbank und aller Uploads/Bilder
-- Restore mit Sicherheitskopie und Rechteprüfung
-- Menüpunkt und UI-Integration für Backup & Restore
-
-## [17.04.2025]
-- Multi-Select-Felder für Zuordnung, Hersteller, Lieferant mit SelectMultipleField
-- Asset-Werte werden korrekt gespeichert und angezeigt
-- WTForms-Choices und Datentypen konsistent
-- Einrückungsfehler im Backend behoben
-- Bestellworkflow fertiggestellt, CSV-Export pro Bestellung
-- Filter für Status und Lieferant
+- 2025-05-18 backup & Restore
+- 2025-05-17 rollenverwaltung
+- 2025-05-10 location gallery
+- 2025-05-09 admin und loginschema
+- 2025-05-09 user managemend und profile
+- 2025-05-08 auth managed users und ui/ux
+- 2025-05-08 auth projekt
+- 2025-05-08 chart dashboard
+- 2025-05-08 responsiv navbar
+- 2025-05-07 debug aftership
+- 2025-05-07 docker fix
+- 2025-05-07 request in requirements
+- 2025-05-07 dashboard kleinigkeiten
+- 2025-05-07 neue dashboard chart tracking
+- 2025-05-07 aftership tracking
+- 2025-05-06 neue funktion kommentar in bestellung
+- 2025-05-06 multi export in bestellungsformular
+- 2025-05-05 new chart und favicon
+- 2025-05-04 svg_placeholder
+- 2025-05-04 css style
+- 2025-05-04 csv final
+- 2025-05-04 multi csv import
+- 2025-05-03 neue import funktion
+- 2025-05-02 modularer csv import/export funktion
+- 2025-04-30 order detail update
+- 2025-04-30 oder email
+- 2025-04-30 oder mail und dockersync
+- 2025-04-28 chart Status-übersicht imi Inventurbericht
+- 2025-04-26 Inventur report and quantity
+- 2025-04-21 dashboard location fix
+- 2025-04-21 Leaflet-Kartenintegration & UI-Verbesserungen im Dashboard
+- 2025-04-17 neuerrungen im asset bereich und dashboard
+- 2025-04-17 Syntaxerror in render
+- 2025-04-17 Bestellung erweiterung
+- 2025-04-16 Bestellung und Lieferanten angelegt
+- 2025-04-16 requirements.txt ins Hauptverzeichnis für Render kopiert
+- 2025-04-16 gunicorn für Rendner Deployment hinzugefügt
+- 2025-04-16 deploy.sh hinzugefügt
+- 2025-04-15 wsgi.py angepasst: Beispieländerung
+- 2025-04-04 Initiales Commit: Asset Management System
