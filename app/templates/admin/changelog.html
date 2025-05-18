@@ -2,6 +2,24 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Changelog</h2>
+    <form method="post" action="{{ url_for('admin.changelog') }}">
+        <button class="button is-info mb-3" type="submit" name="generate_ai">
+            <span class="icon"><i class="fas fa-robot"></i></span>
+            <span>KI-Changelog generieren</span>
+        </button>
+    </form>
+    {% if ai_summary %}
+    <div class="notification is-primary">
+        <strong>KI-Zusammenfassung (Vorschau):</strong>
+        <form method="post" action="{{ url_for('admin.changelog') }}">
+            <textarea name="ai_text" class="textarea mb-2" rows="8">{{ ai_summary }}</textarea>
+            <button class="button is-success" type="submit" name="save_ai">
+                <span class="icon"><i class="fas fa-save"></i></span>
+                <span>KI-Changelog speichern</span>
+            </button>
+        </form>
+    </div>
+    {% endif %}
     <form method="post" action="{{ url_for('admin.generate_changelog_route') }}">
         <button class="button is-info mb-3" type="submit">
             <span class="icon"><i class="fas fa-sync-alt"></i></span>

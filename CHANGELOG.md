@@ -1,6 +1,5 @@
 # Changelog (automatisch generiert)
 
-- 2025-05-18 Alle wichtigen Änderungen, Erweiterungen und Bugfixes werden hier chronologisch dokumentiert.
 - 2025-05-18 backup & Restore
 - 2025-05-17 rollenverwaltung
 - 2025-05-10 location gallery

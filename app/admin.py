@@ -165,16 +165,34 @@ def restore():
 def backup_restore():
     return render_template('admin/backup_restore.html')
 
-@admin.route('/changelog')
+@admin.route('/changelog', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def changelog():
+    import os
+    from app.utils import generate_ai_changelog
     changelog_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'CHANGELOG.md')
     changelog_text = ''
+    ai_summary = None
     if os.path.exists(changelog_path):
         with open(changelog_path, encoding='utf-8') as f:
             changelog_text = f.read()
-    return render_template('admin/changelog.html', changelog_text=changelog_text)
+    if request.method == 'POST' and 'generate_ai' in request.form:
+        api_key = os.environ.get('OPENAI_API_KEY')
+        if not api_key:
+            flash('OpenAI API-Key nicht gesetzt! Bitte Umgebungsvariable OPENAI_API_KEY konfigurieren.', 'danger')
+        else:
+            ai_summary = generate_ai_changelog(api_key, n=10)
+            if ai_summary:
+                flash('KI-Changelog erfolgreich generiert.', 'success')
+            else:
+                flash('Fehler bei der KI-Zusammenfassung.', 'danger')
+    if request.method == 'POST' and 'save_ai' in request.form and request.form.get('ai_text'):
+        with open(changelog_path, 'w', encoding='utf-8') as f:
+            f.write(request.form['ai_text'] + '\n\n' + changelog_text)
+        flash('KI-Changelog wurde gespeichert.', 'success')
+        return redirect(url_for('admin.changelog'))
+    return render_template('admin/changelog.html', changelog_text=changelog_text, ai_summary=ai_summary)
 
 @admin.route('/changelog/generate', methods=['POST'])
 @login_required
