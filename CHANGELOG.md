@@ -1,5 +1,8 @@
 # Changelog (automatisch generiert)
 
+- 2025-05-18 KI-Changelog implementierung
+- 2025-05-18 ## [18.05.2025] - Backup & Restore-Funktionalität mit granularen Rechten (backup_data, restore_data) - ZIP-Backup inkl. Datenbank und aller Uploads/Bilder - Restore mit Sicherheitskopie und Rechteprüfung - Menüpunkt und UI-Integration für Backup & Restore
+- 2025-05-18 Alle wichtigen Änderungen, Erweiterungen und Bugfixes werden hier chronologisch dokumentiert.
 - 2025-05-18 backup & Restore
 - 2025-05-17 rollenverwaltung
 - 2025-05-10 location gallery
