@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Changelog</h2>
+    <form method="post" action="{{ url_for('admin.generate_changelog_route') }}">
+        <button class="button is-info mb-3" type="submit">
+            <span class="icon"><i class="fas fa-sync-alt"></i></span>
+            <span>Changelog automatisch aktualisieren</span>
+        </button>
+    </form>
+    <div class="box">
+        <pre style="white-space: pre-wrap;">{{ changelog_text }}</pre>
+    </div>
+</div>
+{% endblock %}

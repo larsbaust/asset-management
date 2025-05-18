@@ -46,6 +46,145 @@ def permission_required(permission_name):
 def import_csv():
     return render_template('admin/import_csv.html')
 
+# --- Backup & Restore ---
+import zipfile, io, os, shutil
+from flask import send_file, request
+from datetime import datetime
+
+@admin.route('/backup', methods=['GET'])
+@login_required
+@admin_required
+def backup():
+    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'instance', 'app.db')
+    uploads_path = os.path.join(os.path.dirname(__file__), 'uploads')
+    static_path = os.path.join(os.path.dirname(__file__), 'static')
+    static_uploads = os.path.join(static_path, 'uploads')
+    static_location_images = os.path.join(static_path, 'location_images')
+    static_location_gallery = os.path.join(static_path, 'location_gallery')
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        # DB
+        if os.path.exists(db_path):
+            zipf.write(db_path, arcname='app.db')
+        # Uploads (app/uploads)
+        if os.path.exists(uploads_path):
+            for root, dirs, files in os.walk(uploads_path):
+                for file in files:
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, uploads_path)
+                    zipf.write(full_path, arcname=os.path.join('uploads', rel_path))
+        # Static uploads (app/static/uploads)
+        if os.path.exists(static_uploads):
+            for root, dirs, files in os.walk(static_uploads):
+                for file in files:
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, static_path)
+                    zipf.write(full_path, arcname=rel_path)
+        # Static location_images
+        if os.path.exists(static_location_images):
+            for root, dirs, files in os.walk(static_location_images):
+                for file in files:
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, static_path)
+                    zipf.write(full_path, arcname=rel_path)
+        # Static location_gallery
+        if os.path.exists(static_location_gallery):
+            for root, dirs, files in os.walk(static_location_gallery):
+                for file in files:
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, static_path)
+                    zipf.write(full_path, arcname=rel_path)
+
+    zip_buffer.seek(0)
+    timestamp =  datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    return send_file(zip_buffer, as_attachment=True, download_name=f'backup_{timestamp}.zip', mimetype='application/zip')
+
+@admin.route('/restore', methods=['GET', 'POST'])
+@login_required
+@permission_required('restore_data')
+def restore():
+    if request.method == 'POST':
+        file = request.files.get('backup_zip')
+        if not file or not file.filename.endswith('.zip'):
+            flash('Bitte eine gültige ZIP-Datei auswählen.', 'danger')
+            return redirect(url_for('admin.restore'))
+        db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'instance', 'app.db')
+        uploads_path = os.path.join(os.path.dirname(__file__), 'uploads')
+        static_path = os.path.join(os.path.dirname(__file__), 'static')
+        static_uploads = os.path.join(static_path, 'uploads')
+        static_location_images = os.path.join(static_path, 'location_images')
+        static_location_gallery = os.path.join(static_path, 'location_gallery')
+        # Backup aktuelle DB/Uploads/Static (Safety)
+        if os.path.exists(db_path):
+            shutil.copy2(db_path, db_path + '.bak')
+        if os.path.exists(uploads_path):
+            shutil.copytree(uploads_path, uploads_path + '_bak', dirs_exist_ok=True)
+        if os.path.exists(static_uploads):
+            shutil.copytree(static_uploads, static_uploads + '_bak', dirs_exist_ok=True)
+        if os.path.exists(static_location_images):
+            shutil.copytree(static_location_images, static_location_images + '_bak', dirs_exist_ok=True)
+        if os.path.exists(static_location_gallery):
+            shutil.copytree(static_location_gallery, static_location_gallery + '_bak', dirs_exist_ok=True)
+        # Restore: Zielordner leeren
+        for folder in [uploads_path, static_uploads, static_location_images, static_location_gallery]:
+            if os.path.exists(folder):
+                shutil.rmtree(folder)
+            os.makedirs(folder, exist_ok=True)
+        # Restore ZIP
+        with zipfile.ZipFile(file, 'r') as zipf:
+            for member in zipf.namelist():
+                if member == 'app.db':
+                    zipf.extract(member, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'instance'))
+                elif member.startswith('uploads/'):
+                    target = os.path.join(uploads_path, member[len('uploads/'):])
+                    os.makedirs(os.path.dirname(target), exist_ok=True)
+                    with zipf.open(member) as src, open(target, 'wb') as dst:
+                        shutil.copyfileobj(src, dst)
+                elif member.startswith('static/uploads/'):
+                    target = os.path.join(static_path, member[len('static/'):])
+                    os.makedirs(os.path.dirname(target), exist_ok=True)
+                    with zipf.open(member) as src, open(target, 'wb') as dst:
+                        shutil.copyfileobj(src, dst)
+                elif member.startswith('static/location_images/'):
+                    target = os.path.join(static_path, member[len('static/'):])
+                    os.makedirs(os.path.dirname(target), exist_ok=True)
+                    with zipf.open(member) as src, open(target, 'wb') as dst:
+                        shutil.copyfileobj(src, dst)
+                elif member.startswith('static/location_gallery/'):
+                    target = os.path.join(static_path, member[len('static/'):])
+                    os.makedirs(os.path.dirname(target), exist_ok=True)
+                    with zipf.open(member) as src, open(target, 'wb') as dst:
+                        shutil.copyfileobj(src, dst)
+        flash('Backup erfolgreich wiederhergestellt! Bitte Anwendung neu starten.', 'success')
+        return redirect(url_for('admin.backup_restore'))
+    return render_template('admin/backup_restore.html')
+
+@admin.route('/backup_restore')
+@login_required
+@admin_required
+def backup_restore():
+    return render_template('admin/backup_restore.html')
+
+@admin.route('/changelog')
+@login_required
+@admin_required
+def changelog():
+    changelog_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'CHANGELOG.md')
+    changelog_text = ''
+    if os.path.exists(changelog_path):
+        with open(changelog_path, encoding='utf-8') as f:
+            changelog_text = f.read()
+    return render_template('admin/changelog.html', changelog_text=changelog_text)
+
+@admin.route('/changelog/generate', methods=['POST'])
+@login_required
+@admin_required
+def generate_changelog_route():
+    from app.utils import generate_changelog
+    msg = generate_changelog()
+    flash(msg, 'success' if 'erfolgreich' in msg else 'danger')
+    return redirect(url_for('admin.changelog'))
+
 # --- Rollen & Rechte Verwaltung ---
 from .models import Role, Permission
 
@@ -57,7 +196,9 @@ def ensure_default_permissions():
         ('delete_assets', 'Assets löschen'),
         ('import_csv', 'CSV-Import'),
         ('manage_users', 'Benutzerverwaltung'),
-        ('manage_roles', 'Rollenverwaltung')
+        ('manage_roles', 'Rollenverwaltung'),
+        ('backup_data', 'Backup erstellen'),
+        ('restore_data', 'Backup wiederherstellen')
     ]
     for name, desc in default_perms:
         if not Permission.query.filter_by(name=name).first():

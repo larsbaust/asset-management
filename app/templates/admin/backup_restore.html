@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Backup & Restore</h2>
+
+    <div class="box mb-4">
+        <h4>Backup erstellen</h4>
+        <p>Erzeugt ein ZIP-Archiv mit aktueller Datenbank und allen Uploads.</p>
+        <a href="{{ url_for('admin.backup') }}" class="button is-primary">
+            <span class="icon"><i class="fas fa-download"></i></span>
+            <span>Backup jetzt herunterladen</span>
+        </a>
+    </div>
+
+    <div class="box mb-4">
+        <h4>Backup wiederherstellen</h4>
+        {% if has_permission(current_user, 'restore_data') %}
+        <form method="post" enctype="multipart/form-data" action="{{ url_for('admin.restore') }}">
+            <div class="field">
+                <label class="label">Backup-ZIP auswählen</label>
+                <div class="control">
+                    <input class="input" type="file" name="backup_zip" accept=".zip" required>
+                </div>
+            </div>
+            <div class="notification is-warning mt-2">
+                <strong>Warnung:</strong> Das Restore überschreibt die aktuelle Datenbank und alle Uploads unwiderruflich!
+            </div>
+            <button type="submit" class="button is-danger">
+                <span class="icon"><i class="fas fa-upload"></i></span>
+                <span>Backup wiederherstellen</span>
+            </button>
+        </form>
+        {% else %}
+            <div class="notification is-danger">
+                <strong>Keine Berechtigung:</strong> Du hast kein Recht, ein Backup wiederherzustellen.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

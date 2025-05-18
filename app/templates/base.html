@@ -123,6 +123,18 @@
                     <span>Rollenverwaltung</span>
                 </a>
 {% endif %}
+{% if has_permission(current_user, 'backup_data') %}
+                <a href="{{ url_for('admin.backup_restore') }}" class="navbar-item">
+                    <span class="icon"><i class="fas fa-database"></i></span>
+                    <span>Backup & Restore</span>
+                </a>
+{% endif %}
+{% if has_permission(current_user, 'manage_users') or has_permission(current_user, 'manage_roles') or has_permission(current_user, 'backup_data') %}
+                <a href="{{ url_for('admin.changelog') }}" class="navbar-item">
+                    <span class="icon"><i class="fas fa-history"></i></span>
+                    <span>Changelog</span>
+                </a>
+{% endif %}
                 <a href="{{ url_for('main.import_assets') }}" class="navbar-item">
                     <span class="icon">
                         <i class="fas fa-file-import"></i>

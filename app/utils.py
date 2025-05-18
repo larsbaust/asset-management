@@ -1,4 +1,24 @@
 import base64
+import subprocess
+import os
+
+def generate_changelog():
+    """
+    Erzeugt CHANGELOG.md automatisch aus den letzten git-Commits (Datum + Message).
+    """
+    proj_dir = os.path.dirname(os.path.dirname(__file__))
+    changelog_path = os.path.join(proj_dir, 'CHANGELOG.md')
+    try:
+        log = subprocess.check_output(
+            ['git', 'log', '--pretty=format:- %ad %s', '--date=short'],
+            cwd=proj_dir, encoding='utf-8', stderr=subprocess.STDOUT
+        )
+        with open(changelog_path, 'w', encoding='utf-8') as f:
+            f.write('# Changelog (automatisch generiert)\n\n')
+            f.write(log)
+    except Exception as e:
+        return str(e)
+    return 'Changelog erfolgreich generiert.'
 
 def svg_placeholder(name, size=48):
     # Initialen extrahieren (max. 2 Buchstaben)
