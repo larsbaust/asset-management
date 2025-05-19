@@ -12,13 +12,32 @@ from werkzeug.security import generate_password_hash
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
+    from datetime import datetime, timedelta
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
-        if user and user.check_password(form.password.data):
-            login_user(user, remember=form.remember_me.data)
-            next_page = request.args.get('next')
-            return redirect(next_page or url_for('main.index'))
+        now = datetime.utcnow()
+        if user:
+            # Prüfe, ob gesperrt
+            if user.lock_until and user.lock_until > now:
+                minutes = int((user.lock_until - now).total_seconds() // 60) + 1
+                flash(f'Zu viele Fehlversuche. Account gesperrt für {minutes} Minuten.', 'error')
+                return render_template('auth/login.html', form=form)
+            if user.check_password(form.password.data):
+                user.failed_logins = 0
+                user.lock_until = None
+                db.session.commit()
+                login_user(user, remember=form.remember_me.data)
+                next_page = request.args.get('next')
+                return redirect(next_page or url_for('main.index'))
+            else:
+                user.failed_logins = (user.failed_logins or 0) + 1
+                if user.failed_logins >= 5:
+                    user.lock_until = now + timedelta(minutes=10)
+                    flash('Zu viele Fehlversuche. Account für 10 Minuten gesperrt.', 'error')
+                else:
+                    flash('Bitte überprüfen Sie Ihre Anmeldedaten.', 'error')
+                db.session.commit()
         else:
             flash('Bitte überprüfen Sie Ihre Anmeldedaten.', 'error')
     return render_template('auth/login.html', form=form)
@@ -91,6 +110,19 @@ def set_new_password(token):
     if form.validate_on_submit():
         user.set_password(form.password.data)
         db.session.commit()
+        # E-Mail-Benachrichtigung
+        try:
+            msg = Message('Dein Passwort wurde geändert', recipients=[user.email])
+            msg.body = f'''Hallo {user.username},
+
+Dein Passwort wurde soeben geändert. Falls du diese Änderung nicht selbst vorgenommen hast, kontaktiere bitte sofort den Administrator.
+
+Viele Grüße
+Dein Team'''
+            mail.send(msg)
+        except Exception as e:
+            # Fehler beim Senden ignorieren, aber im Log festhalten
+            print(f"Fehler beim Senden der Passwortänderungs-Benachrichtigung: {e}")
         flash('Passwort erfolgreich geändert! Du kannst dich jetzt einloggen.', 'success')
         return redirect(url_for('auth.login'))
     return render_template('auth/set_new_password.html', form=form)

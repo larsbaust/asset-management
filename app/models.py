@@ -229,6 +229,8 @@ class Permission(db.Model):
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    failed_logins = db.Column(db.Integer, default=0)
+    lock_until = db.Column(db.DateTime, nullable=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(120))
     role_id = db.Column(db.Integer, db.ForeignKey('role.id'))

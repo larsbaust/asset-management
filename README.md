@@ -1,6 +1,35 @@
-# Asset Management System
+# Asset Management
 
 A Flask-based asset management system for tracking inventory, managing assets, and conducting inventory checks.
+
+## Neue Features & Änderungen (Mai 2025)
+
+- **Login-Sicherheit:**  
+  Accounts werden nach 5 Fehlversuchen für 10 Minuten gesperrt. Nutzer erhalten klare Hinweise.
+- **Admin-Passwort-Reset:**  
+  Admins können im User-Edit-Bereich ein neues Passwort generieren und direkt per E-Mail an den User senden.
+- **Hilfetexte & Fehlermeldungen:**  
+  Alle wichtigen Felder (Benutzername, Passwort, E-Mail) haben jetzt Tooltips und Hilfetexte. Fehlermeldungen sind klarer.
+- **Passwort-Features:**  
+  Sichtbarkeit umschaltbar, Live-Stärkeanzeige bei Eingabe.
+- **E-Mail-Benachrichtigung:**  
+  Nutzer werden bei Passwortänderungen automatisch informiert.
+- **DB-Änderungen:**  
+  Neue Felder `failed_logins` und `lock_until` in der User-Tabelle.  
+  → Bei bestehenden Installationen ggf. `add_missing_user_columns.py` ausführen!
+- **Backup-Hinweis:**  
+  Vor Migrationen/Updates immer ein Backup der Datenbank anlegen!
+
+### Manuelles Datenbank-Update (nur bei bestehenden Installationen)
+
+Falls nach dem Update Fehler wie `no such column: user.failed_logins` auftreten, führe das Skript `add_missing_user_columns.py` aus:
+
+```bash
+python add_missing_user_columns.py
+```
+
+Das Skript ergänzt die neuen Spalten in der Datenbank. Vorher unbedingt ein Backup der Datei `instance/app.db` anlegen!
+
 
 ## Deployment to PythonAnywhere
 

@@ -382,11 +382,13 @@ def add_user():
         return redirect(url_for('admin.user_management'))
     return render_template('admin/add_user.html', form=form)
 
+import secrets
+from flask_mail import Message
+
 @admin.route('/users/edit/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def edit_user(user_id):
-    import os
     from werkzeug.utils import secure_filename
     user = User.query.get_or_404(user_id)
     form = EditUserForm(obj=user)

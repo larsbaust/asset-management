@@ -7,22 +7,40 @@
             {{ form.hidden_tag() }}
             <div class="field">
                 {{ form.username.label(class="label") }}
-                <div class="control">
-                    {{ form.username(class="input") }}
-                </div>
+<div class="control">
+    {{ form.username(class="input", placeholder="z.B. max.mustermann", title="Der Benutzername muss mindestens 3 Zeichen lang sein.") }}
+</div>
+<small class="help is-info">Mindestens 3 Zeichen, nur Buchstaben/Zahlen/Punkte/Unterstriche.</small>
                 {% for error in form.username.errors %}
-                    <p class="help is-danger">{{ error }}</p>
-                {% endfor %}
+    {% if 'shorter' in error or 'mindestens' in error %}
+        <p class="help is-danger">Der Benutzername ist zu kurz. Mindestens 3 Zeichen notwendig.</p>
+    {% elif 'required' in error or 'erforderlich' in error %}
+        <p class="help is-danger">Bitte gib einen Benutzernamen ein.</p>
+    {% else %}
+        <p class="help is-danger">{{ error }}</p>
+    {% endif %}
+{% endfor %}
             </div>
             <div class="field">
-                {{ form.password.label(class="label") }}
-                <div class="control">
-                    {{ form.password(class="input") }}
-                </div>
-                {% for error in form.password.errors %}
-                    <p class="help is-danger">{{ error }}</p>
-                {% endfor %}
-            </div>
+    {{ form.password.label(class="label") }}
+    <div class="control has-icons-right">
+    {{ form.password(class="input", id="register-password") }}
+    <span class="icon is-small is-right" style="cursor:pointer;" onclick="togglePassword('register-password', this)">
+        <i class="fas fa-eye"></i>
+    </span>
+</div>
+    <small class="help is-info">Das Passwort muss mindestens 6 Zeichen lang sein.</small>
+<div id="register-password-strength" class="mt-1"></div>
+    {% for error in form.password.errors %}
+    {% if 'shorter' in error or 'mindestens' in error %}
+        <p class="help is-danger">Das Passwort ist zu kurz. Es muss mindestens 6 Zeichen lang sein.</p>
+    {% elif 'required' in error or 'erforderlich' in error %}
+        <p class="help is-danger">Bitte gib ein Passwort ein.</p>
+    {% else %}
+        <p class="help is-danger">{{ error }}</p>
+    {% endif %}
+{% endfor %}
+</div>
             <div class="field">
                 {{ form.confirm_password.label(class="label") }}
                 <div class="control">
@@ -52,4 +70,48 @@
         <p class="mt-4">Schon registriert? <a href="{{ url_for('auth.login') }}">Zum Login</a></p>
     </div>
 </section>
+<script>
+function togglePassword(fieldId, iconSpan) {
+    const input = document.getElementById(fieldId);
+    const icon = iconSpan.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+// Passwort-Strength-Meter
+function getStrength(pw) {
+    let score = 0;
+    if (!pw) return 0;
+    if (pw.length >= 6) score++;
+    if (/[A-Z]/.test(pw)) score++;
+    if (/[0-9]/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+    if (pw.length >= 12) score++;
+    return score;
+}
+function updateStrengthMeter(fieldId, meterId) {
+    const pw = document.getElementById(fieldId).value;
+    const strength = getStrength(pw);
+    const meter = document.getElementById(meterId);
+    let color, text;
+    switch (strength) {
+        case 0:
+        case 1: color = '#e74c3c'; text = 'Sehr schwach'; break;
+        case 2: color = '#f39c12'; text = 'Schwach'; break;
+        case 3: color = '#f1c40f'; text = 'Okay'; break;
+        case 4: color = '#27ae60'; text = 'Gut'; break;
+        case 5: color = '#2ecc71'; text = 'Sehr stark'; break;
+    }
+    meter.innerHTML = `<div style="height:8px;background:${color};width:${strength*20}%;border-radius:4px;"></div><small style="color:${color};font-weight:600;">${text}</small>`;
+}
+document.getElementById('register-password').addEventListener('input', function() {
+    updateStrengthMeter('register-password', 'register-password-strength');
+});
+</script>
 {% endblock %}

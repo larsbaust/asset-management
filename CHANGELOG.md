@@ -1,5 +1,7 @@
 # Changelog (automatisch generiert)
 
+- 2025-05-19 - Nutzer können über „Passwort vergessen?“ einen Link zum Zurücksetzen ihres Passworts per E-Mail anfordern. - Es wird ein sicherer Token verwendet (ablaufbar, keine Information ob E-Mail existiert). - Das neue Passwort wird über einen Link in der E-Mail gesetzt.
+- 2025-05-19 Admin: Rechte-Matrix-Seite, bessere Rechte-Beschriftung, Admin-Menü-Link & UI-Aufräumung
 - 2025-05-19 Bulk asset achriv implementation und Filtermöglichkeit im Standort für Aktive und Inaktive Assets.
 - 2025-05-18 Anpassung der Changelog mit KI-Funktion
 - 2025-05-18 KI-Changelog implementierung
