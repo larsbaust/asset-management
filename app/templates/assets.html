@@ -122,10 +122,18 @@
     </form>
     {% if assets %}
     <div class="box" style="width:100%; margin:0;">
-      <button class="button is-warning mb-3" id="bulk-archive-btn" type="button">
+      {% if has_permission(current_user, 'archive_asset') %}
+<button class="button is-warning mb-3" id="bulk-archive-btn" type="button" {% if selected.status != 'active' and selected.status != None %}style="display:none;"{% endif %}>
     <span class="icon"><i class="fas fa-archive"></i></span>
     <span>Ausgewählte archivieren</span>
 </button>
+{% endif %}
+{% if has_permission(current_user, 'restore_asset') %}
+<button id="bulk-restore-btn" class="button is-success" type="button" {% if selected.status != 'inactive' %}style="display:none;"{% endif %}>
+    <span class="icon"><i class="fas fa-undo"></i></span>
+    <span>Ausgewählte wiederherstellen</span>
+</button>
+{% endif %}
 <div class="table-container">
       <table class="table is-fullwidth is-striped is-hoverable asset-table-responsive" style="font-size:0.95rem; table-layout:auto; width:100%; min-width:unset;">
         <thead>

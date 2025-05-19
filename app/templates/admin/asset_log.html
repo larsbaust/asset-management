@@ -1,0 +1,32 @@
+{% extends 'admin/base.html' %}
+{% block admin_content %}
+<h1 class="title">Asset-Logbuch</h1>
+<div class="box">
+  <table class="table is-striped is-fullwidth">
+    <thead>
+      <tr>
+        <th>Zeitpunkt</th>
+        <th>Nutzer</th>
+        <th>Aktion</th>
+        <th>Asset-ID</th>
+        <th>Details</th>
+        <th>IP-Adresse</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td>{{ log.username }}</td>
+        <td>{{ log.action }}</td>
+        <td>{{ log.asset_id }}</td>
+        <td>{{ log.details or '' }}</td>
+        <td>{{ log.ip_address or '' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">Keine Log-Einträge vorhanden.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

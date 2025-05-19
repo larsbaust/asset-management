@@ -41,4 +41,29 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(() => alert('Fehler beim Archivieren.'));
         });
     }
+
+    // Bulk-Wiederherstellen
+    const bulkRestoreBtn = document.getElementById('bulk-restore-btn');
+    if (bulkRestoreBtn) {
+        bulkRestoreBtn.addEventListener('click', function() {
+            const checked = Array.from(document.querySelectorAll('.asset-checkbox:checked'));
+            if (checked.length === 0) {
+                alert('Bitte mindestens ein Asset auswählen.');
+                return;
+            }
+            if (!confirm('Ausgewählte Assets wirklich wiederherstellen? Sie werden wieder "Aktiv".')) return;
+            const ids = checked.map(cb => cb.value);
+            fetch('/assets/bulk_restore', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) location.reload();
+                else alert(data.message || 'Fehler beim Wiederherstellen.');
+            })
+            .catch(() => alert('Fehler beim Wiederherstellen.'));
+        });
+    }
 });

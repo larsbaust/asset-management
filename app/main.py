@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file, current_app
 from dotenv import load_dotenv
 load_dotenv()
-from .models import Asset, db, Loan, Document, CostEntry, InventorySession, InventoryItem, InventoryTeam, OrderComment
+from .models import Asset, db, Loan, Document, CostEntry, InventorySession, InventoryItem, InventoryTeam, OrderComment, AssetLog
 from .forms import AssetForm, LoanForm, DocumentForm, CostEntryForm, InventorySessionForm, InventoryTeamForm, InventoryCheckForm
 import csv
 from io import StringIO, BytesIO
@@ -14,7 +14,7 @@ import io
 from sqlalchemy import func, or_
 from dateutil.relativedelta import relativedelta
 from flask_login import login_required, current_user
-from .admin import admin_required
+from .admin import admin_required, permission_required
 from datetime import datetime
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -205,7 +205,7 @@ def add_manufacturer():
 # Bulk-Asset-Delete-Route
 @main.route('/assets/bulk_archive', methods=['POST'])
 @login_required
-@admin_required
+@permission_required('archive_asset')
 def bulk_archive_assets():
     data = request.get_json()
     ids = data.get('ids', [])
@@ -217,6 +217,43 @@ def bulk_archive_assets():
             asset = Asset.query.get(asset_id)
             asset.status = 'inactive'
             asset.archived_at = datetime.utcnow()
+            log = AssetLog(
+                user_id=current_user.id,
+                username=current_user.username,
+                asset_id=asset.id,
+                action='archiviert',
+                details=None,
+                ip_address=request.remote_addr
+            )
+            db.session.add(log)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# Wiederherstellen von archivierten Assets
+@main.route('/assets/bulk_restore', methods=['POST'])
+@login_required
+@permission_required('restore_asset')
+def bulk_restore_assets():
+    data = request.get_json()
+    ids = data.get('ids', [])
+    if not ids:
+        return jsonify({'success': False, 'message': 'Keine IDs übergeben.'}), 400
+    try:
+        for asset_id in ids:
+            asset = Asset.query.get(asset_id)
+            asset.status = 'active'
+            asset.archived_at = None
+            log = AssetLog(
+                user_id=current_user.id,
+                username=current_user.username,
+                asset_id=asset.id,
+                action='wiederhergestellt',
+                details=None,
+                ip_address=request.remote_addr
+            )
+            db.session.add(log)
         db.session.commit()
         return jsonify({'success': True})
     except Exception as e:
@@ -687,7 +724,17 @@ def add_asset():
             asset.image_url = f"/static/images/{filename}"
         db.session.add(asset)
         db.session.commit()
-        
+        # Logging
+        log = AssetLog(
+            user_id=current_user.id,
+            username=current_user.username,
+            asset_id=asset.id,
+            action='angelegt',
+            details=None,
+            ip_address=request.remote_addr
+        )
+        db.session.add(log)
+        db.session.commit()
         flash('Asset wurde erfolgreich erstellt.', 'success')
         return redirect(url_for('main.edit_asset', id=asset.id))
     
@@ -736,6 +783,17 @@ def edit_asset(id):
                 os.makedirs(img_folder)
             form.image.data.save(os.path.join(img_folder, filename))
             asset.image_url = f"/static/images/{filename}"
+        db.session.commit()
+        # Logging
+        log = AssetLog(
+            user_id=current_user.id,
+            username=current_user.username,
+            asset_id=asset.id,
+            action='bearbeitet',
+            details=None,
+            ip_address=request.remote_addr
+        )
+        db.session.add(log)
         db.session.commit()
         flash('Asset wurde erfolgreich aktualisiert.', 'success')
         return redirect(url_for('main.assets'))
@@ -891,6 +949,16 @@ def delete_asset(id):
     for loan in loans:
         db.session.delete(loan)
     # Lösche das Asset selbst
+    # Logging vor dem Löschen
+    log = AssetLog(
+        user_id=current_user.id,
+        username=current_user.username,
+        asset_id=asset.id,
+        action='gelöscht',
+        details=None,
+        ip_address=request.remote_addr
+    )
+    db.session.add(log)
     db.session.delete(asset)
     db.session.commit()
 

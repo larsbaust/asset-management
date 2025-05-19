@@ -20,6 +20,10 @@
                         <div class="form-check">
                             {{ subfield(class="form-check-input") }}
                             {{ subfield.label(class="form-check-label") }}
+                            {% set perm_id = subfield.data %}
+                            {% if form.permission_descriptions[perm_id] and form.permission_descriptions[perm_id] != subfield.label.text %}
+                                <small class="text-muted" title="{{ form.permission_descriptions[perm_id] }}">{{ form.permission_descriptions[perm_id] }}</small>
+                            {% endif %}
                         </div>
                     </div>
                 {% endfor %}

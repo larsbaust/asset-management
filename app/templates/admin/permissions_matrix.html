@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Rechte-Matrix</h2>
+    <p class="mb-3">Hier siehst du auf einen Blick, welche Rolle welche Rechte besitzt.</p>
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Rolle</th>
+                    {% for perm in permissions %}
+                        <th title="{{ perm.description or perm.name }}">{{ perm.name }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for role in roles %}
+                    <tr>
+                        <td><strong>{{ role.name }}</strong><br><small class="text-muted">{{ role.description }}</small></td>
+                        {% for perm in permissions %}
+                            <td class="text-center">
+                                {% if perm in role.permissions %}
+                                    <span class="text-success" title="Hat Recht"><i class="fas fa-check-circle"></i></span>
+                                {% else %}
+                                    <span class="text-danger" title="Kein Recht"><i class="fas fa-times-circle"></i></span>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <a href="{{ url_for('admin.role_management') }}" class="btn btn-secondary mt-3">Zurück zur Rollenverwaltung</a>
+</div>
+{% endblock %}

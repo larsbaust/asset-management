@@ -1,5 +1,6 @@
 # Changelog (automatisch generiert)
 
+- 2025-05-19 Bulk asset achriv implementation und Filtermöglichkeit im Standort für Aktive und Inaktive Assets.
 - 2025-05-18 Anpassung der Changelog mit KI-Funktion
 - 2025-05-18 KI-Changelog implementierung
 - 2025-05-18 ## [18.05.2025] - Backup & Restore-Funktionalität mit granularen Rechten (backup_data, restore_data) - ZIP-Backup inkl. Datenbank und aller Uploads/Bilder - Restore mit Sicherheitskopie und Rechteprüfung - Menüpunkt und UI-Integration für Backup & Restore

@@ -242,7 +242,11 @@ class RoleForm(FlaskForm):
     def __init__(self, *args, **kwargs):
         super(RoleForm, self).__init__(*args, **kwargs)
         from .models import Permission
-        self.permissions.choices = [(p.id, p.name) for p in Permission.query.order_by(Permission.name).all()]
+        perms = Permission.query.order_by(Permission.name).all()
+        self.permissions.choices = [(p.id, p.name) for p in perms]
+        # Mapping: permission.id -> description
+        self.permission_descriptions = {p.id: p.description or p.name for p in perms}
+
 
 class InventoryCheckForm(FlaskForm):
     """Formular für die Erfassung eines Assets während der Inventur"""

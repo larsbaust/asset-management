@@ -1,9 +1,56 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
-from .models import User, db
+from .models import User, db, AssetLog
 from .forms import RegisterForm, RoleForm
 
+# Decorator für Admin-Zugriff
+from functools import wraps
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('Zugriff verweigert: Nicht eingeloggt!', 'danger')
+            return redirect(url_for('main.index'))
+        if not getattr(current_user, 'role', None):
+            flash('Zugriff verweigert: Keine Rolle zugewiesen! Wende dich an den Administrator.', 'danger')
+            return redirect(url_for('main.index'))
+        if getattr(current_user.role, 'name', None) != 'Admin':
+            flash(f'Zugriff verweigert: Nur für Admins! (Aktueller User: {current_user.username}, Rolle: {getattr(current_user.role, "name", None)})', 'danger')
+            return redirect(url_for('main.index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Granularer Rechte-Decorator
+
+def permission_required(permission_name):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                flash('Zugriff verweigert: Nicht eingeloggt!', 'danger')
+                return redirect(url_for('main.index'))
+            if not getattr(current_user, 'role', None):
+                flash('Zugriff verweigert: Keine Rolle zugewiesen! Wende dich an den Administrator.', 'danger')
+                return redirect(url_for('main.index'))
+            if not any(p.name == permission_name for p in current_user.role.permissions):
+                flash(f'Zugriff verweigert: Fehlendes Recht ({permission_name})', 'danger')
+                return redirect(url_for('main.index'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
 admin = Blueprint('admin', __name__, url_prefix='/admin')
+
+@admin.route('/permissions_matrix')
+@login_required
+@admin_required
+def permissions_matrix():
+    from .models import Role, Permission
+    roles = Role.query.order_by(Role.name).all()
+    permissions = Permission.query.order_by(Permission.name).all()
+    return render_template('admin/permissions_matrix.html', roles=roles, permissions=permissions)
+
 
 # Decorator für Admin-Zugriff
 from functools import wraps
@@ -38,6 +85,14 @@ def permission_required(permission_name):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+
+# Asset-Logbuch im Adminbereich
+@admin.route('/asset_log')
+@login_required
+@admin_required
+def asset_log():
+    logs = AssetLog.query.order_by(AssetLog.timestamp.desc()).limit(200).all()
+    return render_template('admin/asset_log.html', logs=logs)
 
 # Beispiel: Route für CSV-Import, geschützt durch das Recht 'import_csv'
 @admin.route('/import')
@@ -212,6 +267,8 @@ def ensure_default_permissions():
         ('view_assets', 'Assets anzeigen'),
         ('edit_assets', 'Assets bearbeiten'),
         ('delete_assets', 'Assets löschen'),
+        ('archive_asset', 'Assets archivieren'),
+        ('restore_asset', 'Archivierte Assets wiederherstellen'),
         ('import_csv', 'CSV-Import'),
         ('manage_users', 'Benutzerverwaltung'),
         ('manage_roles', 'Rollenverwaltung'),

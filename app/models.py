@@ -240,6 +240,10 @@ class User(UserMixin, db.Model):
     city = db.Column(db.String(80))
     phone = db.Column(db.String(40))
 
+    @property
+    def is_admin(self):
+        return self.role is not None and self.role.name.lower() == 'admin'
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
         
@@ -384,6 +388,24 @@ class InventoryTeam(db.Model):
 
 from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy import JSON
+
+class AssetLog(db.Model):
+    """Protokolliert Aktionen auf Assets (Archivieren, Wiederherstellen, Löschen, Anlegen, Bearbeiten)"""
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    username = db.Column(db.String(80), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
+    action = db.Column(db.String(30), nullable=False)  # z.B. 'archiviert', 'wiederhergestellt', 'gelöscht', 'angelegt', 'bearbeitet'
+    details = db.Column(db.Text)  # z.B. Änderungen als JSON/Text
+    ip_address = db.Column(db.String(45))
+
+    user = db.relationship('User', backref='asset_logs')
+    asset = db.relationship('Asset', backref='logs')
+
+    def __repr__(self):
+        return f'<AssetLog {self.action} by {self.username} on asset {self.asset_id}>'
+
 
 class InventoryItem(db.Model):
     """Ein Item in einer Inventur"""
