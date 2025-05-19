@@ -83,7 +83,20 @@
             <div>Keine Dokumentationsbilder/Dokumente vorhanden.</div>
         {% endfor %}
     </div>
-    <h4 class="mt-4">Assets an diesem Standort ({{ location.assets|length }})</h4>
+    <h4 class="mt-4">Assets an diesem Standort ({{ filtered_assets|length }})</h4>
+    <div class="tabs is-toggle is-toggle-rounded mb-2">
+      <ul>
+        <li class="{% if selected_status == 'active' %}is-active{% endif %}">
+          <a href="{{ url_for('main.location_detail', id=location.id, status='active') }}">Aktiv</a>
+        </li>
+        <li class="{% if selected_status == 'inactive' %}is-active{% endif %}">
+          <a href="{{ url_for('main.location_detail', id=location.id, status='inactive') }}">Inaktiv</a>
+        </li>
+        <li class="{% if selected_status == 'all' %}is-active{% endif %}">
+          <a href="{{ url_for('main.location_detail', id=location.id, status='all') }}">Alle</a>
+        </li>
+      </ul>
+    </div>
     <table class="table is-striped">
         <thead>
             <tr>
@@ -95,7 +108,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for asset in location.assets %}
+            {% for asset in filtered_assets %}
             <tr>
                 <td><a href="{{ url_for('main.asset_details', id=asset.id) }}">{{ asset.name }}</a></td>
                 <td>{{ asset.category.name if asset.category else '-' }}</td>

@@ -130,6 +130,7 @@ class Asset(db.Model):
     ean = db.Column(db.String(13))  # EAN-Nummer
     value = db.Column(db.Float)
     status = db.Column(db.String(20), nullable=False, default='active')
+    archived_at = db.Column(db.DateTime, nullable=True)  # Zeitpunkt der Archivierung
     location = db.Column(db.String(100))  # Altes Feld für Migration
     location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=True)  # NEU: FK auf Location
     serial_number = db.Column(db.String(255))

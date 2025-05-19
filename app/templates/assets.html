@@ -28,6 +28,20 @@
         </div>
     </div>
 
+    <!-- Tabs für Asset-Status -->
+    <div class="tabs is-toggle is-toggle-rounded mb-2">
+      <ul>
+        <li class="{% if selected.status == 'active' or not selected.status %}is-active{% endif %}">
+          <a href="{{ url_for('main.assets', name=selected.name, category=selected.category, location=selected.location, manufacturer=selected.manufacturer, supplier=selected.supplier, assignment=selected.assignment, with_image=selected.with_image, status='active') }}">Aktive Assets</a>
+        </li>
+        <li class="{% if selected.status == 'inactive' %}is-active{% endif %}">
+          <a href="{{ url_for('main.assets', name=selected.name, category=selected.category, location=selected.location, manufacturer=selected.manufacturer, supplier=selected.supplier, assignment=selected.assignment, with_image=selected.with_image, status='inactive') }}">Archivierte Assets</a>
+        </li>
+        <li class="{% if selected.status == 'all' %}is-active{% endif %}">
+          <a href="{{ url_for('main.assets', name=selected.name, category=selected.category, location=selected.location, manufacturer=selected.manufacturer, supplier=selected.supplier, assignment=selected.assignment, with_image=selected.with_image, status='all') }}">Alle</a>
+        </li>
+      </ul>
+    </div>
     <!-- Filterleiste -->
     <form method="get" class="box mb-4">
       <div class="columns is-multiline">
@@ -90,6 +104,17 @@
             Nur mit Bild
           </label>
         </div>
+        <div class="column is-2">
+          <div class="select is-fullwidth">
+            <select name="status">
+              <option value="">Status wählen...</option>
+              <option value="active" {% if selected.status == 'active' %}selected{% endif %}>Aktiv</option>
+              <option value="inactive" {% if selected.status == 'inactive' %}selected{% endif %}>Inaktiv</option>
+              <option value="on_loan" {% if selected.status == 'on_loan' %}selected{% endif %}>Ausgeliehen</option>
+              <option value="all" {% if selected.status == 'all' %}selected{% endif %}>Alle</option>
+            </select>
+          </div>
+        </div>
         <div class="column is-1">
           <button class="button is-link is-fullwidth" type="submit">Filtern</button>
         </div>
@@ -97,11 +122,16 @@
     </form>
     {% if assets %}
     <div class="box" style="width:100%; margin:0;">
-      <div class="table-container">
+      <button class="button is-warning mb-3" id="bulk-archive-btn" type="button">
+    <span class="icon"><i class="fas fa-archive"></i></span>
+    <span>Ausgewählte archivieren</span>
+</button>
+<div class="table-container">
       <table class="table is-fullwidth is-striped is-hoverable asset-table-responsive" style="font-size:0.95rem; table-layout:auto; width:100%; min-width:unset;">
         <thead>
           <tr>
-            <th>Bild</th>
+            <th><input type="checkbox" id="select-all-assets" title="Alle auswählen"></th>
+<th>Bild</th>
             <th>Name</th>
             <th>Artikelnummer</th>
                     <th>Kategorie</th>
@@ -112,6 +142,7 @@
                     <th>Lieferant</th>
                     <th>Standort</th>
                     <th>Status</th>
+                    <th>Archiviert am</th>
                     <th>Wert</th>
                     <th>Aktionen</th>
                 </tr>
@@ -119,6 +150,7 @@
             <tbody>
                 {% for asset in assets %}
                 <tr>
+                    <td><input type="checkbox" class="asset-checkbox" value="{{ asset.id }}"></td>
                     <td>
     {% if asset.image_url %}
     <figure class="image is-48x48" style="max-width:60px;">
@@ -163,6 +195,13 @@
                         <span class="tag {% if asset.status == 'active' %}is-success{% elif asset.status == 'inactive' %}is-danger{% elif asset.status == 'on_loan' %}is-info{% endif %}">
                             {{ 'Aktiv' if asset.status == 'active' else 'Inaktiv' if asset.status == 'inactive' else 'Ausgeliehen' }}
                         </span>
+                    </td>
+                    <td>
+                        {% if asset.status == 'inactive' and asset.archived_at %}
+                            {{ asset.archived_at.strftime('%d.%m.%Y %H:%M') }}
+                        {% else %}
+                            -
+                        {% endif %}
                     </td>
                     <td>{{ "%.2f €"|format(asset.value or 0) }}</td>
                     <td style="min-width:90px; max-width:120px;">
@@ -271,4 +310,7 @@ function deleteAsset(assetId, assetName) {
   }
 }
 </style>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/assets_bulk.js') }}"></script>
 {% endblock %}

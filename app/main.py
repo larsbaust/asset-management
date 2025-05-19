@@ -80,7 +80,17 @@ def location_detail(id):
     location = Location.query.get_or_404(id)
     form = LocationImageForm()
     images = LocationImage.query.filter_by(location_id=id).order_by(LocationImage.upload_date.desc()).all()
-    return render_template('location_detail.html', location=location, gallery_form=form, gallery_images=images)
+
+    # Asset-Status-Filter
+    status = request.args.get('status', 'all')
+    if status == 'active':
+        filtered_assets = [a for a in location.assets if a.status == 'active']
+    elif status == 'inactive':
+        filtered_assets = [a for a in location.assets if a.status == 'inactive']
+    else:
+        filtered_assets = location.assets
+
+    return render_template('location_detail.html', location=location, gallery_form=form, gallery_images=images, filtered_assets=filtered_assets, selected_status=status)
 
 @main.route('/locations/<int:id>/upload_image', methods=['GET', 'POST'])
 def upload_location_image(id):
@@ -191,6 +201,26 @@ def add_manufacturer():
     db.session.add(manufacturer)
     db.session.commit()
     return jsonify({'success': True, 'id': manufacturer.id, 'name': manufacturer.name})
+
+# Bulk-Asset-Delete-Route
+@main.route('/assets/bulk_archive', methods=['POST'])
+@login_required
+@admin_required
+def bulk_archive_assets():
+    data = request.get_json()
+    ids = data.get('ids', [])
+    if not ids:
+        return jsonify({'success': False, 'message': 'Keine IDs übergeben.'}), 400
+    try:
+        from datetime import datetime
+        for asset_id in ids:
+            asset = Asset.query.get(asset_id)
+            asset.status = 'inactive'
+            asset.archived_at = datetime.utcnow()
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 # Konfiguration für Datei-Uploads
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
@@ -540,6 +570,13 @@ def assets():
     if assignment_id not in ('', '0', 0, None):
         query = query.filter(Asset.assignments.any(Assignment.id == int(assignment_id)))
 
+    # Filter: Status (Dropdown)
+    status = request.args.get('status', '')
+    if status and status != 'all':
+        query = query.filter(Asset.status == status)
+    elif not status:
+        query = query.filter(Asset.status == 'active')
+
     # Filter: Nur mit Bild (Checkbox)
     with_image = request.args.get('with_image', '')
     if with_image:
@@ -570,7 +607,8 @@ def assets():
             'manufacturer': manufacturer_id,
             'supplier': supplier_id,
             'assignment': assignment_id,
-            'with_image': with_image
+            'with_image': with_image,
+            'status': status if status else 'active'
         }
     )
 
@@ -828,9 +866,8 @@ def delete_document(document_id):
 @login_required
 @admin_required
 def delete_asset(id):
-    """Asset und alle verknüpften Daten löschen"""
+    """Asset und alle verknüpften Daten löschen (ohne Response/Flash)"""
     asset = Asset.query.filter_by(id=id).first_or_404()
-    
     # Lösche alle verknüpften Dokumente
     documents = Document.query.filter_by(asset_id=id).all()
     for doc in documents:
@@ -838,9 +875,8 @@ def delete_asset(id):
             try:
                 os.remove(os.path.join(UPLOAD_FOLDER, doc.filename))
             except OSError:
-                pass  # Ignoriere Fehler beim Löschen der Datei
+                pass
         db.session.delete(doc)
-    
     # Lösche alle Kosteneinträge und deren Belege
     cost_entries = CostEntry.query.filter_by(asset_id=id).all()
     for entry in cost_entries:
@@ -850,16 +886,19 @@ def delete_asset(id):
             except OSError:
                 pass
         db.session.delete(entry)
-    
     # Lösche alle Ausleihvorgänge
     loans = Loan.query.filter_by(asset_id=id).all()
     for loan in loans:
         db.session.delete(loan)
-    
     # Lösche das Asset selbst
     db.session.delete(asset)
     db.session.commit()
-    
+
+@main.route('/assets/<int:id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_asset_route(id):
+    delete_asset(id)
     flash('Asset und alle verknüpften Daten wurden erfolgreich gelöscht.', 'success')
     return jsonify({'success': True})
 
