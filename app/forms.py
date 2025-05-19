@@ -209,6 +209,26 @@ class RegisterForm(FlaskForm):
         super(RegisterForm, self).__init__(*args, **kwargs)
         from .models import Role
         self.role.choices = [(r.id, r.name) for r in Role.query.order_by(Role.name).all()]
+
+class EditUserForm(FlaskForm):
+    username = StringField('Benutzername', validators=[DataRequired(), Length(min=3, max=80)])
+    password = PasswordField('Neues Passwort', validators=[Optional(), Length(min=6)])
+    confirm_password = PasswordField('Passwort bestätigen', validators=[Optional(), EqualTo('password', message='Passwörter stimmen nicht überein')])
+    role = SelectField('Rolle', coerce=int, validators=[DataRequired()])
+    vorname = StringField('Vorname', validators=[DataRequired(), Length(max=80)])
+    nachname = StringField('Nachname', validators=[DataRequired(), Length(max=80)])
+    email = StringField('E-Mail', validators=[DataRequired(), Length(max=120)])
+    profile_image = FileField('Profilbild', validators=[Optional(), FileAllowed(['jpg', 'jpeg', 'png', 'gif'], 'Nur Bilder erlaubt!')])
+    street = StringField('Straße', validators=[Optional(), Length(max=120)])
+    postal_code = StringField('PLZ', validators=[Optional(), Length(max=20)])
+    city = StringField('Stadt', validators=[Optional(), Length(max=80)])
+    phone = StringField('Telefon', validators=[Optional(), Length(max=40)])
+    submit = SubmitField('Speichern')
+
+    def __init__(self, *args, **kwargs):
+        super(EditUserForm, self).__init__(*args, **kwargs)
+        from .models import Role
+        self.role.choices = [(r.id, r.name) for r in Role.query.order_by(Role.name).all()]
 class ResetPasswordForm(FlaskForm):
     email = StringField('E-Mail-Adresse', validators=[DataRequired(), Length(max=120)])
     submit = SubmitField('Link zum Zurücksetzen senden')

@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from .models import User
 from . import db
+from flask_mail import Message
+from . import mail
 
 auth = Blueprint('auth', __name__)
 
@@ -50,14 +52,25 @@ def logout():
 def reset_password():
     form = ResetPasswordForm()
     if form.validate_on_submit():
-        user = User.query.filter_by(username=form.email.data).first()
-        # In einer echten App würdest du nach user.email suchen, aber das User-Modell hat aktuell nur username
+        user = User.query.filter_by(email=form.email.data).first()
         if user:
-            # Demo-Link (Token-Logik kann später ergänzt werden)
-            reset_link = url_for('auth.set_new_password', token='demo-token', _external=True)
-            flash(f'Ein Link zum Zurücksetzen deines Passworts wurde gesendet: <a href="{reset_link}">Passwort jetzt zurücksetzen</a>', 'success')
-        else:
-            flash('Es wurde kein Benutzer mit dieser E-Mail gefunden.', 'danger')
+            token = user.get_reset_token()
+            reset_link = url_for('auth.set_new_password', token=token, _external=True)
+            # E-Mail senden
+            msg = Message('Passwort zurücksetzen', recipients=[user.email])
+            msg.body = f'''Hallo {user.username},
+
+Um dein Passwort zurückzusetzen, klicke bitte auf den folgenden Link:
+{reset_link}
+
+Falls du kein Passwort-Reset angefordert hast, ignoriere diese E-Mail einfach.
+
+Viele Grüße
+Dein Team'''
+            mail.send(msg)
+        # Immer gleiches Feedback, egal ob User existiert (Sicherheit)
+        flash('Wenn die E-Mail existiert, wurde ein Link zum Zurücksetzen gesendet.', 'info')
+        return redirect(url_for('auth.login'))
     return render_template('auth/reset_password.html', form=form)
 
 from flask_wtf import FlaskForm
@@ -71,14 +84,13 @@ class SetNewPasswordForm(FlaskForm):
 @auth.route('/set_new_password/<token>', methods=['GET', 'POST'])
 def set_new_password(token):
     form = SetNewPasswordForm()
+    user = User.verify_reset_token(token)
+    if not user:
+        flash('Der Link ist ungültig oder abgelaufen.', 'danger')
+        return redirect(url_for('auth.reset_password'))
     if form.validate_on_submit():
-        # Dummy-Logik: Setze Passwort für Demo-User
-        user = User.query.filter_by(username='demo-user').first()
-        if user:
-            user.set_password(form.password.data)
-            db.session.commit()
-            flash('Dein Passwort wurde erfolgreich geändert.', 'success')
-            return redirect(url_for('auth.login'))
-        else:
-            flash('Benutzer nicht gefunden.', 'danger')
+        user.set_password(form.password.data)
+        db.session.commit()
+        flash('Passwort erfolgreich geändert! Du kannst dich jetzt einloggen.', 'success')
+        return redirect(url_for('auth.login'))
     return render_template('auth/set_new_password.html', form=form)

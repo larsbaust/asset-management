@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from .models import User, db, AssetLog
-from .forms import RegisterForm, RoleForm
+from .forms import RegisterForm, RoleForm, EditUserForm
 
 # Decorator für Admin-Zugriff
 from functools import wraps
@@ -389,7 +389,7 @@ def edit_user(user_id):
     import os
     from werkzeug.utils import secure_filename
     user = User.query.get_or_404(user_id)
-    form = RegisterForm(obj=user)
+    form = EditUserForm(obj=user)
     if request.method == 'GET':
         if user.role_id:
             form.role.data = user.role_id

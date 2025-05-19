@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 import qrcode
 import io
 from . import db
+from flask import current_app
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 # Zuordnungs-Tabelle für Assets und Assignments (n:m)
 asset_assignments = db.Table('asset_assignments',
@@ -249,6 +251,24 @@ class User(UserMixin, db.Model):
         
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    # --- Passwort-Reset-Token Methoden ---
+    def get_reset_token(self, expires_sec=3600):
+        s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+        return s.dumps({'user_id': self.id}, salt='password-reset-salt')
+
+    @staticmethod
+    def verify_reset_token(token, expires_sec=3600):
+        s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token, salt='password-reset-salt', max_age=expires_sec)
+        except SignatureExpired:
+            return None  # Token abgelaufen
+        except BadSignature:
+            return None  # Token ungültig
+        from .models import User
+        return User.query.get(data['user_id'])
+
 
 class Maintenance(db.Model):
     id = db.Column(db.Integer, primary_key=True)

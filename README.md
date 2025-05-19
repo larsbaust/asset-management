@@ -60,6 +60,43 @@ Your application should now be live at yourusername.pythonanywhere.com
    pip install -r requirements.txt
    ```
 
+---
+
+## Password Reset via Email
+
+### Features
+- Nutzer können über „Passwort vergessen?“ einen Link zum Zurücksetzen ihres Passworts per E-Mail anfordern.
+- Es wird ein sicherer Token verwendet (ablaufbar, keine Information ob E-Mail existiert).
+- Das neue Passwort wird über einen Link in der E-Mail gesetzt.
+
+### Einrichtung: Flask-Mail mit Gmail
+1. Aktiviere 2-Faktor-Authentifizierung für dein Gmail-Konto.
+2. Erstelle ein App-Passwort unter https://myaccount.google.com/apppasswords
+3. Trage die Zugangsdaten in `app/__init__.py` ein:
+   ```python
+   app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+   app.config['MAIL_PORT'] = 587
+   app.config['MAIL_USE_TLS'] = True
+   app.config['MAIL_USERNAME'] = 'DEINE.GMAIL@GMAIL.COM'
+   app.config['MAIL_PASSWORD'] = 'DEIN-APP-PASSWORT'
+   app.config['MAIL_DEFAULT_SENDER'] = 'DEINE.GMAIL@GMAIL.COM'
+   ```
+   **Hinweis:** Niemals dein normales Gmail-Passwort verwenden!
+
+### Sicherheit
+- Der Rücksetz-Link ist 1 Stunde gültig.
+- Es wird immer eine neutrale Rückmeldung angezeigt, egal ob die E-Mail existiert (Schutz vor Enumeration).
+- Nach erfolgreichem Zurücksetzen kann sich der Nutzer mit dem neuen Passwort anmelden.
+
+### Testen
+1. Klicke auf „Passwort vergessen?“ im Login-Bereich.
+2. Gib die E-Mail-Adresse deines Accounts ein.
+3. Prüfe dein Postfach und folge dem Link.
+4. Setze ein neues Passwort und logge dich ein.
+
+---
+
+
 3. Set up environment variables:
    - Copy .env.example to .env
    - Update the values as needed
