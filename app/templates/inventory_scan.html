@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="section">
+    <div class="container" style="max-width: 480px;">
+        <h2 class="title is-4 has-text-centered">Inventur-Scan: {{ asset.name }}</h2>
+        <div class="box">
+            <p><strong>Kategorie:</strong> {{ asset.category.name }}</p>
+            <p><strong>Erwarteter Standort:</strong> {{ asset.expected_location }}</p>
+            <p><strong>Seriennummer:</strong> {{ asset.serial_number or '-' }}</p>
+            <hr>
+            <form method="post">
+                <div class="field">
+                    <label class="label">Gezählte Menge</label>
+                    <div class="control">
+                        <input class="input" type="number" name="counted_quantity" min="0" value="{{ inventory_entry.counted_quantity or 1 }}" required>
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">Davon beschädigt</label>
+                    <div class="control">
+                        <input class="input" type="number" name="damaged_quantity" min="0" value="{{ inventory_entry.damaged_quantity or 0 }}">
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">Tatsächlicher Standort</label>
+                    <div class="control">
+                        <input class="input" type="text" name="actual_location" value="{{ inventory_entry.actual_location or asset.expected_location }}">
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="label">Notizen</label>
+                    <div class="control">
+                        <textarea class="textarea" name="notes">{{ inventory_entry.notes or '' }}</textarea>
+                    </div>
+                </div>
+                <div class="field is-grouped is-grouped-centered mt-4">
+                    <div class="control">
+                        <button class="button is-success" type="submit">Inventur bestätigen</button>
+                    </div>
+                </div>
+            </form>
+    <!-- Button zum QR-Scannen -->
+    <div class="has-text-centered mt-4">
+        <button class="button is-link" type="button" onclick="startQrScanner()">Nächsten Asset scannen</button>
+    </div>
+    <!-- QR-Scanner-Container (zunächst versteckt) -->
+    <div id="qr-reader" style="width:320px; margin: 2rem auto; display:none;"></div>
+
+        </div>
+        <div class="has-text-centered mt-4">
+            <a href="{{ url_for('main.inventory_planning') }}" class="button is-light">Zurück zur Inventurplanung</a>
+        </div>
+    </div>
+</div>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+function startQrScanner() {
+    document.getElementById('qr-reader').style.display = 'block';
+    const qrReader = new Html5Qrcode("qr-reader");
+    qrReader.start(
+        { facingMode: "environment" },
+        {
+            fps: 10,
+            qrbox: 250
+        },
+        qrCodeMessage => {
+            window.location.href = qrCodeMessage;
+            qrReader.stop();
+        },
+        errorMessage => {
+            // Fehler können hier ignoriert oder geloggt werden
+        }
+    );
+}
+</script>
+
+{% endblock %}

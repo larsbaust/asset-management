@@ -83,7 +83,7 @@
         <h6 class="mb-3">Assets ({{ items|length }})</h6>
 <form id="inventory-form" method="post" action="{{ url_for('main.inventory_planning_detail', id=session.id) }}">
     <input type="hidden" name="group_count" value="{{ items_grouped|length }}">
-    <input type="hidden" id="complete_inventory" name="complete_inventory" value="0">
+    
     
     <table class="table table-bordered">
         <thead>
@@ -127,32 +127,25 @@
             <div class="mt-3">
                 <a href="{{ url_for('main.inventory_planning_add_items', id=session.id) }}" 
                    class="btn btn-secondary">Assets hinzufügen</a>
-                <button type="button" id="complete-btn" class="button is-danger is-light ml-2">
-    <span class="icon"><i class="fas fa-check"></i></span>
-    <span>Inventur abschließen</span>
-</button>
             </div>
             {% endif %}
 </form>
+{% if session.status != 'completed' %}
+<div class="mt-3">
+    <form action="{{ url_for('main.complete_inventory', id=session.id) }}" method="POST" style="display:inline;">
+        <button type="submit" class="button is-danger is-light ml-2"
+                onclick="return confirm('Möchten Sie diese Inventur wirklich abschließen?')">
+            <span class="icon"><i class="fas fa-check"></i></span>
+            <span>Inventur abschließen</span>
+        </button>
+    </form>
+</div>
+{% endif %}
         </div>
     </div>
 </div>
 
 <script src="{{ url_for('static', filename='js/inventory_live_update.js') }}"></script>
-<script>
-document.getElementById('complete-btn')?.addEventListener('click', function() {
-    if (confirm('Möchten Sie diese Inventur wirklich abschließen?')) {
-        document.getElementById('complete_inventory').value = '1';
-        document.getElementById('inventory-form').submit();
-    }
-});
-</script>
-<script>
-document.getElementById('complete-btn')?.addEventListener('click', function() {
-    if (confirm('Möchten Sie diese Inventur wirklich abschließen?')) {
-        document.getElementById('complete_inventory').value = '1';
-        document.getElementById('inventory-form').submit();
-    }
-});
-</script>
+
+
 {% endblock %}

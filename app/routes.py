@@ -153,6 +153,19 @@ def init_app(app):
         asset = Asset.query.get_or_404(id)
         return render_template('asset_details.html', asset=asset)
 
+    @app.route('/assets/<int:id>/qr')
+    def asset_qr(id):
+        import qrcode
+        import io
+        asset = Asset.query.get_or_404(id)
+        # URL zur Asset-Detailseite
+        qr_url = url_for('main.asset_details', id=asset.id, _external=True)
+        img = qrcode.make(qr_url)
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        buf.seek(0)
+        return send_file(buf, mimetype='image/png', as_attachment=False, download_name=f'asset_{asset.id}_qr.png')
+
     @app.route('/assets/<int:id>/delete', methods=['POST'])
     def delete_asset(id):
         asset = Asset.query.get_or_404(id)

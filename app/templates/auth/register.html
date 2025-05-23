@@ -71,7 +71,8 @@
     </div>
 </section>
 <script>
-function togglePassword(fieldId, iconSpan) {
+document.addEventListener('DOMContentLoaded', function() {
+    window.togglePassword = function(fieldId, iconSpan) {
     const input = document.getElementById(fieldId);
     const icon = iconSpan.querySelector('i');
     if (input.type === 'password') {
@@ -83,7 +84,12 @@ function togglePassword(fieldId, iconSpan) {
         icon.classList.remove('fa-eye-slash');
         icon.classList.add('fa-eye');
     }
-}
+    };
+    // Strength Meter
+    document.getElementById('register-password').addEventListener('input', function() {
+        updateStrengthMeter('register-password', 'register-password-strength');
+    });
+});
 // Passwort-Strength-Meter
 function getStrength(pw) {
     let score = 0;

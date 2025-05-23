@@ -49,6 +49,15 @@
                 </div>
 
                 <div class="content mt-4">
+                {% if active_inventory %}
+                  <div class="notification is-warning">
+                    Für dieses Asset ist eine Inventur geplant oder aktiv!
+                    <a href="{{ url_for('main.inventory_scan', session_id=active_inventory.id, asset_id=asset.id) }}" class="button is-link ml-2">
+                      Inventur jetzt durchführen
+                    </a>
+                  </div>
+                {% endif %}
+
                     <div class="columns">
                         <div class="column is-4">
                             {% if asset.image_url %}
@@ -60,6 +69,15 @@
                                 <img src="{{ url_for('static', filename='images/no-image.png') }}" alt="Kein Bild">
                             </figure>
                             {% endif %}
+                            <div class="has-text-centered mt-3">
+                                <p><strong>QR-Code für dieses Asset:</strong></p>
+                                <img src="{{ url_for('main.asset_qr', id=asset.id) }}" alt="QR-Code für Asset {{ asset.name }}" style="max-width: 180px; margin: 0 auto;">
+                                <br>
+                                <a href="{{ url_for('main.asset_qr', id=asset.id) }}" download="asset_{{ asset.id }}_qr.png" class="button is-small is-link mt-2">
+                                    <span class="icon"><i class="fas fa-download"></i></span>
+                                    <span>QR-Code herunterladen</span>
+                                </a>
+                            </div>
                         </div>
                         <div class="column is-8">
                             <table class="table is-fullwidth">

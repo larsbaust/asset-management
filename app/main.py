@@ -34,6 +34,31 @@ if __name__ == '__main__':
 
 main = Blueprint('main', __name__)
 
+@main.route('/inventory/scan/<int:session_id>/<int:asset_id>', methods=['GET', 'POST'])
+def inventory_scan(session_id, asset_id):
+    session = InventorySession.query.get_or_404(session_id)
+    asset = Asset.query.get_or_404(asset_id)
+    item = InventoryItem.query.filter_by(session_id=session.id, asset_id=asset.id).first()
+    if not item:
+        item = InventoryItem(session_id=session.id, asset_id=asset.id, expected_quantity=1, expected_location=asset.location)
+        db.session.add(item)
+        db.session.commit()
+
+    if request.method == 'POST':
+        item.counted_quantity = int(request.form.get('counted_quantity', 0))
+        if 'damaged_quantity' in request.form:
+            item.damaged_quantity = int(request.form.get('damaged_quantity', 0))
+        item.actual_location = request.form.get('actual_location', '')
+        item.condition_notes = request.form.get('notes', '')
+        item.counted_by = getattr(request, 'user', None) or "QR-Scan"
+        item.counted_at = datetime.now()
+        item.status = 'counted'
+        db.session.commit()
+        flash('Inventur für Asset erfolgreich erfasst!', 'success')
+        return redirect(url_for('main.inventory_scan', session_id=session.id, asset_id=asset.id))
+
+    return render_template('inventory_scan.html', asset=asset, inventory_entry=item)
+
 @main.route('/locations')
 def locations():
     from .models import Location
@@ -1017,35 +1042,18 @@ def import_assets():
 
 @main.route('/assets/<int:id>/qr')
 def asset_qr(id):
-    asset = Asset.query.filter_by(id=id).first_or_404()
-    
-    # QR-Code mit Asset-Informationen generieren
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    
-    # Asset-URL und grundlegende Informationen im QR-Code
-    data = {
-        'id': asset.id,
-        'name': asset.name,
-        'category': asset.category,
-        'location': asset.location
-    }
-    qr.add_data(str(data))
-    qr.make(fit=True)
+    import qrcode
+    import io
+    from flask import send_file, url_for
 
-    # QR-Code als Bild erzeugen
-    img = qr.make_image(fill_color="black", back_color="white")
+    asset = Asset.query.filter_by(id=id).first_or_404()
+    qr_url = url_for('main.asset_details', id=asset.id, _external=True)
+    img = qrcode.make(qr_url)
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    return send_file(buf, mimetype='image/png', as_attachment=False, download_name=f'asset_{asset.id}_qr.png')
     
-    # Bild in BytesIO-Objekt speichern
-    img_io = BytesIO()
-    img.save(img_io, 'PNG')
-    img_io.seek(0)
-    
-    return send_file(img_io, mimetype='image/png')
 
 @main.route('/assets/<int:id>/documents', methods=['GET', 'POST'])
 def asset_documents(id):
@@ -1169,8 +1177,19 @@ def download_receipt(id):
 def asset_details(id):
     asset = Asset.query.get_or_404(id)
     
+    # Aktive/geplante Inventur-Session für dieses Asset suchen
+    from app.models import InventorySession, InventoryItem
+    active_inventory = (
+        InventorySession.query
+        .filter(InventorySession.status.in_(['active', 'planned']))
+        .join(InventoryItem)
+        .filter(InventoryItem.asset_id == asset.id)
+        .order_by(InventorySession.start_date.desc())
+        .first()
+    )
     documents = Document.query.filter_by(asset_id=id).all()
-    return render_template('asset_details.html', asset=asset, documents=documents)
+    return render_template('asset_details.html', asset=asset, documents=documents, active_inventory=active_inventory)
+
 
 @main.route('/inventory/planning', methods=['GET'])
 def inventory_planning():

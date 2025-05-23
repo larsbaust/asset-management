@@ -4,6 +4,10 @@ A Flask-based asset management system for tracking inventory, managing assets, a
 
 ## Neue Features & Änderungen (Mai 2025)
 
+- **Inventur-Abschluss Bugfix:**  
+  Der Abschluss einer Inventur aus der Planungsansicht funktioniert jetzt wieder zuverlässig.  
+  Der Abschluss-Button ist nun ein eigenes Formular und sendet korrekt an die Abschluss-Route.  
+  Nach dem Abschluss wird wie gewohnt ein Bericht erstellt und die Inventur als abgeschlossen angezeigt.
 - **Login-Sicherheit:**  
   Accounts werden nach 5 Fehlversuchen für 10 Minuten gesperrt. Nutzer erhalten klare Hinweise.
 - **Admin-Passwort-Reset:**  
