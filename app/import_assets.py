@@ -8,7 +8,7 @@ import_assets = Blueprint('import_assets', __name__)
 
 # Diese Felder stehen im System zur Verfügung
 SYSTEM_FIELDS = [
-    'name', 'article_number', 'serial_number', 'category', 'value', 'manufacturers', 'assignments', 'ean'
+    'name', 'article_number', 'serial_number', 'category', 'value', 'manufacturers', 'assignments', 'ean', 'quantity'
 ]
 FIELD_LABELS = {
     'name': 'Name',
@@ -19,6 +19,7 @@ FIELD_LABELS = {
     'manufacturers': 'Hersteller',
     'assignments': 'Zuordnung',
     'ean': 'EAN',
+    'quantity': 'Anzahl (quantity/Menge/Stück)'
 }
 
 import os
@@ -217,6 +218,16 @@ def import_assets_apply_mapping():
     print(f'[DEBUG] Zeilen im CSV-Reader nach Header-Skip: {len(rows)}')
     for i, row in enumerate(rows):
         print(f'[DEBUG] Zeile {i}: {row}')
+    # Prüfe, ob ein "quantity"-Feld gemappt ist
+    quantity_idx = None
+    if 'quantity' in mapping:
+        quantity_idx = mapping.index('quantity')
+    price_total_idx = None
+    if 'priceTotal' in mapping:
+        price_total_idx = mapping.index('priceTotal')
+    price_idx = None
+    if 'value' in mapping:
+        price_idx = mapping.index('value')
     for row_num, row in enumerate(rows, start=2):
         print(f'[DEBUG] Importiere Zeile {row_num}: {row}')
         asset_data = {}
@@ -224,6 +235,7 @@ def import_assets_apply_mapping():
             if field:
                 asset_data[field] = row[i] if i < len(row) else None
         # Kategorie-Mapping anwenden
+        csv_cat_val = None
         if category_idx is not None:
             csv_cat_val = row[category_idx].strip() if category_idx < len(row) else None
             if csv_cat_val:
@@ -245,67 +257,88 @@ def import_assets_apply_mapping():
             from app.models import Category
             system_categories = Category.query.order_by(Category.name).all()
             return render_template('import_assets.html', csv_headers=headers, csv_preview=None, system_fields=SYSTEM_FIELDS, field_labels=FIELD_LABELS, mapping_prefill=mapping, locations=Location.query.order_by(Location.name).all(), system_categories=system_categories, safe_csv_categories=safe_csv_categories)
-        asset = Asset(
-            name=asset_data.get('name'),
-            article_number=asset_data.get('article_number'),
-            serial_number=asset_data.get('serial_number'),
-            category_id=cat_id,
-            value=asset_data.get('value'),
-            location_id=location_id if location_id else None,
-            ean=asset_data.get('ean'),
-        )
-        # Hersteller-Zuordnung (Mehrfach möglich, Komma-getrennt)
-        manufacturers_value = asset_data.get('manufacturers')
-        if manufacturers_value:
-            names = [n.strip() for n in manufacturers_value.split(',')]
-            print(f'[DEBUG] Hersteller-Zuordnung für Asset: {asset.name}: {names}')
-            from app.models import Manufacturer
-            for name in names:
-                if not name:
-                    continue
-                manufacturer = Manufacturer.query.filter_by(name=name).first()
-                if not manufacturer:
-                    manufacturer = Manufacturer(name=name)
-                    db.session.add(manufacturer)
-                    db.session.flush()  # ID sofort verfügbar
-                if manufacturer not in asset.manufacturers:
-                    asset.manufacturers.append(manufacturer)
-        # Zuordnung (Assignments) aus CSV übernehmen
-        assignments_value = asset_data.get('assignments')
-        if assignments_value:
-            assignment_names = [n.strip() for n in assignments_value.split(',')]
-            from app.models import Assignment
-            for name in assignment_names:
-                if not name:
-                    continue
-                assignment = Assignment.query.filter_by(name=name).first()
-                if not assignment:
-                    assignment = Assignment(name=name)
-                    db.session.add(assignment)
-                    db.session.flush()
-                if assignment not in asset.assignments:
-                    asset.assignments.append(assignment)
+        # Anzahl bestimmen
+        try:
+            qty = int(row[quantity_idx]) if quantity_idx is not None and row[quantity_idx] else 1
+            if qty < 1:
+                qty = 1
+        except Exception:
+            qty = 1
+        # Einzelpreis berechnen, falls nötig
+        einzelpreis = None
+        if (asset_data.get('value') is None or asset_data.get('value') == '') and price_total_idx is not None and quantity_idx is not None:
+            try:
+                price_total_val = row[price_total_idx]
+                qty_val = row[quantity_idx]
+                if price_total_val and qty_val:
+                    einzelpreis = round(float(price_total_val) / int(qty_val), 2)
+            except Exception as e:
+                einzelpreis = None
+        for _ in range(qty):
+            asset = Asset(
+                name=asset_data.get('name'),
+                article_number=asset_data.get('article_number'),
+                serial_number=asset_data.get('serial_number'),
+                category_id=cat_id,
+                value=asset_data.get('value') if asset_data.get('value') not in (None, '') else einzelpreis,
+                location_id=location_id if location_id else None,
+                ean=asset_data.get('ean'),
+            )
+            # Fallback-Hinweis, falls kein Preis berechnet werden konnte
+            if (asset_data.get('value') in (None, '')) and price_total_idx is not None and einzelpreis is None:
+                flash(f"Hinweis: Für Asset '{asset_data.get('name')}' konnte kein Einzelpreis aus 'priceTotal' berechnet werden.", 'warning')
+            # Hersteller-Zuordnung (Mehrfach möglich, Komma-getrennt)
+            manufacturers_value = asset_data.get('manufacturers')
+            if manufacturers_value:
+                names = [n.strip() for n in manufacturers_value.split(',')]
+                print(f'[DEBUG] Hersteller-Zuordnung für Asset: {asset.name}: {names}')
+                from app.models import Manufacturer
+                for name in names:
+                    if not name:
+                        continue
+                    manufacturer = Manufacturer.query.filter_by(name=name).first()
+                    if not manufacturer:
+                        manufacturer = Manufacturer(name=name)
+                        db.session.add(manufacturer)
+                        db.session.flush()  # ID sofort verfügbar
+                    if manufacturer not in asset.manufacturers:
+                        asset.manufacturers.append(manufacturer)
+            # Zuordnung (Assignments) aus CSV übernehmen
+            assignments_value = asset_data.get('assignments')
+            if assignments_value:
+                assignment_names = [n.strip() for n in assignments_value.split(',')]
+                from app.models import Assignment
+                for name in assignment_names:
+                    if not name:
+                        continue
+                    assignment = Assignment.query.filter_by(name=name).first()
+                    if not assignment:
+                        assignment = Assignment(name=name)
+                        db.session.add(assignment)
+                        db.session.flush()
+                    if assignment not in asset.assignments:
+                        asset.assignments.append(assignment)
 
-        # Lieferant-Zuordnung (global_supplier_id)
-        if supplier_id:
-            from app.models import Supplier
-            supplier = Supplier.query.get(supplier_id)
-            if supplier:
-                print(f'[DEBUG] Lieferant-Zuordnung für Asset: {asset.name}: {supplier.name}')
-                if hasattr(asset, 'suppliers') and supplier not in asset.suppliers:
-                    asset.suppliers.append(supplier)
-                elif hasattr(asset, 'supplier_id'):
-                    asset.supplier_id = supplier.id
+            # Lieferant-Zuordnung (global_supplier_id)
+            if supplier_id:
+                from app.models import Supplier
+                supplier = Supplier.query.get(supplier_id)
+                if supplier:
+                    print(f'[DEBUG] Lieferant-Zuordnung für Asset: {asset.name}: {supplier.name}')
+                    if hasattr(asset, 'suppliers') and supplier not in asset.suppliers:
+                        asset.suppliers.append(supplier)
+                    elif hasattr(asset, 'supplier_id'):
+                        asset.supplier_id = supplier.id
 
-        if category_idx is not None:
-            csv_cat_val = row[category_idx].strip() if category_idx < len(row) else None
-            if csv_cat_val and csv_cat_val in assignment_mapping:
-                a_obj = assignment_mapping[csv_cat_val]
-                if a_obj and a_obj not in asset.assignments:
-                    asset.assignments.append(a_obj)
+            if category_idx is not None:
+                csv_cat_val = row[category_idx].strip() if category_idx < len(row) else None
+                if csv_cat_val and csv_cat_val in assignment_mapping:
+                    a_obj = assignment_mapping[csv_cat_val]
+                    if a_obj and a_obj not in asset.assignments:
+                        asset.assignments.append(a_obj)
 
-        db.session.add(asset)
-        imported += 1
+            db.session.add(asset)
+            imported += 1
     print(f'[DEBUG] Insgesamt importierte Assets: {imported} (letzte Zeile: {row_num})')
     db.session.commit()
     flash(f'{imported} Assets importiert!', 'success')
