@@ -37,15 +37,33 @@
                     <div class="control">
                         <button class="button is-success" type="submit">Inventur bestätigen</button>
                     </div>
+                    <div class="control">
+                        <button class="button is-link" type="button" id="scanNextBtn" data-next-id="{{ next_asset_id }}">Nächsten Asset scannen</button>
+                    </div>
                 </div>
+                <input type="file" accept="image/*" capture="environment" id="barcodeInput" style="display:none;">
             </form>
-    <!-- Button zum QR-Scannen -->
-    <div class="has-text-centered mt-4">
-        <button class="button is-link" type="button" onclick="startQrScanner()">Nächsten Asset scannen</button>
-    </div>
-    <!-- QR-Scanner-Container (zunächst versteckt) -->
-    <div id="qr-reader" style="width:320px; margin: 2rem auto; display:none;"></div>
-
+            <script>
+            document.getElementById('scanNextBtn').onclick = function() {
+                var form = document.getElementById('inventoryForm') || document.querySelector('form');
+                var formData = new FormData(form);
+                fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                }).then(function(response) {
+                    if (response.ok) {
+                        document.getElementById('barcodeInput').click();
+                    } else {
+                        alert('Speichern fehlgeschlagen!');
+                    }
+                });
+            };
+            document.getElementById('barcodeInput').onchange = function(event) {
+                var nextId = document.getElementById('scanNextBtn').getAttribute('data-next-id');
+                window.location.href = '/inventory/scan/' + nextId;
+            };
+            </script>
         </div>
         <div class="has-text-centered mt-4">
             <a href="{{ url_for('main.inventory_planning') }}" class="button is-light">Zurück zur Inventurplanung</a>
