@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # Revision identifiers, used by Alembic.
-revision = 'b03310994627'
-down_revision = None
+revision = '20250519_add_archived_at_to_asset'
+down_revision = 'b03310994627'
 branch_labels = None
 depends_on = None
 
