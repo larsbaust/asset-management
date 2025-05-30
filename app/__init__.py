@@ -8,10 +8,15 @@ import os
 mail = Mail()  # Mail-Objekt global initialisieren
 
 db = SQLAlchemy()
-from app.models import OrderComment
+from app.models import (
+    Message, User, OrderComment, Asset, Assignment, Category, Manufacturer, Supplier, 
+    Maintenance, Document, Loan, CostEntry, InventorySession, InventoryTeam, 
+    InventoryItem, Location, LocationImage, AssetLog, Role, Permission
+)
 login_manager = LoginManager()
 
 from jinja2 import ChoiceLoader, FileSystemLoader
+from .chat_socket import socketio, chat_bp
 
 def create_app():
     app = Flask(__name__)
@@ -53,6 +58,9 @@ def create_app():
     app.register_blueprint(admin_blueprint)
     from .routes_profile import profile_bp
     app.register_blueprint(profile_bp)
+    from .messages import messages_bp
+    app.register_blueprint(messages_bp)
+    app.register_blueprint(chat_bp)
 
     print("JINJA LOADER SUCHT IN:")
     for loader in app.jinja_loader.loaders:

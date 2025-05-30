@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Neue Nachricht schreiben</h2>
+<form method="post" enctype="multipart/form-data">
+    <div class="field">
+        <label class="label">Empfänger</label>
+        <div class="control">
+            <div class="select">
+                <select name="recipient_id" required>
+                    <option value="">-- Empfänger wählen --</option>
+                    {% for user in users %}
+                        <option value="{{ user.id }}">{{ user.vorname or user.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">Betreff</label>
+        <div class="control">
+            <input type="text" name="subject" class="input" required>
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">Nachricht</label>
+        <div class="control">
+            <textarea name="body" class="textarea" required></textarea>
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">Anhang (optional)</label>
+        <div class="control">
+            <input type="file" name="attachment">
+        </div>
+    </div>
+    <div class="field">
+        <div class="control">
+            <button type="submit" class="button is-link">Senden</button>
+        </div>
+    </div>
+</form>
+<a href="{{ url_for('messages.inbox') }}">Zurück zum Posteingang</a>
+{% endblock %}

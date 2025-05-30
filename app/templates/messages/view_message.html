@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Nachricht</h2>
+<p><strong>Von:</strong> {{ msg.sender.vorname or msg.sender.username }}</p>
+<p><strong>An:</strong> {{ msg.recipient.vorname or msg.recipient.username }}</p>
+<p><strong>Betreff:</strong> {{ msg.subject }}</p>
+<p><strong>Datum:</strong> {{ msg.timestamp.strftime('%d.%m.%Y %H:%M') }}</p>
+<p><strong>Nachricht:</strong><br>{{ msg.body.replace('\n', '<br>')|safe }}</p>
+{% if msg.attachment_filename %}
+<p><strong>Anhang:</strong> <a href="{{ url_for('messages.download_attachment', filename=msg.attachment_filename) }}">{{ msg.attachment_filename }}</a></p>
+{% endif %}
+<hr>
+<h3>Antworten</h3>
+<form method="post" enctype="multipart/form-data">
+    <div class="field">
+        <label class="label">Betreff</label>
+        <div class="control">
+            <input type="text" name="subject" class="input" value="Re: {{ msg.subject }}" required>
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">Nachricht</label>
+        <div class="control">
+            <textarea name="body" class="textarea" required></textarea>
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">Anhang (optional)</label>
+        <div class="control">
+            <input type="file" name="attachment">
+        </div>
+    </div>
+    <div class="field">
+        <div class="control">
+            <button type="submit" class="button is-link">Antwort senden</button>
+        </div>
+    </div>
+</form>
+<a href="{{ url_for('messages.inbox') }}">Zurück zum Posteingang</a>
+{% endblock %}

@@ -1,0 +1,225 @@
+<!-- Minimaler Chat-Widget-HTML für Slide-In (rechts unten) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<style>
+#livechat-slidein {
+    position: fixed;
+    right: 30px;
+    bottom: 30px;
+    width: 340px;
+    max-width: 95vw;
+    height: 420px;
+    background: #fff;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    display: flex;
+    flex-direction: column;
+    z-index: 10000;
+    transition: transform 0.3s;
+}
+#livechat-header {
+    background: #38b2ac;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+#livechat-header .close-btn, #livechat-header .min-btn {
+    cursor: pointer;
+    margin-left: 8px;
+}
+#livechat-users {
+    background: #f6f6f6;
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+}
+#livechat-users .user {
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: #e5e5e5;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+#livechat-users .user.online { background: #d4f7e7; }
+#livechat-users .user.away { background: #fffbe6; }
+#livechat-users .user.selected { border: 2px solid #38b2ac; }
+#livechat-messages {
+    flex: 1;
+    padding: 15px 12px;
+    overflow-y: auto;
+    font-size: 15px;
+    background: #fafbfc;
+}
+.livechat-msg {
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+}
+.livechat-msg.me { align-items: flex-end; }
+.livechat-msg .bubble {
+    max-width: 80%;
+    padding: 8px 14px;
+    border-radius: 16px;
+    background: #38b2ac;
+    color: #fff;
+    margin-bottom: 2px;
+}
+.livechat-msg.them .bubble {
+    background: #e5e5e5;
+    color: #222;
+}
+.livechat-msg .meta {
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+}
+#livechat-input {
+    display: flex;
+    border-top: 1px solid #eee;
+    padding: 10px;
+    background: #fff;
+    border-radius: 0 0 12px 12px;
+}
+#livechat-input input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    background: #f6f6f6;
+}
+#livechat-input button {
+    background: #38b2ac;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 16px;
+    margin-left: 8px;
+    cursor: pointer;
+    font-size: 15px;
+}
+#livechat-slidein.minimized {
+    height: 52px;
+    overflow: hidden;
+}
+</style>
+<div id="livechat-slidein" class="minimized" style="display:none;">
+    <div id="livechat-header">
+        <span><i class="fas fa-comments"></i> Livechat</span>
+        <span>
+            <i class="fas fa-minus min-btn"></i>
+            <i class="fas fa-times close-btn"></i>
+        </span>
+    </div>
+    <div id="livechat-users"></div>
+    <div id="livechat-messages"></div>
+    <form id="livechat-input">
+        <input type="text" id="livechat-message" placeholder="Nachricht schreiben..." autocomplete="off" />
+        <button type="submit"><i class="fas fa-paper-plane"></i></button>
+    </form>
+</div>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+let livechatSocket = null;
+let selectedUserId = null;
+let myUserId = null;
+let userStatusMap = {};
+
+function openLiveChatWidget() {
+    const widget = document.getElementById('livechat-slidein');
+    widget.style.display = '';
+    widget.classList.remove('minimized');
+    if (!livechatSocket) initLiveChatSocket();
+}
+function closeLiveChatWidget() {
+    document.getElementById('livechat-slidein').style.display = 'none';
+}
+function minimizeLiveChatWidget() {
+    document.getElementById('livechat-slidein').classList.toggle('minimized');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.open-livechat-btn').forEach(btn => {
+        btn.onclick = openLiveChatWidget;
+    });
+    document.querySelector('#livechat-slidein .close-btn').onclick = closeLiveChatWidget;
+    document.querySelector('#livechat-slidein .min-btn').onclick = minimizeLiveChatWidget;
+});
+
+function renderUserList(users) {
+    const list = document.getElementById('livechat-users');
+    list.innerHTML = '';
+    users.filter(u => u.user_id !== myUserId).forEach(u => {
+        const el = document.createElement('span');
+        el.className = 'user ' + (u.status) + (selectedUserId === u.user_id ? ' selected' : '');
+        el.textContent = u.username + (
+            u.status === 'away' ? ' (Abwesend)' :
+            u.status === 'offline' ? ' (Offline)' : ''
+        );
+        if (u.status === 'online' || u.status === 'away') {
+            el.onclick = () => { selectedUserId = u.user_id; renderUserList(users); };
+        } else {
+            el.style.opacity = 0.5;
+            el.style.pointerEvents = 'none';
+        }
+        list.appendChild(el);
+    });
+}
+
+function renderMessage(msg) {
+    const messages = document.getElementById('livechat-messages');
+    const div = document.createElement('div');
+    div.className = 'livechat-msg ' + (msg.from === myUserId ? 'me' : 'them');
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = msg.msg;
+    div.appendChild(bubble);
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = (msg.from_username || '') + ' • ' + (new Date(msg.timestamp).toLocaleTimeString());
+    div.appendChild(meta);
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+function initLiveChatSocket() {
+    livechatSocket = io({ transports: ['websocket'] });
+    livechatSocket.on('connect', () => {
+        livechatSocket.emit('join_room');
+    });
+    livechatSocket.on('online_users', users => {
+        myUserId = users.find(u => u.username === window.currentUsername)?.user_id;
+        renderUserList(users);
+    });
+    livechatSocket.on('user_status', data => {
+        userStatusMap[data.user_id] = data.status;
+    });
+    livechatSocket.on('receive_message', msg => {
+        renderMessage(msg);
+    });
+    // Optional: Status auf "away" nach Inaktivität
+    let awayTimer = null;
+    function setAway() {
+        livechatSocket.emit('set_status', { status: 'away' });
+    }
+    function setOnline() {
+        livechatSocket.emit('set_status', { status: 'online' });
+    }
+    window.addEventListener('focus', () => { setOnline(); clearTimeout(awayTimer); });
+    window.addEventListener('blur', () => { awayTimer = setTimeout(setAway, 300000); });
+}
+document.getElementById('livechat-input').onsubmit = function(e) {
+    e.preventDefault();
+    const input = document.getElementById('livechat-message');
+    if (!selectedUserId || !input.value.trim()) return;
+    livechatSocket.emit('send_message', { to: selectedUserId, msg: input.value });
+    input.value = '';
+};
+</script>

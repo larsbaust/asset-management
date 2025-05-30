@@ -14,39 +14,25 @@
         <!-- Asset Details -->
         <div class="column is-8">
             <div class="box">
-                <div class="level">
-                    <div class="level-left">
-                        <div class="level-item">
-                            <h1 class="title is-3">{{ asset.name }}</h1>
-                        </div>
-                    </div>
-                    <div class="level-right">
-                        <div class="level-item">
-                            <div class="buttons">
-                                <a href="{{ url_for('main.edit_asset', id=asset.id) }}" class="button is-warning">
-                                    <span class="icon">
-                                        <i class="fas fa-edit"></i>
-                                    </span>
-                                    <span>Bearbeiten</span>
-                                </a>
-                                {% if asset.status != 'on_loan' %}
-                                <a href="{{ url_for('main.loan_asset', id=asset.id) }}" class="button is-info">
-                                    <span class="icon">
-                                        <i class="fas fa-hand-holding"></i>
-                                    </span>
-                                    <span>Ausleihen</span>
-                                </a>
-                                {% endif %}
-                                <a href="{{ url_for('main.asset_documents', id=asset.id) }}" class="button is-primary">
-                                    <span class="icon">
-                                        <i class="fas fa-file-alt"></i>
-                                    </span>
-                                    <span>Dokumente</span>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <div class="asset-header-flex">
+  <h1 class="title is-3 asset-title-clamp">{{ asset.name }}</h1>
+  <div class="asset-actions">
+    <a href="{{ url_for('main.edit_asset', id=asset.id) }}" class="button is-warning">
+      <span class="icon"><i class="fas fa-edit"></i></span>
+      <span>Bearbeiten</span>
+    </a>
+    {% if asset.status != 'on_loan' %}
+    <a href="{{ url_for('main.loan_asset', id=asset.id) }}" class="button is-info">
+      <span class="icon"><i class="fas fa-hand-holding"></i></span>
+      <span>Ausleihen</span>
+    </a>
+    {% endif %}
+    <a href="{{ url_for('main.asset_documents', id=asset.id) }}" class="button is-primary">
+      <span class="icon"><i class="fas fa-file-alt"></i></span>
+      <span>Dokumente</span>
+    </a>
+  </div>
+</div>
 
                 <div class="content mt-4">
                 {% if active_inventory %}
@@ -66,7 +52,7 @@
                             </figure>
                             {% else %}
                             <figure class="image is-square mb-4">
-                                <img src="{{ url_for('static', filename='images/no-image.png') }}" alt="Kein Bild">
+                                <img src="{{ svg_placeholder(asset.name, 180) }}" alt="{{ asset.name }}" style="max-width: 180px; max-height: 180px;">
                             </figure>
                             {% endif %}
                             <div class="has-text-centered mt-3">
@@ -100,7 +86,7 @@
                                     </tr>
                                     <tr>
                                         <th>Kategorie</th>
-                                        <td>{{ asset.category or 'Keine Kategorie' }}</td>
+                                        <td>{{ asset.category.name if asset.category else 'Keine Kategorie' }}</td>
                                     </tr>
                                     <tr>
                                         <th>Zuordnungen</th>
@@ -216,7 +202,36 @@
     </div>
 </div>
 
+
 <style>
+    .asset-header-flex {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+.asset-header-flex .asset-title-clamp {
+  flex: 1 1 250px;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.asset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+@media (max-width: 700px) {
+  .asset-header-flex {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .asset-actions {
+    justify-content: flex-start;
+  }
+}
 .document-list {
     list-style: none !important;
     margin-left: 0 !important;
@@ -233,6 +248,18 @@
 
 .document-list .icon {
     margin-right: 0.5rem;
+}
+.asset-title-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  max-width: 100%;
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: #2c3e50;
 }
 </style>
 {% endblock %}

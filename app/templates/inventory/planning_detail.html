@@ -124,10 +124,7 @@
                     </tr>
                     {% endfor %}
             {% if session.status != 'completed' %}
-            <div class="mt-3">
-                <a href="{{ url_for('main.inventory_planning_add_items', id=session.id) }}" 
-                   class="btn btn-secondary">Assets hinzufügen</a>
-            </div>
+
             {% endif %}
 </form>
 {% if session.status != 'completed' %}

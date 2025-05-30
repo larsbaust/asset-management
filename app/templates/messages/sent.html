@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Gesendete Nachrichten</h2>
+<a href="{{ url_for('messages.compose') }}" class="button is-primary mb-3">Neue Nachricht schreiben</a>
+<table class="table is-fullwidth">
+    <thead>
+        <tr>
+            <th>An</th>
+            <th>Betreff</th>
+            <th>Datum</th>
+            <th>Anhang</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for msg in messages %}
+        <tr>
+            <td>{{ msg.recipient.vorname or msg.recipient.username }}</td>
+            <td><a href="{{ url_for('messages.view_message', message_id=msg.id) }}">{{ msg.subject }}</a></td>
+            <td>{{ msg.timestamp.strftime('%d.%m.%Y %H:%M') }}</td>
+            <td>
+                {% if msg.attachment_filename %}
+                <a href="{{ url_for('messages.download_attachment', filename=msg.attachment_filename) }}">📎</a>
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+<a href="{{ url_for('messages.inbox') }}">Posteingang</a>
+{% endblock %}

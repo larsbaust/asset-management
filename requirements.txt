@@ -31,3 +31,4 @@ Werkzeug==3.0.1
 WTForms==3.2.1
 gunicorn
 requests
+Flask-SocketIO==5.3.6

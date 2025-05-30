@@ -7,6 +7,26 @@ from . import db
 from flask import current_app
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
+class Message(db.Model):
+    __tablename__ = 'message'
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    subject = db.Column(db.String(200), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    is_read = db.Column(db.Boolean, default=False)
+    attachment_filename = db.Column(db.String(255))
+    attachment_path = db.Column(db.String(255))
+    reply_to_id = db.Column(db.Integer, db.ForeignKey('message.id'))
+    # Beziehungen
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_messages')
+    replies = db.relationship('Message', backref=db.backref('reply_to', remote_side=[id]), lazy='dynamic')
+
+    def __repr__(self):
+        return f'<Message {self.subject}>'
+
 # Zuordnungs-Tabelle für Assets und Assignments (n:m)
 asset_assignments = db.Table('asset_assignments',
     db.Column('asset_id', db.Integer, db.ForeignKey('asset.id'), primary_key=True),

@@ -15,7 +15,7 @@
                     </tr>
                     <tr>
                         <th>Kategorie</th>
-                        <td>{{ asset.category }}</td>
+                        <td>{{ asset.category.name if asset.category else '-' }}</td>
                     </tr>
                     <tr>
                         <th>Status</th>

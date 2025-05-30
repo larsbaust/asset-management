@@ -50,6 +50,26 @@
     margin-bottom: 30px;
     padding: 10px;
 }
+.status-numbers-overview {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 3em;
+    padding: 1.5em 0 0.5em 0;
+}
+.status-numbers-overview > div {
+    text-align: center;
+}
+.status-numbers-overview .badge {
+    position: static !important;
+    display: inline-block !important;
+    min-width: unset !important;
+    font-size: 1em !important;
+    margin-top: 0.3em;
+    z-index: auto !important;
+    box-shadow: none !important;
+    background: inherit;
+}
 .chart-card {
     background: #fff;
     border-radius: 8px;
@@ -145,18 +165,18 @@
         <!-- Status der Assets -->
         <div class="chart-card">
             <h5 class="card-title">Asset Status</h5>
-            <div class="status-numbers-overview" style="display:flex; justify-content:space-around; align-items:center; padding:2em 0;">
+            <div class="status-numbers-overview">
                 <div style="text-align:center;">
                     <div id="count-active" style="font-size:2.5em; font-weight:bold; color:#28a745;">{{ active_count }}</div>
-                    <div><span class="badge status-active" style="background:#28a745; color:#fff; padding:0.3em 1em; border-radius:1em;">Aktiv</span></div>
+                    <div><span class="badge status-active" style="background:#28a745; color:#fff; padding:0.3em 1em; border-radius:1em; display:inline-block;">Aktiv</span></div>
                 </div>
                 <div style="text-align:center;">
                     <div id="count-onloan" style="font-size:2.5em; font-weight:bold; color:#ffc107;">{{ on_loan_count }}</div>
-                    <div><span class="badge status-borrowed" style="background:#ffc107; color:#222; padding:0.3em 1em; border-radius:1em;">Ausgeliehen</span></div>
+                    <div><span class="badge status-borrowed" style="background:#ffc107; color:#222; padding:0.3em 1em; border-radius:1em; display:inline-block;">Ausgeliehen</span></div>
                 </div>
                 <div style="text-align:center;">
                     <div id="count-inactive" style="font-size:2.5em; font-weight:bold; color:#6c757d;">{{ inactive_count }}</div>
-                    <div><span class="badge status-inactive" style="background:#6c757d; color:#fff; padding:0.3em 1em; border-radius:1em;">Inaktiv</span></div>
+                    <div><span class="badge status-inactive" style="background:#6c757d; color:#fff; padding:0.3em 1em; border-radius:1em; display:inline-block;">Inaktiv</span></div>
                 </div>
             </div>
         </div>
