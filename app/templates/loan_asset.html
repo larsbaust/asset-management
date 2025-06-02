@@ -6,10 +6,20 @@
 
     <div class="box">
         <h2 class="subtitle">Asset Details</h2>
-        <div class="content">
-            <p><strong>Name:</strong> {{ asset.name }}</p>
-            <p><strong>Kategorie:</strong> {{ asset.category }}</p>
-            <p><strong>Wert:</strong> {{ "%.2f €"|format(asset.value|float) }}</p>
+        <div class="content" style="display: flex; align-items: flex-start; gap: 2rem;">
+            {% if asset.image_url or asset.image %}
+    <img src="{{ asset.image_url or url_for('static', filename='uploads/' ~ asset.image) }}" alt="Asset Bild" style="max-width: 180px; max-height: 180px; border-radius: 8px; border: 1px solid #ddd; background: #fafafa;">
+{% else %}
+    <img src="{{ svg_placeholder(asset.name, 180) }}" alt="Kein Bild vorhanden" style="max-width: 180px; max-height: 180px; border-radius: 8px; border: 1px solid #eee;">
+{% endif %}
+            <div>
+                <p><strong>Name:</strong> {{ asset.name }}</p>
+                <p><strong>Kategorie:</strong> {{ asset.category.name if asset.category else '-' }}</p>
+                <p><strong>Hersteller:</strong> {% if asset.manufacturers and asset.manufacturers|length > 0 %}{{ asset.manufacturers|map(attribute='name')|join(', ') }}{% else %}-{% endif %}</p>
+                <p><strong>Seriennummer:</strong> {{ asset.serial_number if asset.serial_number else '-' }}</p>
+                <p><strong>Standort:</strong> {% if asset.location_obj and asset.location_obj.name %}{{ asset.location_obj.name }}{% elif asset.location %}{{ asset.location }}{% else %}-{% endif %}</p>
+                <p><strong>Wert:</strong> {{ "%.2f €"|format(asset.value|float) }}</p>
+            </div>
         </div>
     </div>
 
@@ -57,6 +67,62 @@
                 <p class="help is-danger">{{ form.notes.errors[0] }}</p>
                 {% endif %}
             </div>
+
+            <div class="field">
+                <label class="label">Unterschrift des Mitarbeiters</label>
+                <div class="box" style="padding: 1em;">
+                    <canvas id="signature-pad" width="400" height="150" style="border:1px solid #ccc;"></canvas>
+                    <button type="button" class="button is-small is-light" id="clear-signature">Zurücksetzen</button>
+                </div>
+                <input type="hidden" name="signature" id="signature-data">
+                <p class="help">Bitte mit dem Finger oder der Maus unterschreiben.</p>
+            </div>
+
+            <div class="field">
+                <label class="label">Unterschrift des Arbeitgebers</label>
+                <div class="box" style="padding: 1em;">
+                    <canvas id="signature-pad-employer" width="400" height="150" style="border:1px solid #ccc;"></canvas>
+                    <button type="button" class="button is-small is-light" id="clear-signature-employer">Zurücksetzen</button>
+                </div>
+                <input type="hidden" name="signature_employer" id="signature-data-employer">
+                <p class="help">Arbeitgeber unterschreibt hier digital.</p>
+            </div>
+
+            <script src="{{ url_for('static', filename='js/signature_pad.min.js') }}"></script>
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Arbeitnehmer
+                var canvas = document.getElementById('signature-pad');
+                var signaturePad = new SignaturePad(canvas);
+                var clearBtn = document.getElementById('clear-signature');
+                var input = document.getElementById('signature-data');
+                clearBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    signaturePad.clear();
+                    input.value = '';
+                });
+                // Arbeitgeber
+                var canvasEmployer = document.getElementById('signature-pad-employer');
+                var signaturePadEmployer = new SignaturePad(canvasEmployer);
+                var clearBtnEmployer = document.getElementById('clear-signature-employer');
+                var inputEmployer = document.getElementById('signature-data-employer');
+                clearBtnEmployer.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    signaturePadEmployer.clear();
+                    inputEmployer.value = '';
+                });
+                // Beim Absenden des Formulars: beide Bilder als Base64 speichern
+                var form = canvas.closest('form');
+                form.addEventListener('submit', function(e) {
+                    if (!signaturePad.isEmpty()) {
+                        input.value = signaturePad.toDataURL();
+                    }
+                    if (!signaturePadEmployer.isEmpty()) {
+                        inputEmployer.value = signaturePadEmployer.toDataURL();
+                    }
+                });
+            });
+            </script>
 
             <div class="field">
                 <div class="control">

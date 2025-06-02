@@ -336,22 +336,22 @@
                     <tbody>
                         {% for doc in documents %}
                         <tr>
-                            <td>{{ doc.title }}</td>
+                            <td><span class="doc-title-truncate" title="{{ doc.title }}">{{ doc.title }}</span></td>
                             <td>{{ doc.get_type_display() }}</td>
                             <td>{{ doc.get_size_display() }}</td>
                             <td>
                                 <div class="buttons are-small">
-                                    <a href="{{ url_for('main.download_document', id=doc.id) }}" class="button is-primary" title="Herunterladen">
+                                    <a href="{{ url_for('main.download_document', document_id=doc.id) }}" class="button is-primary" title="Herunterladen">
                                         <span class="icon is-small">
                                             <i class="fas fa-download"></i>
                                         </span>
                                     </a>
-                                    <a href="{{ url_for('main.preview_document', id=doc.id) }}" class="button is-info" title="Vorschau" target="_blank">
+                                    <a href="{{ url_for('main.preview_document', document_id=doc.id) }}" class="button is-info" title="Vorschau" target="_blank">
                                         <span class="icon is-small">
                                             <i class="fas fa-eye"></i>
                                         </span>
                                     </a>
-                                    <form method="POST" action="{{ url_for('main.delete_document', id=doc.id) }}" class="is-inline">
+                                    <form method="POST" action="{{ url_for('main.delete_document', document_id=doc.id) }}" class="is-inline">
                                         <button type="submit" class="button is-danger" title="Löschen" onclick="return confirm('Dokument wirklich löschen?')">
                                             <span class="icon is-small">
                                                 <i class="fas fa-trash"></i>

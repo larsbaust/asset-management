@@ -166,7 +166,7 @@
                                         <span class="icon">
                                             <i class="fas {% if doc.document_type == 'manual' %}fa-book{% elif doc.document_type == 'invoice' %}fa-file-invoice{% elif doc.document_type == 'warranty' %}fa-shield-alt{% elif doc.document_type == 'certificate' %}fa-certificate{% else %}fa-file{% endif %}"></i>
                                         </span>
-                                        <span>{{ doc.title }}</span>
+                                        <span class="doc-title-truncate" title="{{ doc.title }}">{{ doc.title }}</span>
                                     </div>
                                 </div>
                                 <div class="level-right">
@@ -260,6 +260,14 @@
   font-size: 2.1rem;
   font-weight: 700;
   color: #2c3e50;
+}
+.doc-title-truncate {
+  max-width: 220px;
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 </style>
 {% endblock %}

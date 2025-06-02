@@ -1,5 +1,12 @@
 # Changelog (automatisch generiert)
 
+- 2025-05-31 Nachrichtendiesn und Livechat implementierung
+- 2025-05-25 inventory scan - camera app
+- 2025-05-24 fix
+- 2025-05-24 Fix down_revision to remove reference to missing migration
+- 2025-05-24 Fix revision and down_revision for asset migration
+- 2025-05-24 Fix broken down_revision reference
+- 2025-05-24 import asset modul erweiterung
 - 2025-05-23 Fix: Inventur-Abschluss und Berichtserstellung
 - 2025-05-20 Enhance user authentication: Lockout, Passwort-Reset für Admins, Hilfetexte, DB-Spalten
 - 2025-05-19 - Nutzer können über „Passwort vergessen?“ einen Link zum Zurücksetzen ihres Passworts per E-Mail anfordern. - Es wird ein sicherer Token verwendet (ablaufbar, keine Information ob E-Mail existiert). - Das neue Passwort wird über einen Link in der E-Mail gesetzt.

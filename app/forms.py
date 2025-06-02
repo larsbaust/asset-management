@@ -104,9 +104,11 @@ class LocationForm(FlaskForm):
 class LoanForm(FlaskForm):
     """Formular für das Ausleihen von Assets"""
     borrower_name = StringField('Name des Ausleihenden', validators=[DataRequired()])
-    start_date = DateTimeField('Ausleihdatum', validators=[DataRequired()], default=datetime.utcnow)
-    expected_return_date = DateTimeField('Erwartetes Rückgabedatum', validators=[DataRequired()])
+    start_date = DateField('Ausleihdatum', validators=[DataRequired()], format='%Y-%m-%d')
+    expected_return_date = DateTimeField('Erwartetes Rückgabedatum', validators=[Optional()])
     notes = TextAreaField('Notizen', validators=[Optional()])
+    signature = StringField('Unterschrift (Base64)', validators=[Optional()])
+    signature_employer = StringField('Unterschrift Arbeitgeber (Base64)', validators=[Optional()])
     submit = SubmitField('Ausleihen')
 
     def validate_expected_return_date(self, field):

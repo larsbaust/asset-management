@@ -847,8 +847,218 @@ def loan_asset(id):
         asset.status = 'on_loan'
         db.session.add(loan)
         db.session.commit()
-        flash('Asset wurde erfolgreich ausgeliehen.', 'success')
-        return redirect(url_for('main.assets'))
+
+        # PDF-Export: Übergabeprotokoll
+        from flask import send_file
+        from fpdf import FPDF
+        import tempfile, base64
+        import io
+        pdf = FPDF()
+        pdf.add_page()
+        # Asset-Bild oben rechts einfügen
+        asset_img_path = None
+        import requests
+        import os
+        print('[PDF] Asset-Bild Handling startet')
+        if getattr(asset, 'image_url', None):
+            img_url = asset.image_url
+            if img_url.startswith('http://') or img_url.startswith('https://'):
+                print(f"[PDF] Lade Bild von externer URL: {img_url}")
+                resp = requests.get(img_url, timeout=5)
+                if resp.status_code == 200:
+                    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_img:
+                        tmp_img.write(resp.content)
+                        tmp_img.flush()
+                        asset_img_path = tmp_img.name
+            elif img_url.startswith('/static/'):
+                static_path = os.path.join(current_app.root_path, img_url.lstrip('/'))
+                print(f"[PDF] Lade Bild aus static (relativer Pfad): {static_path}")
+                if os.path.exists(static_path):
+                    asset_img_path = static_path
+            else:
+                print(f"[PDF] Unbekanntes Format für asset.image_url: {img_url}")
+        elif getattr(asset, 'image', None):
+            static_path = os.path.join(current_app.root_path, 'static', 'uploads', asset.image)
+            print(f"[PDF] Lade Bild aus Uploads: {static_path}")
+            if os.path.exists(static_path):
+                asset_img_path = static_path
+        else:
+            static_path = os.path.join(current_app.root_path, 'static', 'img', 'asset_placeholder.png')
+            print(f"[PDF] Lade Platzhalterbild: {static_path}")
+            if os.path.exists(static_path):
+                asset_img_path = static_path
+        print(f"[PDF] Asset-Bild Pfad gewählt: {asset_img_path}")
+        if asset_img_path:
+            from PIL import Image
+            img = Image.open(asset_img_path)
+            tmp_img_path = asset_img_path
+            print(f"[PDF] Asset-Bild existiert: {asset_img_path}, Format: {img.format}, Größe: {img.size}")
+            if img.format not in ['PNG', 'JPEG', 'JPG']:
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_img:
+                    img.save(tmp_img.name, format='PNG')
+                    tmp_img.flush()
+                    tmp_img_path = tmp_img.name
+            print(f"[PDF] Asset-Bild wird eingefügt: {tmp_img_path}")
+            # pdf.image(tmp_img_path, x=150, y=25, w=40)  # ENTFERNT: Bild oben rechts
+        else:
+            print('[PDF] Kein Asset-Bild gefunden oder geladen!')
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(0, 10, f'Übergabeprotokoll für Arbeitsmittel an {form.borrower_name.data}', ln=1, align='C')
+        pdf.ln(5)
+        pdf.set_font('Arial', '', 11)
+        pdf.multi_cell(0, 7, '§ 1 Die Firma stellt dem Arbeitnehmer das im Folgenden näher bezeichnete Arbeitsmittel zur Verfügung.')
+        pdf.ln(3)
+        # Tabelle mit den gewünschten Feldern (nur einmal!)
+        pdf.set_font('Arial', '', 11)
+        # Hersteller-Liste vorbereiten (vor Tabelle!)
+        hersteller_liste = ''
+        if hasattr(asset, 'manufacturers') and asset.manufacturers and len(asset.manufacturers) > 0:
+            hersteller_liste = ', '.join([m.name for m in asset.manufacturers if hasattr(m, 'name') and m.name])
+        elif getattr(asset, 'article_number', None):
+            hersteller_liste = asset.article_number
+        else:
+            hersteller_liste = '-'
+        # Bild links, Tabelle rechts daneben
+        y_start = pdf.get_y()
+        if asset_img_path:
+            from PIL import Image
+            img = Image.open(asset_img_path)
+            tmp_img_path = asset_img_path
+            if img.format not in ['PNG', 'JPEG', 'JPG']:
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_img:
+                    img.save(tmp_img.name, format='PNG')
+                    tmp_img.flush()
+                    tmp_img_path = tmp_img.name
+        # Tabelle mit x-Offset (jetzt weiter links)
+        x_table = 15
+        # Tabelle wie im Excel-Beispiel: Bild links (rowspan), dann Label/Wert-Zellen
+        # Dynamische, saubere Haupttabelle mit Bild (keine doppelte Tabelle mehr)
+        img_width = 45
+        max_table_width = 180
+        label_width = 55
+        value_width = max_table_width - img_width - label_width
+        pdf.set_xy(x_table + 0, y_start)
+        # Werte vorbereiten
+        rows = [
+            ("Typenbezeichnung:", asset.name or "-"),
+            ("Hersteller / Gerätenummer:", hersteller_liste),
+            ("Seriennummer:", asset.serial_number or "-"),
+            ("Zubehör:", form.notes.data or "-")
+        ]
+        # Zeilenhöhen dynamisch bestimmen
+        pdf.set_font('Arial', '', 12)
+        line_heights = []
+        for label, value in rows:
+            n_lines = max(
+                pdf.get_string_width(value) // value_width + 1,
+                1
+            )
+            line_heights.append(6 * n_lines)
+        total_height = sum(line_heights)
+        # Bildzelle links mit rowspan
+        if asset_img_path:
+            x_imgcell = pdf.get_x()
+            y_imgcell = pdf.get_y()
+            pdf.cell(img_width, total_height, '', border=1)
+            x_img = x_imgcell + 2
+            y_img = y_imgcell + 2
+            pdf.image(asset_img_path, x=x_img, y=y_img, w=img_width - 4, h=total_height - 4)
+        else:
+            pdf.cell(img_width, total_height, '', border=1)
+        # Tabellenzeilen dynamisch, jede Zeile exakt gleich hoch wie multi_cell-Ausgabe
+        y_cursor = pdf.get_y()
+        for idx, (label, value) in enumerate(rows):
+            # Label-Zelle
+            pdf.set_xy(x_table + img_width, y_cursor)
+            x_label = pdf.get_x()
+            y_label = pdf.get_y()
+            # Wert-Zelle (multi_cell)
+            pdf.set_xy(x_table + img_width + label_width, y_cursor)
+            x_value = pdf.get_x()
+            y_value = pdf.get_y()
+            pdf.multi_cell(value_width, 6, value, border=1)
+            y_after = pdf.get_y()
+            cell_height = y_after - y_value
+            # Jetzt Label-Zelle exakt so hoch wie Wert-Zelle
+            pdf.set_xy(x_label, y_label)
+            pdf.cell(label_width, cell_height, label, border=1)
+            y_cursor += cell_height
+        # Abstand nach Tabelle
+        pdf.ln(8)
+
+        pdf.set_font('Arial', '', 10)
+        pdf.multi_cell(0, 6, 'Das Arbeitsmittel ist vom Arbeitnehmer ausschließlich im Rahmen seiner Tätigkeit zu benutzen. Eine Nutzung für private Zwecke ist nicht gestattet.\n\nDer Arbeitnehmer hat dafür Sorge zu tragen, dass Schäden, die am Gerät auftreten, unverzüglich dem Unternehmen gemeldet werden.\n\nSchäden, die auf normalen Verschleiß zurückzuführen sind, werden auf Kosten der Firma beseitigt. Bei Schäden, die auf unsachgemäßen Gebrauch zurückzuführen sind, behält sich der Arbeitgeber vor, diese auf Kosten des Arbeitnehmers beseitigen zu lassen.\n\nDer Arbeitnehmer ist nicht berechtigt, Arbeitsmittel Dritten zu überlassen oder Zugang zu gewähren.\n\nDer Arbeitnehmer bestätigt mit seiner Unterschrift unter diese Vereinbarung, dass er die Arbeitsmittel von der Firma in funktionsfähigem und mängelfreiem Zustand erhalten hat.\n\nEndet das Arbeitsverhältnis, hat der Arbeitnehmer die Arbeitsmittel unaufgefordert zurückzugeben. Auch während des Bestands des Arbeitsverhältnisses hat der Arbeitnehmer einer Rückgabeaufforderung durch die Firma unverzüglich Folge zu leisten.\n\nDiese Vereinbarung ist wesentlicher Bestandteil des Arbeitsvertrags. Änderungen und Ergänzungen dieser Vereinbarung bedürfen der Schriftform.')
+        pdf.ln(10)
+        pdf.set_font('Arial', '', 11)
+        # Unterschriftenzeile
+        pdf.cell(100, 10, 'Unterschrift Arbeitgeber', border=0, align='C')
+        pdf.cell(100, 10, 'Unterschrift Arbeitnehmer', border=0, ln=1, align='C')
+        y = pdf.get_y()
+        # Getrennte Linien für Unterschriften
+        # Arbeitgeber: links
+        pdf.line(25, y+5, 95, y+5)
+        # Arbeitnehmer: rechts
+        pdf.line(125, y+5, 195, y+5)
+        # Unterschrift Arbeitgeber (Bild)
+        signature_employer_data = form.signature_employer.data
+        if signature_employer_data and signature_employer_data.startswith('data:image'):
+            header, encoded = signature_employer_data.split(',', 1)
+            img_bytes = base64.b64decode(encoded)
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_img:
+                tmp_img.write(img_bytes)
+                tmp_img.flush()
+                pdf.image(tmp_img.name, x=25, y=y-3, w=60)
+        # Unterschrift Arbeitnehmer (Bild)
+        signature_data = form.signature.data
+        if signature_data and signature_data.startswith('data:image'):
+            header, encoded = signature_data.split(',', 1)
+            img_bytes = base64.b64decode(encoded)
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_img:
+                tmp_img.write(img_bytes)
+                tmp_img.flush()
+                pdf.image(tmp_img.name, x=130, y=y-3, w=60)
+        # Linie für Arbeitgeber direkt über Ort, Datum
+        pdf.ln(13)
+        pdf.set_x(20)
+        pdf.cell(60, 0, '', border='T')
+        pdf.ln(5)
+        pdf.cell(0, 8, f'Ort, Datum: ________________________________', ln=1)
+
+        # PDF im Uploads-Ordner speichern
+        import time
+        uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
+        if not os.path.exists(uploads_dir):
+            os.makedirs(uploads_dir)
+        timestamp = time.strftime('%Y%m%d_%H%M%S')
+        pdf_filename = f"asset_{asset.id}_uebergabe_{timestamp}.pdf"
+        pdf_path = os.path.join(uploads_dir, pdf_filename)
+        pdf.output(pdf_path)
+        # Automatische Verknüpfung als Dokument
+        from werkzeug.utils import secure_filename
+        from mimetypes import guess_type
+        # Dokument-Metadaten
+        title = f"Übergabeprotokoll {asset.name} ({timestamp})"
+        document_type = "other"  # oder z.B. "certificate"/"manual" bei Bedarf
+        filename = pdf_filename
+        file_path = pdf_path
+        mime_type = guess_type(pdf_path)[0] or "application/pdf"
+        size = os.path.getsize(pdf_path)
+        notes = "Automatisch generiertes Übergabeprotokoll (PDF) mit digitalen Unterschriften."
+        # Document-Objekt anlegen und speichern
+        document = Document(
+            title=title,
+            document_type=document_type,
+            filename=filename,
+            file_path=file_path,
+            mime_type=mime_type,
+            size=size,
+            notes=notes,
+            asset_id=asset.id
+        )
+        db.session.add(document)
+        db.session.commit()
+        flash(f'PDF wurde erfolgreich erstellt und direkt als Dokument zum Asset hinzugefügt: {pdf_filename}.', 'success')
+        return redirect(url_for('main.asset_details', id=asset.id))
     
     return render_template('loan_asset.html', form=form, asset=asset)
 
