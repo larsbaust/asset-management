@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from dotenv import load_dotenv
 load_dotenv()
 from .models import Asset, db, Loan, Document, CostEntry, InventorySession, InventoryItem, InventoryTeam, OrderComment, AssetLog
-from .forms import AssetForm, LoanForm, DocumentForm, CostEntryForm, InventorySessionForm, InventoryTeamForm, InventoryCheckForm
+from .forms import AssetForm, LoanForm, DocumentForm, CostEntryForm, InventorySessionForm, InventoryTeamForm, InventoryCheckForm, MultiLoanForm
 import csv
 from io import StringIO, BytesIO
 from datetime import datetime, timedelta
@@ -58,6 +58,178 @@ def inventory_scan(session_id, asset_id):
         return redirect(url_for('main.inventory_scan', session_id=session.id, asset_id=asset.id))
 
     return render_template('inventory_scan.html', asset=asset, inventory_entry=item)
+
+@main.route('/multi_loan', methods=['GET', 'POST'])
+@login_required
+def multi_loan():
+    form = MultiLoanForm()
+    if request.method == 'GET':
+        asset_ids = request.args.get('asset_ids', '')
+        asset_ids = [int(id) for id in asset_ids.split(',')]
+        assets = Asset.query.filter(Asset.id.in_(asset_ids)).all()
+        return render_template('multi_loan.html', form=form, assets=assets)
+
+    if form.validate_on_submit():
+        from .models import MultiLoan, MultiLoanAsset, Document
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.units import cm
+        import tempfile, base64, os
+        from datetime import datetime
+        import mimetypes
+
+        # Asset IDs from GET (hidden in form or session)
+        asset_ids = request.args.get('asset_ids', '')
+        asset_ids = [int(id) for id in asset_ids.split(',') if id]
+        assets = Asset.query.filter(Asset.id.in_(asset_ids)).all()
+
+        # Create MultiLoan entry
+        multi_loan = MultiLoan(
+            borrower_name=form.borrower_name.data,
+            start_date=form.start_date.data,
+            expected_return_date=form.expected_return_date.data,
+            notes=form.notes.data,
+            signature=form.signature.data,
+            signature_employer=form.signature_employer.data,
+            created_at=datetime.utcnow(),
+        )
+        db.session.add(multi_loan)
+        db.session.flush()  # get multi_loan.id
+        # Link assets
+        for asset in assets:
+            mla = MultiLoanAsset(multi_loan_id=multi_loan.id, asset_id=asset.id)
+            db.session.add(mla)
+            asset.status = 'on_loan'
+        db.session.flush()
+
+        # Generate PDF with ReportLab
+        styles = getSampleStyleSheet()
+        normal = styles['Normal']
+        title = styles['Title']
+        table_data = [["Name", "Artikelnummer", "Seriennummer", "Kategorie"]]
+        for asset in assets:
+            table_data.append([
+                asset.name or '-',
+                getattr(asset, 'article_number', '-') or '-',
+                getattr(asset, 'serial_number', '-') or '-',
+                asset.category.name if getattr(asset, 'category', None) else '-'
+            ])
+        # Get a temp filename, then close the file before writing
+        tmp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+        tmp_pdf_name = tmp_pdf.name
+        tmp_pdf.close()  # Ensure file is closed before ReportLab writes
+        doc = SimpleDocTemplate(tmp_pdf_name, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+        story = []
+        # Überschrift
+        story.append(Paragraph(f"<b>Übergabeprotokoll für Arbeitsmittel an {form.borrower_name.data}</b>", title))
+        story.append(Spacer(1, 12))
+        # Für jedes Asset: eigene Tabelle und Rechtstext
+        for idx, asset in enumerate(assets, 1):
+            asset_table = [
+                [Paragraph('<b>Typenbezeichnung</b>', normal), asset.name or '-'],
+                [Paragraph('<b>Hersteller</b>', normal), ', '.join([m.name for m in getattr(asset, 'manufacturers', [])]) or '-'],
+                [Paragraph('<b>Artikelnummer</b>', normal), getattr(asset, 'article_number', '-') or '-'],
+                [Paragraph('<b>Seriennummer</b>', normal), getattr(asset, 'serial_number', '-') or '-'],
+                [Paragraph('<b>Kategorie</b>', normal), asset.category.name if getattr(asset, 'category', None) else '-'],
+            ]
+            story.append(Paragraph(f"§ 1    Die Firma stellt dem Arbeitnehmer das im Folgenden näher bezeichnete Arbeitsmittel zur Verfügung.", normal))
+            t = Table(asset_table, colWidths=[5*cm, 10*cm])
+            t.setStyle(TableStyle([
+                ('GRID', (0, 0), (-1, -1), 0.5, '#888888'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ]))
+            story.append(t)
+            story.append(Spacer(1, 8))
+        # Rechtstext mit Paragraphen wie im Screenshot, mit Zeilenabstand
+        story.append(Paragraph("§ 2    Das Arbeitsmittel ist vom Arbeitnehmer ausschließlich im Rahmen seiner Tätigkeit zu benutzen. Eine Nutzung für private Zwecke ist nicht gestattet.", normal))
+        story.append(Spacer(1, 6))
+        story.append(Paragraph("§ 3    Der Arbeitnehmer hat dafür Sorge zu tragen, dass Schäden, die am Gerät auftreten, unverzüglich dem Unternehmen gemeldet werden.", normal))
+        story.append(Spacer(1, 6))
+        story.append(Paragraph("§ 4    Schäden, die auf normalen Verschleiß zurückzuführen sind, werden auf Kosten der Firma beseitigt. Bei Schäden, die auf unsachgemäßen Gebrauch zurückzuführen sind, behält sich der Arbeitgeber vor, diese auf Kosten des Arbeitnehmers beseitigen zu lassen.", normal))
+        story.append(Spacer(1, 6))
+        story.append(Paragraph("§ 5    Der Arbeitnehmer ist nicht berechtigt, Arbeitsmittel Dritten zu überlassen oder Zugang zu gewähren.", normal))
+        story.append(Spacer(1, 6))
+        story.append(Paragraph("§ 6    Der Arbeitnehmer bestätigt mit seiner Unterschrift unter diese Vereinbarung, dass er die Arbeitsmittel von der Firma in funktionsfähigem und mängelfreiem Zustand erhalten hat.", normal))
+        story.append(Spacer(1, 6))
+        story.append(Paragraph("§ 7    Endet das Arbeitsverhältnis, hat der Arbeitnehmer die Arbeitsmittel unaufgefordert zurückzugeben. Auch während des Bestands des Arbeitsverhältnisses hat der Arbeitnehmer einer Rückgabeaufforderung durch die Firma unverzüglich Folge zu leisten. Zurückbehaltungsrecht steht dem Arbeitnehmer nicht zu. Sollte das Arbeitsmittel mit einem Passwort geschützt sein und der Arbeitnehmer dieses vor dem Arbeitgeber nicht mitteilen, so dass das Passwort nicht mehr nutzbar ist und das Gerät in Folge dessen nicht mehr nutzbar sein, behalten wir uns vor die Kosten einer Reparatur oder einer Neuanschaffung dem Arbeitnehmer in Rechnung zu stellen.", normal))
+        story.append(Spacer(1, 6))
+        story.append(Paragraph("§ 8    Diese Vereinbarung ist wesentlicher Bestandteil des Arbeitsvertrags. Änderungen und Ergänzungen dieser Vereinbarung bedürfen der Schriftform. Ein Verzicht auf die Schriftform ist nur wirksam, wenn dies schriftlich vereinbart wird. Eine Nichtbeachtung führt zur Unwirksamkeit entsprechender Regelungen. Ausgenommen hiervon sind Individualvereinbarungen i. S. d. § 305 b BGB. Ergänzend zu dieser Vereinbarung gelten die allgemeinen gesetzlichen Bestimmungen. Sollte eine Vorschrift dieser Vereinbarung unwirksam sein, so hat dies nicht die Unwirksamkeit der gesamten Vereinbarung zur Folge.", normal))
+        story.append(Spacer(1, 18))
+        # Notizen und Datum
+        if form.notes.data:
+            story.append(Paragraph(f"<b>Notizen:</b> {form.notes.data}", normal))
+        story.append(Paragraph(f"Ausleihdatum: {form.start_date.data.strftime('%d.%m.%Y')}", normal))
+        if form.expected_return_date.data:
+            story.append(Paragraph(f"Erwartetes Rückgabedatum: {form.expected_return_date.data.strftime('%d.%m.%Y')}", normal))
+        story.append(Spacer(1, 18))
+        # Unterschriftenbereich direkt nach Tabellen & Notizen
+        sig_labels = [
+            Paragraph('Unterschrift Arbeitgeber:', normal),
+            Paragraph('Unterschrift Arbeitnehmer:', normal)
+        ]
+        sig_imgs = []
+        # Arbeitgeber-Signatur
+        if form.signature_employer.data and form.signature_employer.data.startswith('data:image'):
+            import base64, io
+            from reportlab.platypus import Image
+            header, encoded = form.signature_employer.data.split(',', 1)
+            img_bytes = base64.b64decode(encoded)
+            img_io = io.BytesIO(img_bytes)
+            sig_imgs.append(Image(img_io, width=6*cm, height=2*cm))
+        else:
+            sig_imgs.append(Spacer(1, 2*cm))
+        # Arbeitnehmer-Signatur
+        if form.signature.data and form.signature.data.startswith('data:image'):
+            import base64, io
+            from reportlab.platypus import Image
+            header, encoded = form.signature.data.split(',', 1)
+            img_bytes = base64.b64decode(encoded)
+            img_io = io.BytesIO(img_bytes)
+            sig_imgs.append(Image(img_io, width=6*cm, height=2*cm))
+        else:
+            sig_imgs.append(Spacer(1, 2*cm))
+        sig_table = Table([
+            sig_labels,
+            sig_imgs
+        ], colWidths=[8*cm, 8*cm])
+        sig_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        story.append(sig_table)
+        doc.build(story)
+        pdf_filename = f"multi_loan_{multi_loan.id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.pdf"
+        uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
+        os.makedirs(uploads_dir, exist_ok=True)
+        pdf_path = os.path.join(uploads_dir, pdf_filename)
+        # Move temp file to uploads dir
+        os.replace(tmp_pdf_name, pdf_path)
+        multi_loan.pdf_filename = pdf_filename
+        multi_loan.pdf_path = pdf_path
+        db.session.flush()
+        # Create Document entry for each asset
+        for asset in assets:
+            doc_entry = Document(
+                asset_id=asset.id,
+                title=f"Übergabeprotokoll Sammelausleihe #{multi_loan.id}",
+                document_type="handover_protocol",
+                filename=pdf_filename,
+                file_path=pdf_path,
+                mime_type="application/pdf",
+                size=os.path.getsize(pdf_path),
+                notes=f"Automatisch generiert für Sammelausleihe am {form.start_date.data.strftime('%d.%m.%Y')}",
+                upload_date=datetime.utcnow()
+            )
+            db.session.add(doc_entry)
+        db.session.commit()
+        flash('Sammelausleihe erfolgreich durchgeführt und Protokoll erstellt!', 'success')
+        return redirect(url_for('main.assets'))
+
+    return render_template('multi_loan.html', form=form)
 
 @main.route('/locations')
 def locations():
@@ -635,9 +807,12 @@ def assets():
     # Filter: Status (Dropdown)
     status = request.args.get('status', '')
     if status and status != 'all':
-        query = query.filter(Asset.status == status)
+        if status == 'active':
+            query = query.filter(Asset.status.in_(['active', 'on_loan']))
+        else:
+            query = query.filter(Asset.status == status)
     elif not status:
-        query = query.filter(Asset.status == 'active')
+        query = query.filter(Asset.status.in_(['active', 'on_loan']))
 
     # Filter: Nur mit Bild (Checkbox)
     with_image = request.args.get('with_image', '')

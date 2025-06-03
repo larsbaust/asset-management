@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="title">Sammelausleihe</h1>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="field">
+        <label class="label">Name des Ausleihenden</label>
+        <div class="control">{{ form.borrower_name(class_="input") }}</div>
+        {% for error in form.borrower_name.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+    </div>
+    <div class="field is-grouped">
+        <div class="control">
+            <label class="label">Ausleihdatum</label>
+            {{ form.start_date(class_="input", id="start_date") }}
+            {% for error in form.start_date.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="control">
+            <label class="label">Erwartetes Rückgabedatum</label>
+            {{ form.expected_return_date(class_="input", id="expected_return_date") }}
+            {% for error in form.expected_return_date.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">Notizen</label>
+        <div class="control">{{ form.notes(class_="textarea") }}</div>
+        {% for error in form.notes.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+    </div>
+    <div class="field">
+        <label class="label">Unterschrift des Ausleihenden</label>
+        <div class="box" style="padding: 1em;">
+            <canvas id="signature-pad" width="400" height="150" style="border:1px solid #ccc;"></canvas>
+            <button type="button" class="button is-small is-light" id="clear-signature">Zurücksetzen</button>
+        </div>
+        <input type="hidden" name="signature" id="signature-data">
+        <p class="help">Bitte mit dem Finger oder der Maus unterschreiben.</p>
+    </div>
+    <div class="field">
+        <label class="label">Unterschrift des Arbeitgebers</label>
+        <div class="box" style="padding: 1em;">
+            <canvas id="signature-pad-employer" width="400" height="150" style="border:1px solid #ccc;"></canvas>
+            <button type="button" class="button is-small is-light" id="clear-signature-employer">Zurücksetzen</button>
+        </div>
+        <input type="hidden" name="signature_employer" id="signature-data-employer">
+        <p class="help">Arbeitgeber unterschreibt hier digital.</p>
+    </div>
+    <script src="{{ url_for('static', filename='js/signature_pad.min.js') }}"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Arbeitnehmer
+        var canvas = document.getElementById('signature-pad');
+        var signaturePad = new SignaturePad(canvas);
+        var clearBtn = document.getElementById('clear-signature');
+        var input = document.getElementById('signature-data');
+        clearBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            signaturePad.clear();
+            input.value = '';
+        });
+        // Arbeitgeber
+        var canvasEmployer = document.getElementById('signature-pad-employer');
+        var signaturePadEmployer = new SignaturePad(canvasEmployer);
+        var clearBtnEmployer = document.getElementById('clear-signature-employer');
+        var inputEmployer = document.getElementById('signature-data-employer');
+        clearBtnEmployer.addEventListener('click', function(e) {
+            e.preventDefault();
+            signaturePadEmployer.clear();
+            inputEmployer.value = '';
+        });
+        // Beim Absenden des Formulars: beide Bilder als Base64 speichern
+        var form = canvas.closest('form');
+        form.addEventListener('submit', function(e) {
+            if (!signaturePad.isEmpty()) {
+                input.value = signaturePad.toDataURL();
+            }
+            if (!signaturePadEmployer.isEmpty()) {
+                inputEmployer.value = signaturePadEmployer.toDataURL();
+            }
+        });
+    });
+    </script>
+    <div class="field">
+        <label class="label">Ausgewählte Assets:</label>
+        <ul>
+            {% for asset in assets %}
+            <li><strong>{{ asset.name }}</strong> ({{ asset.article_number or 'ohne Artikelnummer' }})</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="field">
+        <div class="control">
+            {{ form.submit(class_="button is-info") }}
+            <a href="{{ url_for('main.assets') }}" class="button is-light">Abbrechen</a>
+        </div>
+    </div>
+</form>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var today = new Date().toISOString().split('T')[0];
+    document.getElementById('start_date').min = today;
+    document.getElementById('start_date').addEventListener('change', function() {
+        document.getElementById('expected_return_date').min = this.value;
+    });
+});
+</script>
+{% endblock %}

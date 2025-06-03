@@ -116,6 +116,20 @@ class LoanForm(FlaskForm):
         if field.data <= self.start_date.data:
             raise ValidationError('Das Rückgabedatum muss nach dem Ausleihdatum liegen.')
 
+class MultiLoanForm(FlaskForm):
+    """Formular für eine Sammelausleihe mehrerer Assets"""
+    borrower_name = StringField('Name des Ausleihenden', validators=[DataRequired()])
+    start_date = DateField('Ausleihdatum', validators=[DataRequired()], format='%Y-%m-%d')
+    expected_return_date = DateTimeField('Erwartetes Rückgabedatum', validators=[Optional()])
+    notes = TextAreaField('Notizen', validators=[Optional()])
+    signature = StringField('Unterschrift (Base64)', validators=[Optional()])
+    signature_employer = StringField('Unterschrift Arbeitgeber (Base64)', validators=[Optional()])
+    submit = SubmitField('Sammelausleihe speichern')
+
+    def validate_expected_return_date(self, field):
+        if field.data and self.start_date.data and field.data <= self.start_date.data:
+            raise ValidationError('Das Rückgabedatum muss nach dem Ausleihdatum liegen.')
+
 class LocationImageForm(FlaskForm):
     file = FileField('Datei (Bild oder PDF)', validators=[DataRequired(), FileAllowed(['jpg', 'jpeg', 'png', 'gif', 'pdf'], 'Nur Bilder oder PDFs erlaubt!')])
     description = StringField('Beschreibung', validators=[Optional(), Length(max=255)])

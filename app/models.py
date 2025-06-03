@@ -356,7 +356,7 @@ class Loan(db.Model):
     asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
     borrower_name = db.Column(db.String(100), nullable=False)
     start_date = db.Column(db.Date, nullable=False)
-    expected_return_date = db.Column(db.Date, nullable=False)
+    expected_return_date = db.Column(db.Date, nullable=True)
     return_date = db.Column(db.Date)
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -430,6 +430,30 @@ class InventoryTeam(db.Model):
 
 from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy import JSON
+
+# --- Multi-Asset-Loan (Sammelausleihe) ---
+class MultiLoan(db.Model):
+    __tablename__ = 'multi_loan'
+    id = db.Column(db.Integer, primary_key=True)
+    borrower_name = db.Column(db.String(100), nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+    expected_return_date = db.Column(db.Date, nullable=True)
+    notes = db.Column(db.Text)
+    signature = db.Column(db.Text)  # Base64 PNG
+    signature_employer = db.Column(db.Text)  # Base64 PNG
+    pdf_filename = db.Column(db.String(255))
+    pdf_path = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    assets = db.relationship('Asset', secondary='multi_loan_asset', backref='multi_loans')
+
+    def __repr__(self):
+        return f'<MultiLoan {self.id} - {self.borrower_name}>'
+
+class MultiLoanAsset(db.Model):
+    __tablename__ = 'multi_loan_asset'
+    multi_loan_id = db.Column(db.Integer, db.ForeignKey('multi_loan.id'), primary_key=True)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), primary_key=True)
+
 
 class AssetLog(db.Model):
     """Protokolliert Aktionen auf Assets (Archivieren, Wiederherstellen, Löschen, Anlegen, Bearbeiten)"""

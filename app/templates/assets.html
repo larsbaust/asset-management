@@ -134,6 +134,15 @@
     <span>Ausgewählte wiederherstellen</span>
 </button>
 {% endif %}
+<div class="level mb-2">
+  <div class="level-left"></div>
+  <div class="level-right">
+    <button id="multi-loan-btn" class="button is-info" type="button" disabled>
+      <span class="icon"><i class="fas fa-hand-holding"></i></span>
+      <span>Sammelausleihe starten</span>
+    </button>
+  </div>
+</div>
 <div class="table-container">
       <table class="table is-fullwidth is-striped is-hoverable asset-table-responsive" style="font-size:0.95rem; table-layout:auto; width:100%; min-width:unset;">
         <thead>
@@ -251,6 +260,24 @@
 </div>
 
 <script>
+// Multi-Loan Button aktivieren/deaktivieren
+const multiLoanBtn = document.getElementById('multi-loan-btn');
+const assetCheckboxes = document.querySelectorAll('.asset-checkbox');
+const selectAllAssets = document.getElementById('select-all-assets');
+function updateMultiLoanBtn() {
+    const checked = document.querySelectorAll('.asset-checkbox:checked');
+    multiLoanBtn.disabled = checked.length === 0;
+}
+assetCheckboxes.forEach(cb => cb.addEventListener('change', updateMultiLoanBtn));
+if (selectAllAssets) selectAllAssets.addEventListener('change', updateMultiLoanBtn);
+// Klick auf Multi-Loan Button: IDs sammeln und weiterleiten
+multiLoanBtn.addEventListener('click', function() {
+    const checked = Array.from(document.querySelectorAll('.asset-checkbox:checked')).map(cb => cb.value);
+    if (checked.length > 0) {
+        // Per GET weiterleiten (kann später zu POST geändert werden)
+        window.location.href = `/multi_loan?asset_ids=${checked.join(',')}`;
+    }
+});
 function deleteAsset(assetId, assetName) {
     if (confirm('Möchten Sie das Asset "' + assetName + '" wirklich löschen? Alle zugehörigen Daten (Dokumente, Kosten, etc.) werden ebenfalls gelöscht.')) {
         fetch('/assets/' + assetId + '/delete', {
