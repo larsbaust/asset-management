@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h2>CSV-Import für Bestellpositionen</h2>
+  <form id="csv-upload-form" enctype="multipart/form-data" method="POST" action="{{ url_for('main.import_csv_order') }}">
+    <div class="form-group">
+      <label for="csvFile">CSV-Datei auswählen</label>
+      <input type="file" class="form-control-file" id="csvFile" name="csvFile" accept=".csv" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Hochladen</button>
+    <a href="{{ url_for('order.order_plan') }}" class="btn btn-secondary ml-2">Zurück zum Bestellplan</a>
+  </form>
+
+  {% if preview %}
+  <hr>
+  <h5 class="mt-4 mb-3 has-text-weight-semibold">Spaltenzuordnung</h5>
+<form id="csv-mapping-form" method="POST" action="{{ url_for('main.import_csv_order') }}">
+  <div class="columns is-centered">
+    <div class="column is-half">
+      <table class="table is-bordered is-fullwidth is-hoverable">
+        <thead>
+          <tr>
+            <th class="has-text-centered">App-Feld</th>
+            <th class="has-text-centered">CSV-Spalte</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for field in app_fields %}
+          <tr>
+            <td class="has-text-weight-medium">{{ field }}</td>
+            <td>
+              <div class="select is-fullwidth">
+                <select name="mapping_{{ field }}">
+                  <option value="">Nicht zuordnen</option>
+                  {% for c in columns %}
+                    <option value="{{ c }}" {% if mapping and mapping[field]==c %}selected{% endif %}>{{ c }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <input type="hidden" name="csv_text" value="{{ csv_text|tojson|safe }}">
+      <div class="buttons is-right mt-3">
+        <button type="submit" class="button is-success">Importieren</button>
+        <a href="{{ url_for('order.order_plan') }}" class="button is-light">Abbrechen</a>
+      </div>
+    </div>
+  </div>
+</form>
+    <div class="mt-4">
+      <h5>Vorschau (erste 10 Zeilen):</h5>
+      <div id="csv-preview-table">{{ preview|safe }}</div>
+    </div>
+  {% endif %}
+  {% if import_result %}
+    <div class="alert alert-info mt-3">{{ import_result }}</div>
+  {% endif %}
+</div>
+{% endblock %}

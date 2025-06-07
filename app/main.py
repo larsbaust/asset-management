@@ -272,8 +272,11 @@ def add_location():
 
 @main.route('/locations/<int:id>')
 def location_detail(id):
-    from .models import Location, LocationImage
+    from .models import Location, LocationImage, InventorySession, Category, InventoryItem
     from .forms import LocationImageForm
+    from sqlalchemy import func
+    from collections import defaultdict
+    
     location = Location.query.get_or_404(id)
     form = LocationImageForm()
     images = LocationImage.query.filter_by(location_id=id).order_by(LocationImage.upload_date.desc()).all()
@@ -286,8 +289,71 @@ def location_detail(id):
         filtered_assets = [a for a in location.assets if a.status == 'inactive']
     else:
         filtered_assets = location.assets
+    
+    # Inventur-Informationen laden
+    latest_inventory = InventorySession.query.filter_by(
+        location_id=id, 
+        status='completed'
+    ).order_by(InventorySession.end_date.desc()).first()
+    
+    # Wenn keine abgeschlossene Inventur existiert, prüfe auf geplante oder laufende
+    if not latest_inventory:
+        latest_inventory = InventorySession.query.filter_by(
+            location_id=id
+        ).filter(InventorySession.status.in_(['planned', 'in_progress']))\
+        .order_by(InventorySession.start_date.desc()).first()
+    
+    # Wenn keine Inventur-Informationen im Location-Modell gespeichert sind, aber eine Inventur existiert
+    if latest_inventory and not location.last_inventory_date:
+        if latest_inventory.status == 'completed':
+            location.last_inventory_date = latest_inventory.end_date
+            location.inventory_status = 'Abgeschlossen'
+        elif latest_inventory.status == 'in_progress':
+            location.last_inventory_date = latest_inventory.start_date
+            location.inventory_status = 'In Bearbeitung'
+        elif latest_inventory.status == 'planned':
+            location.inventory_status = 'Geplant'
+        db.session.commit()
+    
+    # Bestand nach Namen gruppieren mit Soll- und Ist-Bestand
+    stock_by_name = defaultdict(lambda: {'count': 0, 'value': 0, 'actual_count': 0})
+    
+    # Soll-Bestand aus Assets berechnen
+    for asset in filtered_assets:
+        name = asset.name or 'Unbenannt'
+        stock_by_name[name]['count'] += 1
+        if asset.value is not None:
+            stock_by_name[name]['value'] += float(asset.value)  # Stelle sicher, dass es als Float behandelt wird
+    
+    # Ist-Bestand aus der letzten Inventur ermitteln (falls vorhanden)
+    if latest_inventory and latest_inventory.status == 'completed':
+        inventory_items = InventoryItem.query.filter_by(session_id=latest_inventory.id).all()
+        
+        # Gruppiere Inventurelemente nach Asset-Namen
+        for item in inventory_items:
+            if item.asset and item.asset in filtered_assets:
+                name = item.asset.name or 'Unbenannt'
+                # Verwende gezählte Menge als Ist-Bestand
+                if item.counted_quantity is not None:
+                    stock_by_name[name]['actual_count'] += item.counted_quantity
+                else:
+                    # Wenn keine Zählung erfolgt ist, nehmen wir an, dass der Ist-Bestand dem Soll-Bestand entspricht
+                    stock_by_name[name]['actual_count'] += 1
+    else:
+        # Wenn keine Inventur vorhanden ist, setzen wir den Ist-Bestand gleich dem Soll-Bestand
+        for name in stock_by_name:
+            stock_by_name[name]['actual_count'] = stock_by_name[name]['count']
 
-    return render_template('location_detail.html', location=location, gallery_form=form, gallery_images=images, filtered_assets=filtered_assets, selected_status=status)
+    return render_template(
+        'location_detail.html', 
+        location=location, 
+        gallery_form=form, 
+        gallery_images=images, 
+        filtered_assets=filtered_assets, 
+        selected_status=status,
+        latest_inventory=latest_inventory,
+        stock_by_name=stock_by_name
+    )
 
 @main.route('/locations/<int:id>/upload_image', methods=['GET', 'POST'])
 def upload_location_image(id):
@@ -772,6 +838,7 @@ def dashboard():
 def assets():
     """Asset-Übersicht mit Filterfunktion"""
     from .models import Assignment, Manufacturer, Supplier
+    from collections import defaultdict
     query = Asset.query
 
     # Filter: Name (Textfeld)
@@ -818,8 +885,52 @@ def assets():
     with_image = request.args.get('with_image', '')
     if with_image:
         query = query.filter(Asset.image_url != None)
-
+        
+    # Gruppierung aktivieren/deaktivieren
+    group_duplicates = request.args.get('group_duplicates', 'true') == 'true'
+    
     assets = query.all()
+    
+    # Gruppierung von Duplikaten nach Name, Artikelnummer und Kategorie
+    grouped_assets = []
+    if group_duplicates:
+        # Dictionary für die Gruppierung erstellen
+        groups = defaultdict(list)
+        
+        # Gruppierungsschlüssel erstellen und Assets gruppieren
+        for asset in assets:
+            # Schlüssel aus Name, Artikelnummer und Kategorie-ID
+            key = (asset.name, asset.article_number or '', asset.category_id or 0)
+            groups[key].append(asset)
+        
+        # Gruppierte Assets verarbeiten
+        for key, asset_group in groups.items():
+            if len(asset_group) > 1:
+                # Mehrere Assets mit gleichen Schlüsseln gefunden
+                representative = asset_group[0]  # Repräsentatives Asset für die Gruppe
+                representative.is_group = True
+                representative.group_count = len(asset_group)
+                representative.group_ids = [a.id for a in asset_group]
+                representative.group_total_value = sum(a.value or 0 for a in asset_group)
+                representative.group_assets = asset_group
+                grouped_assets.append(representative)
+            else:
+                # Einzelnes Asset
+                asset_group[0].is_group = False
+                asset_group[0].group_count = 1
+                asset_group[0].group_ids = [asset_group[0].id]
+                asset_group[0].group_total_value = asset_group[0].value or 0
+                asset_group[0].group_assets = asset_group
+                grouped_assets.append(asset_group[0])
+    else:
+        # Keine Gruppierung, alle Assets einzeln anzeigen
+        for asset in assets:
+            asset.is_group = False
+            asset.group_count = 1
+            asset.group_ids = [asset.id]
+            asset.group_total_value = asset.value or 0
+            asset.group_assets = [asset]
+            grouped_assets.append(asset)
 
     # AssetForm instanziieren, um auf die Choices zuzugreifen
     form = AssetForm()
@@ -831,12 +942,13 @@ def assets():
 
     return render_template(
         'assets.html',
-        assets=assets,
+        assets=grouped_assets,
         categories=categories,
         locations=locations,
         manufacturers=manufacturers,
         suppliers=suppliers,
         assignments=assignments,
+        group_duplicates=group_duplicates,
         selected={
             'name': name,
             'category': category,
@@ -1380,6 +1492,52 @@ def delete_asset_route(id):
     flash('Asset und alle verknüpften Daten wurden erfolgreich gelöscht.', 'success')
     return jsonify({'success': True})
 
+@main.route('/order/import_csv', methods=['GET', 'POST'])
+@login_required
+def import_csv_order():
+    app_fields = ['Artikelnummer','Bezeichnung','Menge','Kategorie','Hersteller','Trackingnummer','Kommentar']
+    preview = None
+    columns = []
+    mapping = None
+    import_result = None
+    csv_text = None
+    import io, csv
+    try:
+        import pandas as pd
+    except ImportError:
+        pd = None
+    if request.method == 'POST':
+        if 'csvFile' in request.files:
+            # Upload-Phase
+            file = request.files['csvFile']
+            csv_text = file.read().decode('utf-8')
+            # Vorschau
+            if pd:
+                # Trennzeichen automatisch erkennen (Komma oder Semikolon)
+                df = pd.read_csv(io.StringIO(csv_text), sep=None, engine='python')
+                columns = list(df.columns)
+                preview_rows = df.head(10).values.tolist()
+            else:
+                # Trennzeichen automatisch erkennen
+                sample = csv_text[:1024]
+                delimiter = ';' if ';' in sample else ','
+                reader = csv.reader(io.StringIO(csv_text), delimiter=delimiter)
+                rows = list(reader)
+                columns = rows[0] if rows else []
+                preview_rows = rows[1:11]
+            preview = '<table class="table table-sm table-bordered"><thead><tr>' + ''.join(f'<th>{c}</th>' for c in columns) + '</tr></thead><tbody>'
+            for row in preview_rows:
+                preview += '<tr>' + ''.join(f'<td>{cell}</td>' for cell in row) + '</tr>'
+            preview += '</tbody></table>'
+        elif 'csv_text' in request.form:
+            # Mapping-Phase
+            csv_text = request.form['csv_text']
+            mapping = {field: request.form.get(f'mapping_{field}') for field in app_fields}
+            # Hier: Import-Logik (Demo)
+            import_result = f"Import erfolgreich! Mapping: {mapping}"
+            return render_template('order/import_csv.html', preview=None, app_fields=app_fields, columns=[], mapping=mapping, csv_text=None, import_result=import_result)
+    return render_template('order/import_csv.html', preview=preview, app_fields=app_fields, columns=columns, mapping=mapping, csv_text=csv_text, import_result=import_result)
+
 @main.route('/import_assets', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -1579,20 +1737,10 @@ def asset_details(id):
 @main.route('/inventory/planning', methods=['GET'])
 def inventory_planning():
     """Zeigt die Inventurplanung an"""
-    # Hole aktive und geplante Inventuren
-    active_sessions = InventorySession.query.filter(
-        InventorySession.status.in_(['planned', 'active'])
-    ).order_by(InventorySession.start_date).all()
-    
-    # Hole abgeschlossene Inventuren (die letzten 5)
-    completed_sessions = InventorySession.query.filter_by(
-        status='completed'
-    ).order_by(InventorySession.end_date.desc()).limit(5).all()
-    
-    return render_template('inventory/planning.html',
-        active_sessions=active_sessions,
-        completed_sessions=completed_sessions
-    )
+    sessions = InventorySession.query.filter(InventorySession.status.in_(['planned', 'in_progress'])).order_by(InventorySession.start_date).all()
+    locations = db.session.query(db.func.distinct(Asset.location)).filter(Asset.location != None).all()
+    locations = [l[0] for l in locations if l[0]]
+    return render_template('inventory/planning.html', sessions=sessions, locations=locations)
 
 @main.route('/inventory/planning/new', methods=['GET', 'POST'])
 def inventory_planning_new():
@@ -2442,8 +2590,72 @@ def inventory_report_export(id):
         return response
 
 @main.route('/inventory/history')
-
 def inventory_history():
-    """Zeigt die Historie aller Inventuren"""
-    sessions = InventorySession.query.order_by(InventorySession.start_date.desc()).all()
+    # Zeigt die Historie aller Inventuren
+    sessions = InventorySession.query.filter_by(status='completed').order_by(InventorySession.end_date.desc()).all()
     return render_template('inventory/history.html', sessions=sessions)
+
+@main.route('/inventory/location/<int:location_id>/plan', methods=['GET', 'POST'])
+def inventory_location_plan(location_id):
+    """Inventurplanung für einen bestimmten Standort"""
+    from .models import Location
+    from .forms import InventorySessionForm
+    
+    location = Location.query.get_or_404(location_id)
+    
+    # Formular mit vorausgefülltem Standort initialisieren
+    form = InventorySessionForm()
+    form.location_id.data = location_id
+    form.name.data = f'Inventur {location.name} {datetime.now().strftime("%d.%m.%Y")}'
+    
+    # Bestehende Inventuren für diesen Standort anzeigen
+    existing_sessions = InventorySession.query.filter_by(location_id=location_id).order_by(InventorySession.start_date.desc()).all()
+    
+    if form.validate_on_submit():
+        # Neue Inventur für diesen Standort erstellen
+        session = InventorySession(
+            name=form.name.data,
+            location_id=location_id,
+            status='planned',
+            start_date=form.start_date.data,
+            end_date=form.end_date.data,
+            notes=form.notes.data
+        )
+        db.session.add(session)
+        db.session.commit()
+        
+        # Alle Assets an diesem Standort zur Inventur hinzufügen
+        for asset in location.assets:
+            item = InventoryItem(
+                session_id=session.id,
+                asset_id=asset.id,
+                status='pending',
+                expected_quantity=1,
+                expected_location=location.name
+            )
+            db.session.add(item)
+        
+        db.session.commit()
+        
+        # Standort-Inventurstatus aktualisieren
+        location.inventory_status = 'Inventur geplant'
+        location.last_inventory_date = datetime.now()
+        db.session.commit()
+        
+        flash(f'Inventur für {location.name} wurde geplant.', 'success')
+        return redirect(url_for('main.location_detail', id=location_id))
+    
+    return render_template('inventory/planning_location.html', form=form, location=location, existing_sessions=existing_sessions)
+
+@main.route('/inventory/location/<int:location_id>/history')
+def inventory_location_history(location_id):
+    """Zeigt die Inventurhistorie für einen bestimmten Standort"""
+    from .models import Location
+    
+    location = Location.query.get_or_404(location_id)
+    sessions = InventorySession.query.filter_by(
+        location_id=location_id, 
+        status='completed'
+    ).order_by(InventorySession.end_date.desc()).all()
+    
+    return render_template('inventory/location_history.html', location=location, sessions=sessions)

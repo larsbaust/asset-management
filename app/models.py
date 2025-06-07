@@ -523,10 +523,11 @@ class Location(db.Model):
     image_url = db.Column(db.String(255))  # Foto/Bild vom Standort (optional)
     latitude = db.Column(db.Float)  # Für Kartenanzeige
     longitude = db.Column(db.Float)
+    # Inventur-Informationen
+    last_inventory_date = db.Column(db.DateTime, nullable=True)
+    inventory_status = db.Column(db.String(50), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relationship zu Assets (wird nach Migration genutzt)
     assets = db.relationship('Asset', backref='location_obj', lazy=True)
     images = db.relationship('LocationImage', backref='location', lazy=True, cascade='all, delete-orphan')
 

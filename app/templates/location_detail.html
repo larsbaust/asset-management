@@ -83,6 +83,139 @@
             <div>Keine Dokumentationsbilder/Dokumente vorhanden.</div>
         {% endfor %}
     </div>
+    <h4 class="mt-4">Lagerbestand Übersicht</h4>
+    <div class="columns">
+        <div class="column is-half">
+            <div class="box">
+                <h5 class="title is-5">Bestand nach Kategorien</h5>
+                <table class="table is-fullwidth is-striped">
+                    <thead>
+                        <tr>
+                            <th>Kategorie</th>
+                            <th>Anzahl</th>
+                            <th>Gesamtwert</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set categories = {} %}
+                        {% for asset in filtered_assets %}
+                            {% set cat_name = asset.category.name if asset.category else 'Ohne Kategorie' %}
+                            {% if cat_name not in categories %}
+                                {% set _ = categories.update({cat_name: {'count': 0, 'value': 0}}) %}
+                            {% endif %}
+                            {% set _ = categories[cat_name].update({'count': categories[cat_name]['count'] + 1}) %}
+                            {% set asset_value = asset.value if asset.value is not none else 0 %}
+                            {% set _ = categories[cat_name].update({'value': categories[cat_name]['value'] + asset_value}) %}
+                        {% endfor %}
+                        
+                        {% for cat_name, data in categories.items() %}
+                        <tr>
+                            <td>{{ cat_name }}</td>
+                            <td>{{ data['count'] }}</td>
+                            <td>{{ '%.2f'|format(data['value']) }} €</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3">Keine Assets vorhanden</td>
+                        </tr>
+                        {% endfor %}
+                        {% set total_value = 0 %}
+                        {% for asset in filtered_assets %}
+                            {% if asset.value is not none %}
+                                {% set total_value = total_value + asset.value %}
+                            {% endif %}
+                        {% endfor %}
+                        <tr class="has-background-light">
+                            <td><strong>Gesamt</strong></td>
+                            <td><strong>{{ filtered_assets|length }}</strong></td>
+                            <td><strong>{{ '%.2f'|format(total_value) }} €</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="column is-half">
+            <div class="box">
+                <h5 class="title is-5">Inventurstatus</h5>
+                <div class="notification {% if location.inventory_status == 'Abgeschlossen' %}is-success{% elif location.inventory_status == 'In Bearbeitung' %}is-warning{% elif location.inventory_status == 'Geplant' %}is-info{% else %}is-light{% endif %} is-light">
+                    <p><strong>Letzte Inventur:</strong> {% if location.last_inventory_date %}{{ location.last_inventory_date.strftime('%d.%m.%Y') }}{% else %}Noch keine Inventur durchgeführt{% endif %}</p>
+                    <p><strong>Status:</strong> {% if location.inventory_status %}{{ location.inventory_status }}{% else %}Keine Informationen{% endif %}</p>
+                    {% if latest_inventory %}
+                    <p><strong>Aktuelle Inventur:</strong> {{ latest_inventory.name }}</p>
+                    <p><strong>Zeitraum:</strong> {{ latest_inventory.start_date.strftime('%d.%m.%Y') }} - {{ latest_inventory.end_date.strftime('%d.%m.%Y') }}</p>
+                    {% endif %}
+                </div>
+                <div class="buttons">
+                    <a href="{{ url_for('main.inventory_location_plan', location_id=location.id) }}" class="button is-primary">
+                        <span class="icon"><i class="fas fa-clipboard-check"></i></span>
+                        <span>Inventur planen/durchführen</span>
+                    </a>
+                    <a href="{{ url_for('main.inventory_location_history', location_id=location.id) }}" class="button is-info">
+                        <span class="icon"><i class="fas fa-history"></i></span>
+                        <span>Inventurhistorie</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="box mt-4">
+        <h5 class="title is-5">Bestand nach Name</h5>
+        <table class="table is-fullwidth is-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Soll</th>
+                    <th>Ist</th>
+                    <th>Diff</th>
+                    <th>Wert</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for name, data in stock_by_name.items()|sort %}
+                <tr>
+                    <td>{{ name }}</td>
+                    <td>{{ data['count'] }}</td>
+                    <td>{{ data['actual_count'] }}</td>
+                    <td>
+                        {% set diff = data['actual_count'] - data['count'] %}
+                        <span class="{% if diff < 0 %}has-text-danger{% elif diff > 0 %}has-text-success{% endif %}">
+                            {{ diff }}
+                        </span>
+                    </td>
+                    <td>{{ '%.2f'|format(data['value']) }} €</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5">Keine Assets vorhanden</td>
+                </tr>
+                {% endfor %}
+                
+                {% set total_expected = 0 %}
+                {% set total_actual = 0 %}
+                {% set total_value = 0 %}
+                {% for name, data in stock_by_name.items() %}
+                    {% set total_expected = total_expected + data['count'] %}
+                    {% set total_actual = total_actual + data['actual_count'] %}
+                    {% set total_value = total_value + data['value'] %}
+                {% endfor %}
+                
+                <tr class="has-background-light">
+                    <td><strong>Gesamt</strong></td>
+                    <td><strong>{{ total_expected }}</strong></td>
+                    <td><strong>{{ total_actual }}</strong></td>
+                    <td>
+                        {% set total_diff = total_actual - total_expected %}
+                        <strong class="{% if total_diff < 0 %}has-text-danger{% elif total_diff > 0 %}has-text-success{% endif %}">
+                            {{ total_diff }}
+                        </strong>
+                    </td>
+                    <td><strong>{{ '%.2f'|format(total_value) }} €</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
     <h4 class="mt-4">Assets an diesem Standort ({{ filtered_assets|length }})</h4>
     <div class="tabs is-toggle is-toggle-rounded mb-2">
       <ul>

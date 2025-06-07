@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventurhistorie für {{ location.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Inventurhistorie für {{ location.name }}</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.locations') }}">Standorte</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.location_detail', id=location.id) }}">{{ location.name }}</a></li>
+                    <li class="breadcrumb-item active">Inventurhistorie</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Abgeschlossene Inventuren</h5>
+                </div>
+                <div class="card-body">
+                    {% if sessions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Zeitraum</th>
+                                        <th>Abgeschlossen am</th>
+                                        <th>Ergebnis</th>
+                                        <th>Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for session in sessions %}
+                                        <tr>
+                                            <td>{{ session.name }}</td>
+                                            <td>{{ session.start_date.strftime('%d.%m.%Y') }} - {{ session.end_date.strftime('%d.%m.%Y') }}</td>
+                                            <td>{{ session.completed_date.strftime('%d.%m.%Y %H:%M') if session.completed_date else '-' }}</td>
+                                            <td>
+                                                {% set total_items = session.inventory_items|length %}
+                                                {% set matched_items = session.inventory_items|selectattr('status', 'equalto', 'matched')|list|length %}
+                                                {% set discrepancy_items = session.inventory_items|selectattr('status', 'equalto', 'discrepancy')|list|length %}
+                                                {% set missing_items = session.inventory_items|selectattr('status', 'equalto', 'missing')|list|length %}
+                                                
+                                                {% if matched_items == total_items %}
+                                                    <span class="badge bg-success">Alles korrekt</span>
+                                                {% elif discrepancy_items > 0 or missing_items > 0 %}
+                                                    <span class="badge bg-warning">{{ discrepancy_items + missing_items }} Abweichungen</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Unbekannt</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('main.inventory_report_detail', id=session.id) }}" class="btn btn-sm btn-primary">Bericht ansehen</a>
+                                                <a href="{{ url_for('main.inventory_report_export', id=session.id) }}" class="btn btn-sm btn-secondary">PDF Export</a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            Für diesen Standort wurden noch keine Inventuren abgeschlossen.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('main.location_detail', id=location.id) }}" class="btn btn-secondary">Zurück zum Standort</a>
+                <a href="{{ url_for('main.inventory_location_plan', location_id=location.id) }}" class="btn btn-primary">Neue Inventur planen</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

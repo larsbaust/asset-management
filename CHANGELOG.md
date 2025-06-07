@@ -1,5 +1,7 @@
 # Changelog (automatisch generiert)
 
+- 2025-06-03 *new* Implementation Multiloan über ein pdf export
+- 2025-06-02 erweiterung ausleisystem mit unterschriftpad und exportfunktion
 - 2025-05-31 Nachrichtendiesn und Livechat implementierung
 - 2025-05-25 inventory scan - camera app
 - 2025-05-24 fix

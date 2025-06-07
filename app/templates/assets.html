@@ -23,6 +23,12 @@
                         </span>
                         <span>CSV Import</span>
                     </a>
+                    <a href="{{ url_for('main.assets', name=selected.name, category=selected.category, location=selected.location, manufacturer=selected.manufacturer, supplier=selected.supplier, assignment=selected.assignment, with_image=selected.with_image, status=selected.status, group_duplicates='true' if not group_duplicates else 'false') }}" class="button is-warning">
+                        <span class="icon">
+                            <i class="fas {{ 'fa-object-group' if not group_duplicates else 'fa-object-ungroup' }}"></i>
+                        </span>
+                        <span>{{ 'Duplikate gruppieren' if not group_duplicates else 'Alle Assets anzeigen' }}</span>
+                    </a>
                 </div>
             </div>
         </div>
@@ -166,26 +172,73 @@
             </thead>
             <tbody>
                 {% for asset in assets %}
-                <tr>
-                    <td><input type="checkbox" class="asset-checkbox" value="{{ asset.id }}"></td>
+                <tr class="{% if asset.is_group %}grouped-asset{% endif %}">
                     <td>
-    {% if asset.image_url %}
-    <figure class="image is-48x48" style="max-width:60px;">
-        <img src="{{ asset.image_url }}" alt="{{ asset.name }}" style="object-fit: cover; max-width:60px; max-height:48px;">
-    </figure>
-    {% else %}
-    <figure class="image is-48x48" style="max-width:60px;">
-        <img src="{{ svg_placeholder(asset.name) }}" alt="{{ asset.name }}" style="max-width:60px; max-height:48px;">
-    </figure>
-    {% endif %}
-</td>
-<td>
-    <a href="{{ url_for('main.asset_details', id=asset.id) }}">{{ asset.name }}</a>
-</td>
+                        {% if asset.is_group %}
+                            <div class="has-tooltip-arrow has-tooltip-right" data-tooltip="Gruppe kann nicht direkt ausgewählt werden">
+                                <input type="checkbox" disabled>
+                            </div>
+                        {% else %}
+                            <input type="checkbox" class="asset-checkbox" value="{{ asset.id }}">
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if asset.image_url %}
+                        <figure class="image is-48x48" style="max-width:60px;">
+                            <img src="{{ asset.image_url }}" alt="{{ asset.name }}" style="object-fit: cover; max-width:60px; max-height:48px;">
+                        </figure>
+                        {% else %}
+                        <figure class="image is-48x48" style="max-width:60px;">
+                            <img src="{{ svg_placeholder(asset.name) }}" alt="{{ asset.name }}" style="object-fit: cover; max-width:60px; max-height:48px;">
+                        </figure>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if asset.is_group %}
+                            <div class="grouped-asset-name">
+                                <span class="icon-text">
+                                    <span class="icon has-text-warning">
+                                        <i class="fas fa-layer-group"></i>
+                                    </span>
+                                    <span>{{ asset.name }}</span>
+                                    <span class="tag is-warning ml-2">{{ asset.group_count }} Stück</span>
+                                </span>
+                                <div class="grouped-asset-dropdown mt-2" id="group-{{ asset.id }}">
+                                    <button class="button is-small is-info is-light toggle-group-details" data-target="group-details-{{ asset.id }}">
+                                        <span class="icon is-small"><i class="fas fa-chevron-down"></i></span>
+                                        <span>Details anzeigen</span>
+                                    </button>
+                                    <div class="group-details" id="group-details-{{ asset.id }}" style="display:none;">
+                                        <div class="content box mt-2 p-3">
+                                            <p class="has-text-weight-bold">Assets in dieser Gruppe:</p>
+                                            <ul>
+                                                {% for grouped_asset in asset.group_assets %}
+                                                <li>
+                                                    <a href="{{ url_for('main.asset_details', id=grouped_asset.id) }}">{{ grouped_asset.name }}</a>
+                                                    {% if grouped_asset.serial_number %} (SN: {{ grouped_asset.serial_number }}){% endif %}
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <a href="{{ url_for('main.asset_details', id=asset.id) }}">{{ asset.name }}</a>
+                        {% endif %}
+                    </td>
                     <td style="word-break: break-all;">{{ asset.article_number or '-' }}</td>
                     <td>{{ asset.category.name if asset.category else 'Keine Kategorie' }}</td>
                     <td style="word-break: break-all;">{{ asset.ean or '-' }}</td>
-                    <td style="word-break: break-all;">{{ asset.serial_number or '-' }}</td>
+                    <td style="word-break: break-all;">
+                        {% if asset.is_group %}
+                            <span class="has-tooltip-arrow has-tooltip-multiline" data-tooltip="{% for grouped_asset in asset.group_assets %}{% if grouped_asset.serial_number %}{{ grouped_asset.serial_number }}{% if not loop.last %}, {% endif %}{% endif %}{% endfor %}">
+                                Mehrere
+                            </span>
+                        {% else %}
+                            {{ asset.serial_number or '-' }}
+                        {% endif %}
+                    </td>
                     <td>
                         {% for assignment in asset.assignments %}
                         <span class="tag is-info is-light">{{ assignment.name }}</span>
@@ -220,31 +273,119 @@
                             -
                         {% endif %}
                     </td>
-                    <td>{{ "%.2f €"|format(asset.value or 0) }}</td>
+                    <td>
+                        {% if asset.is_group %}
+                            <strong>{{ "%.2f €"|format(asset.group_total_value) }}</strong>
+                            <div class="has-tooltip-arrow has-tooltip-multiline" data-tooltip="Gesamtwert aller {{ asset.group_count }} Assets in dieser Gruppe">
+                                <span class="icon is-small">
+                                    <i class="fas fa-info-circle"></i>
+                                </span>
+                            </div>
+                        {% else %}
+                            {{ "%.2f €"|format(asset.value or 0) }}
+                        {% endif %}
+                    </td>
                     <td style="min-width:90px; max-width:120px;">
                         <div class="buttons are-small">
-                            <a href="{{ url_for('main.edit_asset', id=asset.id) }}" class="button is-warning" title="Bearbeiten">
-                                <span class="icon is-small">
-                                    <i class="fas fa-edit"></i>
-                                </span>
-                            </a>
-                            {% if asset.status != 'on_loan' %}
-                            <a href="{{ url_for('main.loan_asset', id=asset.id) }}" class="button is-info" title="Ausleihen">
-                                <span class="icon is-small">
-                                    <i class="fas fa-hand-holding"></i>
-                                </span>
-                            </a>
+                            {% if asset.is_group %}
+                                <div class="dropdown is-hoverable">
+                                    <div class="dropdown-trigger">
+                                        <button class="button is-warning" aria-haspopup="true" aria-controls="dropdown-menu-{{ asset.id }}">
+                                            <span class="icon is-small">
+                                                <i class="fas fa-edit"></i>
+                                            </span>
+                                            <span class="icon is-small">
+                                                <i class="fas fa-angle-down"></i>
+                                            </span>
+                                        </button>
+                                    </div>
+                                    <div class="dropdown-menu" id="dropdown-menu-{{ asset.id }}" role="menu">
+                                        <div class="dropdown-content">
+                                            {% for grouped_asset in asset.group_assets %}
+                                            <a href="{{ url_for('main.edit_asset', id=grouped_asset.id) }}" class="dropdown-item">
+                                                {{ grouped_asset.name }} {% if grouped_asset.serial_number %}({{ grouped_asset.serial_number }}){% endif %}
+                                            </a>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="dropdown is-hoverable">
+                                    <div class="dropdown-trigger">
+                                        <button class="button is-info" aria-haspopup="true" aria-controls="dropdown-loan-{{ asset.id }}">
+                                            <span class="icon is-small">
+                                                <i class="fas fa-hand-holding"></i>
+                                            </span>
+                                            <span class="icon is-small">
+                                                <i class="fas fa-angle-down"></i>
+                                            </span>
+                                        </button>
+                                    </div>
+                                    <div class="dropdown-menu" id="dropdown-loan-{{ asset.id }}" role="menu">
+                                        <div class="dropdown-content">
+                                            {% for grouped_asset in asset.group_assets %}
+                                                {% if grouped_asset.status != 'on_loan' %}
+                                                <a href="{{ url_for('main.loan_asset', id=grouped_asset.id) }}" class="dropdown-item">
+                                                    {{ grouped_asset.name }} {% if grouped_asset.serial_number %}({{ grouped_asset.serial_number }}){% endif %}
+                                                </a>
+                                                {% endif %}
+                                            {% endfor %}
+                                            <hr class="dropdown-divider">
+                                            <a href="/multi_loan?asset_ids={{ asset.group_ids|join(',') }}" class="dropdown-item has-text-weight-bold">
+                                                <span class="icon-text">
+                                                    <span class="icon"><i class="fas fa-layer-group"></i></span>
+                                                    <span>Alle ausleihen</span>
+                                                </span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="dropdown is-hoverable">
+                                    <div class="dropdown-trigger">
+                                        <button class="button is-primary" aria-haspopup="true" aria-controls="dropdown-docs-{{ asset.id }}">
+                                            <span class="icon is-small">
+                                                <i class="fas fa-file-alt"></i>
+                                            </span>
+                                            <span class="icon is-small">
+                                                <i class="fas fa-angle-down"></i>
+                                            </span>
+                                        </button>
+                                    </div>
+                                    <div class="dropdown-menu" id="dropdown-docs-{{ asset.id }}" role="menu">
+                                        <div class="dropdown-content">
+                                            {% for grouped_asset in asset.group_assets %}
+                                            <a href="{{ url_for('main.asset_documents', id=grouped_asset.id) }}" class="dropdown-item">
+                                                {{ grouped_asset.name }} {% if grouped_asset.serial_number %}({{ grouped_asset.serial_number }}){% endif %}
+                                            </a>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <a href="{{ url_for('main.edit_asset', id=asset.id) }}" class="button is-warning" title="Bearbeiten">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-edit"></i>
+                                    </span>
+                                </a>
+                                {% if asset.status != 'on_loan' %}
+                                <a href="{{ url_for('main.loan_asset', id=asset.id) }}" class="button is-info" title="Ausleihen">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-hand-holding"></i>
+                                    </span>
+                                </a>
+                                {% endif %}
+                                <a href="{{ url_for('main.asset_documents', id=asset.id) }}" class="button is-primary" title="Dokumente">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-file-alt"></i>
+                                    </span>
+                                </a>
+                                <button class="button is-danger" title="Löschen" onclick="deleteAsset({{ asset.id }}, '{{ asset.name|escape }}')">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-trash"></i>
+                                    </span>
+                                </button>
                             {% endif %}
-                            <a href="{{ url_for('main.asset_documents', id=asset.id) }}" class="button is-primary" title="Dokumente">
-                                <span class="icon is-small">
-                                    <i class="fas fa-file-alt"></i>
-                                </span>
-                            </a>
-                            <button class="button is-danger" title="Löschen" onclick="deleteAsset({{ asset.id }}, '{{ asset.name|escape }}')">
-                                <span class="icon is-small">
-                                    <i class="fas fa-trash"></i>
-                                </span>
-                            </button>
                         </div>
                     </td>
                 </tr>
@@ -301,17 +442,78 @@ function deleteAsset(assetId, assetName) {
         });
     }
 }
+// Toggle für Gruppendetails
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleButtons = document.querySelectorAll('.toggle-group-details');
+    toggleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const targetElement = document.getElementById(targetId);
+            
+            if (targetElement.style.display === 'none') {
+                targetElement.style.display = 'block';
+                this.querySelector('i').classList.remove('fa-chevron-down');
+                this.querySelector('i').classList.add('fa-chevron-up');
+                this.querySelector('span:not(.icon)').textContent = 'Details ausblenden';
+            } else {
+                targetElement.style.display = 'none';
+                this.querySelector('i').classList.remove('fa-chevron-up');
+                this.querySelector('i').classList.add('fa-chevron-down');
+                this.querySelector('span:not(.icon)').textContent = 'Details anzeigen';
+            }
+        });
+    });
+});
 </script>
 <style>
   /* Nur für diese Seite: Container auf volle Breite - Header, Buttons, Filterleiste */
   .level, .box.mb-4 {
-  width: 95vw !important;
-  max-width: 95vw !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
+    width: 95vw !important;
+    max-width: 95vw !important;
+  }
+  
+  /* Responsive Tabelle */
+  @media screen and (max-width: 1023px) {
+    .asset-table-responsive {
+      display: block;
+      width: 100%;
+      overflow-x: auto;
+    }
+  }
+  
+  /* Kleinere Schrift für Tabelle auf mobilen Geräten */
+  @media screen and (max-width: 768px) {
+    .asset-table-responsive {
+      font-size: 0.8rem;
+    }
+    .asset-table-responsive th,
+    .asset-table-responsive td {
+      padding: 0.3rem;
+    }
+  }
+  
+  /* Styling für gruppierte Assets */
+  .grouped-asset {
+    background-color: rgba(255, 224, 138, 0.15);
+  }
+  
+  .grouped-asset-name {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .group-details {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+  }
+  
+  /* Dropdown-Menüs für gruppierte Assets */
+  .dropdown-content {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  
   /* Nur für diese Seite: Container auf volle Breite */
 .section > .container {
   max-width: 95vw !important;

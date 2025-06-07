@@ -93,6 +93,12 @@
                             </span>
                             <span>Bestellung planen</span>
                         </a>
+                        <a class="navbar-item" href="{{ url_for('main.import_csv_order') }}">
+                            <span class="icon">
+                                <i class="fas fa-file-csv"></i>
+                            </span>
+                            <span>CSV-Bestellimport</span>
+                        </a>
                         <a class="navbar-item" href="{{ url_for('order.order_overview') }}">
                             <span class="icon">
                                 <i class="fas fa-list"></i>
