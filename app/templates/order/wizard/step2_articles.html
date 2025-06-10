@@ -125,6 +125,7 @@
                         <div><strong>Kategorie:</strong> {{ asset.category.name if asset.category else '-' }}</div>
                         <div><strong>Artikelnr.:</strong> {{ asset.article_number or '-' }}</div>
                         <div><strong>Wert:</strong> {{ "%.2f €"|format(asset.value or 0) }}</div>
+                        <div><strong>Aktueller Bestand:</strong> <span class="tag is-{{ 'danger' if asset_infos[asset_id]['stock_count'] == 0 else 'warning' if asset_infos[asset_id]['stock_count'] < 5 else 'success' }}">{{ asset_infos[asset_id]['stock_count'] }} Stück</span></div>
                         {% if asset.manufacturers %}
                         <div>
                             <strong>Hersteller:</strong> 

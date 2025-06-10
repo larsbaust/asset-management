@@ -88,6 +88,16 @@ def create_app():
     from .messages import messages_bp
     app.register_blueprint(messages_bp)
     app.register_blueprint(chat_bp)
+    # Der Order Blueprint wurde möglicherweise schon woanders registriert
+    try:
+        from .order import order as order_module
+        app.register_blueprint(order_module, name='order_module')
+    except ValueError as e:
+        print(f"Info: {e}")
+        
+    # Location Blueprint registrieren
+    from .location import location as location_module
+    app.register_blueprint(location_module, name='location_module')
 
     print("JINJA LOADER SUCHT IN:")
     for loader in app.jinja_loader.loaders:

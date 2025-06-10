@@ -163,6 +163,7 @@
 <div class="dashboard-container">
     <div class="chart-grid">
         <!-- Status der Assets -->
+        {% if has_permission(current_user, 'view_chart_asset_status') %}
         <div class="chart-card">
             <h5 class="card-title">Asset Status</h5>
             <div class="status-numbers-overview">
@@ -180,40 +181,50 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <!-- Kostenverteilung -->
+        {% if has_permission(current_user, 'view_chart_cost_distribution') %}
         <div class="chart-card">
             <h5 class="card-title">Kostenverteilung</h5>
             <div class="chart-container circle-chart">
                 <canvas id="costChart"></canvas>
             </div>
         </div>
+        {% endif %}
 
         <!-- Wertentwicklung -->
+        {% if has_permission(current_user, 'view_chart_value_development') %}
         <div class="chart-card">
             <h5 class="card-title">Wertentwicklung</h5>
             <div class="chart-container">
                 <canvas id="valueChart"></canvas>
             </div>
         </div>
+        {% endif %}
 
         <!-- Assets nach Kategorie -->
+        {% if has_permission(current_user, 'view_chart_categories') %}
         <div class="chart-card">
             <h5 class="card-title">Assets nach Kategorie und Zuordnung</h5>
             <div class="chart-container category-chart-container">
                 <canvas id="categoryChart"></canvas>
             </div>
         </div>
+        {% endif %}
 
         <!-- Assets nach Hersteller -->
+        {% if has_permission(current_user, 'view_chart_manufacturers') %}
         <div class="chart-card">
             <h5 class="card-title">Assets nach Hersteller</h5>
             <div class="chart-container category-chart-container">
                 <canvas id="manufacturerChart"></canvas>
             </div>
         </div>
+        {% endif %}
 
         <!-- Standorte mit laufender Lieferung -->
+        {% if has_permission(current_user, 'view_chart_delivery_status') %}
         <div class="chart-card">
             <h5 class="card-title">Standorte mit laufender Lieferung</h5>
             {% if location_delivery_status and location_delivery_status|length > 0 %}
@@ -242,6 +253,7 @@
                 <div style="text-align:center; color:#888; padding:2em;">Aktuell keine Standorte mit laufender Lieferung.</div>
             {% endif %}
         </div>
+        {% endif %}
     </div>
 
     <!-- Herstellerdaten für Chart -->

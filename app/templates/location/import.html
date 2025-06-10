@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Standorte importieren{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="title">Standorte importieren</h1>
+    
+    <div class="box">
+        <h2 class="subtitle">CSV-Datei hochladen</h2>
+        
+        <form method="post" enctype="multipart/form-data">
+            <div class="field">
+                <label class="label">CSV-Datei</label>
+                <div class="control">
+                    <input class="input" type="file" name="csv_file" accept=".csv">
+                </div>
+                <p class="help">Bitte wählen Sie eine CSV-Datei aus.</p>
+            </div>
+            
+            <div class="field">
+                <label class="label">Trennzeichen</label>
+                <div class="control">
+                    <div class="select">
+                        <select name="delimiter">
+                            <option value=",">Komma (,)</option>
+                            <option value=";" selected>Semikolon (;)</option>
+                            <option value="\t">Tab</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="field">
+                <div class="control">
+                    <button type="submit" class="button is-primary">Importieren</button>
+                    <a href="{{ url_for('main.locations') }}" class="button is-light">Abbrechen</a>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <div class="box">
+        <h2 class="subtitle">CSV-Format</h2>
+        <p>Die CSV-Datei sollte folgende Spalten enthalten:</p>
+        
+        <table class="table is-striped is-fullwidth">
+            <thead>
+                <tr>
+                    <th>Spaltenname</th>
+                    <th>Beschreibung</th>
+                    <th>Pflichtfeld</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Name</td>
+                    <td>Name des Standorts</td>
+                    <td class="has-text-centered has-text-success">Ja</td>
+                </tr>
+                <tr>
+                    <td>Straße</td>
+                    <td>Straße und Hausnummer</td>
+                    <td class="has-text-centered">Nein</td>
+                </tr>
+                <tr>
+                    <td>PLZ</td>
+                    <td>Postleitzahl</td>
+                    <td class="has-text-centered">Nein</td>
+                </tr>
+                <tr>
+                    <td>Stadt</td>
+                    <td>Stadt/Ort</td>
+                    <td class="has-text-centered">Nein</td>
+                </tr>
+                <tr>
+                    <td>Bundesland</td>
+                    <td>Bundesland/Region</td>
+                    <td class="has-text-centered">Nein</td>
+                </tr>
+                <tr>
+                    <td>Größe</td>
+                    <td>Größe in Quadratmeter (numerisch)</td>
+                    <td class="has-text-centered">Nein</td>
+                </tr>
+                <tr>
+                    <td>Sitzplätze</td>
+                    <td>Anzahl der Sitzplätze (numerisch)</td>
+                    <td class="has-text-centered">Nein</td>
+                </tr>
+                <tr>
+                    <td>Beschreibung</td>
+                    <td>Zusätzliche Informationen</td>
+                    <td class="has-text-centered">Nein</td>
+                </tr>
+                <tr>
+                    <td>Bild</td>
+                    <td>URL oder Pfad zum Bild</td>
+                    <td class="has-text-centered">Nein</td>
+                </tr>
+                <tr>
+                    <td>Breitengrad</td>
+                    <td>Latitude/Breitengrad (numerisch)</td>
+                    <td class="has-text-centered">Nein</td>
+                </tr>
+                <tr>
+                    <td>Längengrad</td>
+                    <td>Longitude/Längengrad (numerisch)</td>
+                    <td class="has-text-centered">Nein</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="notification is-info">
+            <p><strong>Hinweise:</strong></p>
+            <ul>
+                <li>Die Spaltennamen sind nicht case-sensitive. Die Reihenfolge der Spalten spielt keine Rolle.</li>
+                <li>Bei bereits existierenden Standorten (gleicher Name) werden die Daten aktualisiert.</li>
+                <li>Zahlen mit Dezimalstellen können mit Punkt oder Komma angegeben werden.</li>
+            </ul>
+            
+            <p class="mt-3"><strong>Beispiel für eine gültige CSV-Datei:</strong></p>
+            <pre>Name;Straße;PLZ;Stadt;Bundesland;Größe;Sitzplätze;Beschreibung;Breitengrad;Längengrad
+Hauptsitz;Musterstraße 1;12345;Berlin;Berlin;250,5;45;Unser Hauptsitz;52,520008;13,404954
+Filiale München;Münchnerstr. 15;80331;München;Bayern;180;30;Filiale Süd;48,137154;11,576124</pre>
+        </div>
+    </div>
+    
+    <div class="box">
+        <h2 class="subtitle">CSV-Tipps</h2>
+        <ul>
+            <li>Verwenden Sie UTF-8 Kodierung für Ihre CSV-Datei, um Probleme mit Umlauten zu vermeiden</li>
+            <li>Exportieren Sie Daten aus Excel als CSV (Trennzeichen-getrennt)</li>
+            <li>Text mit Trennzeichen sollte in Anführungszeichen gesetzt werden</li>
+            <li>Erstellen Sie vor dem Import ein Datenbank-Backup</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

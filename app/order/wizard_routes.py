@@ -286,6 +286,51 @@ def wizard_step2():
         print(f"  Asset IDs: {list(selected_assets.keys())}")
     
     
+    # Lagerbestand für jedes Asset berechnen
+    latest_inventory = None
+    if location_id:
+        from app.models import InventorySession, InventoryItem
+        latest_inventory = InventorySession.query.filter_by(
+            location_id=location_id, 
+            status='completed'
+        ).order_by(InventorySession.end_date.desc()).first()
+    
+    # Asset-Informationen mit Bestand vorbereiten
+    asset_infos = {}
+    for asset in assets:
+        # Standardwerte setzen
+        asset_infos[str(asset.id)] = {
+            'id': asset.id,
+            'name': asset.name,
+            'article_number': asset.article_number,
+            'value': asset.value,
+            'category': asset.category,
+            'manufacturers': asset.manufacturers,
+            'stock_count': 0  # Standardwert für Bestand
+        }
+        
+        # Aktuellen Bestand aus dem System ermitteln
+        # 1. Alle Assets mit diesem Namen zählen
+        name_count = Asset.query.filter_by(
+            name=asset.name, 
+            status='active'
+        ).count()
+        
+        # Bestand aus dem System nehmen oder aus der letzten Inventur
+        stock_count = name_count
+        
+        # 2. Falls eine aktuelle Inventur vorhanden ist, Ist-Bestand von dort nehmen
+        if latest_inventory:
+            actual_count = InventoryItem.query.join(Asset).filter(
+                InventoryItem.session_id == latest_inventory.id,
+                Asset.name == asset.name
+            ).with_entities(db.func.sum(InventoryItem.counted_quantity)).scalar() or 0
+            
+            if actual_count > 0:
+                stock_count = actual_count
+        
+        asset_infos[str(asset.id)]['stock_count'] = stock_count
+    
     # Asset-Formular aufbauen
     form.assets.entries = []
     for asset in assets:
@@ -629,7 +674,49 @@ def wizard_step2():
                 form.assets.append_entry(asset_form_data)
             
             # Formular ohne Redirect neu rendern
-            asset_infos = {str(asset.id): asset for asset in assets}
+            # Asset-Informationen mit Bestand vorbereiten
+            asset_infos = {}
+            for asset in assets:
+                # Standardwerte setzen
+                asset_infos[str(asset.id)] = {
+                    'id': asset.id,
+                    'name': asset.name,
+                    'article_number': asset.article_number,
+                    'value': asset.value,
+                    'category': asset.category,
+                    'manufacturers': asset.manufacturers,
+                    'stock_count': 0  # Standardwert für Bestand
+                }
+                
+                # Aktuellen Bestand aus dem System ermitteln
+                # 1. Alle Assets mit diesem Namen zählen
+                name_count = Asset.query.filter_by(
+                    name=asset.name, 
+                    status='active'
+                ).count()
+                
+                # Bestand aus dem System nehmen oder aus der letzten Inventur
+                stock_count = name_count
+                
+                # 2. Falls eine aktuelle Inventur vorhanden ist, Ist-Bestand von dort nehmen
+                latest_inventory = None
+                if location_id:
+                    from app.models import InventorySession, InventoryItem
+                    latest_inventory = InventorySession.query.filter_by(
+                        location_id=location_id, 
+                        status='completed'
+                    ).order_by(InventorySession.end_date.desc()).first()
+                    
+                    if latest_inventory:
+                        actual_count = InventoryItem.query.join(Asset).filter(
+                            InventoryItem.session_id == latest_inventory.id,
+                            Asset.name == asset.name
+                        ).with_entities(db.func.sum(InventoryItem.counted_quantity)).scalar() or 0
+                        
+                        if actual_count > 0:
+                            stock_count = actual_count
+                
+                asset_infos[str(asset.id)]['stock_count'] = stock_count
             templates = OrderTemplate.query.filter_by(supplier_id=supplier_id).all()
             return render_template(
                 'order/wizard/step2_articles.html',
@@ -641,8 +728,51 @@ def wizard_step2():
                 templates=templates
             )
     
-    # Asset-Daten für Anzeige vorbereiten
-    asset_infos = {str(asset.id): asset for asset in assets}
+    # Asset-Daten für Anzeige vorbereiten (mit Bestandsinfo)
+    # Lagerbestand für jedes Asset berechnen
+    latest_inventory = None
+    if location_id:
+        from app.models import InventorySession, InventoryItem
+        latest_inventory = InventorySession.query.filter_by(
+            location_id=location_id, 
+            status='completed'
+        ).order_by(InventorySession.end_date.desc()).first()
+    
+    # Asset-Informationen mit Bestand vorbereiten
+    asset_infos = {}
+    for asset in assets:
+        # Standardwerte setzen
+        asset_infos[str(asset.id)] = {
+            'id': asset.id,
+            'name': asset.name,
+            'article_number': asset.article_number,
+            'value': asset.value,
+            'category': asset.category,
+            'manufacturers': asset.manufacturers,
+            'stock_count': 0  # Standardwert für Bestand
+        }
+        
+        # Aktuellen Bestand aus dem System ermitteln
+        # 1. Alle Assets mit diesem Namen zählen
+        name_count = Asset.query.filter_by(
+            name=asset.name, 
+            status='active'
+        ).count()
+        
+        # Bestand aus dem System nehmen oder aus der letzten Inventur
+        stock_count = name_count
+        
+        # 2. Falls eine aktuelle Inventur vorhanden ist, Ist-Bestand von dort nehmen
+        if latest_inventory:
+            actual_count = InventoryItem.query.join(Asset).filter(
+                InventoryItem.session_id == latest_inventory.id,
+                Asset.name == asset.name
+            ).with_entities(db.func.sum(InventoryItem.counted_quantity)).scalar() or 0
+            
+            if actual_count > 0:
+                stock_count = actual_count
+        
+        asset_infos[str(asset.id)]['stock_count'] = stock_count
     
     # Vorlagen laden - nur die, die zum ausgewählten Lieferanten passen
     templates = OrderTemplate.query.filter_by(supplier_id=supplier_id).all()

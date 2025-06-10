@@ -3,7 +3,10 @@
 {% block content %}
 <div class="container mt-4">
     <h2>Standorte</h2>
-    <a href="{{ url_for('main.add_location') }}" class="btn btn-primary mb-3">Neuen Standort anlegen</a>
+    <div class="mb-3">
+        <a href="{{ url_for('main.add_location') }}" class="btn btn-primary">Neuen Standort anlegen</a>
+        <a href="{{ url_for('location_module.import_locations') }}" class="btn btn-success">Import per CSV</a>
+    </div>
     <table class="table table-striped">
         <thead>
             <tr>

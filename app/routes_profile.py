@@ -57,12 +57,8 @@ def profile():
                     except Exception:
                         pass
                 user.profile_image = filename
-            elif form.profile_image.data:
-                filename = secure_filename(form.profile_image.data.filename)
-                img_path = os.path.join('static/profile_images', filename)
-                os.makedirs(os.path.dirname(img_path), exist_ok=True)
-                form.profile_image.data.save(img_path)
-                user.profile_image = filename
+            # Die Verarbeitung des Profilbilds erfolgt ausschließlich über das Modal
+            # und wird bereits über cropped_image_data oben behandelt
         db.session.commit()
         flash('Profil erfolgreich aktualisiert.', 'success')
         # User-Objekt neu laden, damit Ansicht die aktuellen Werte zeigt
