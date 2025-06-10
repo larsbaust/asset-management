@@ -1,0 +1,327 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="wizard-container">
+    <!-- Fortschrittsleiste -->
+    <div class="steps-container mb-5">
+        <ul class="steps is-centered">
+            <li class="steps-segment is-completed">
+                <span class="steps-marker">
+                    <i class="fas fa-check"></i>
+                </span>
+                <div class="steps-content">
+                    <p class="is-size-5">Lieferant & Standort</p>
+                </div>
+            </li>
+            <li class="steps-segment is-completed">
+                <span class="steps-marker">
+                    <i class="fas fa-check"></i>
+                </span>
+                <div class="steps-content">
+                    <p class="is-size-5">Artikel auswählen</p>
+                </div>
+            </li>
+            <li class="steps-segment is-active">
+                <span class="steps-marker">3</span>
+                <div class="steps-content">
+                    <p class="is-size-5">Details</p>
+                </div>
+            </li>
+            <li class="steps-segment">
+                <span class="steps-marker">4</span>
+                <div class="steps-content">
+                    <p class="is-size-5">Bestätigen</p>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <h1 class="title is-3">Bestellung planen - Schritt 3: Details & Versandinformationen</h1>
+    
+    <div class="box mb-4">
+        <div class="columns">
+            <div class="column is-8">
+                <h4 class="title is-5 mb-2">Bestellinformationen</h4>
+                <div class="columns">
+                    <div class="column">
+                        <div class="field">
+                            <label class="label">Lieferant:</label>
+                            <div class="control">
+                                <div class="is-size-5">{{ supplier.name }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="field">
+                            <label class="label">Zielstandort:</label>
+                            <div class="control">
+                                <div class="is-size-5">{{ location.name if location else 'Kein Standort ausgewählt' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column is-4 has-text-right">
+                <a href="{{ url_for('order.wizard_step2') }}" class="button">
+                    <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                    <span>Zurück zu Schritt 2</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" action="{{ url_for('order.wizard_step3') }}">
+        {{ form.hidden_tag() }}
+        
+        <!-- Versandinformationen -->
+        <div class="box mb-5">
+            <h4 class="title is-4">Versandinformationen</h4>
+            
+            <div class="columns">
+                <div class="column is-6">
+                    <div class="field">
+                        <label class="label">Sendungsverfolgungsnummer (optional)</label>
+                        <div class="control has-icons-left">
+                            {{ form.tracking_number(class_="input", placeholder="z.B. 1Z999AA10123456784") }}
+                            <span class="icon is-small is-left">
+                                <i class="fas fa-barcode"></i>
+                            </span>
+                        </div>
+                        {% if form.tracking_number.errors %}
+                            <p class="help is-danger">{{ form.tracking_number.errors[0] }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="column is-6">
+                    <div class="field">
+                        <label class="label">Paketdienst</label>
+                        <div class="control has-icons-left">
+                            <div class="select is-fullwidth">
+                                {{ form.tracking_carrier() }}
+                            </div>
+                            <span class="icon is-small is-left">
+                                <i class="fas fa-truck"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Lieferdatum (geplant)</label>
+                <div class="control has-icons-left">
+                    {{ form.expected_delivery_date(class_="input", type="date") }}
+                    <span class="icon is-small is-left">
+                        <i class="fas fa-calendar"></i>
+                    </span>
+                </div>
+            </div>
+            
+            <div class="field">
+                <label class="label">Kommentar zur Bestellung (optional)</label>
+                <div class="control">
+                    {{ form.comment(class_="textarea", placeholder="Zusätzliche Informationen zur Bestellung...") }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Artikel-Details -->
+        <div class="box mb-4">
+            <h4 class="title is-4">Ausgewählte Artikel</h4>
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Artikelnummer</th>
+                            <th>Seriennummer</th>
+                            <th>Kategorie</th>
+                            <th>Wert</th>
+                            <th>Menge</th>
+                            <th>Gesamt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- VEREINFACHTE BERECHNUNG MIT HARDCODING -->
+                        {% set item_values = [] %}
+                        {% set item_qtys = [] %}
+                        
+                        {% set calculation_results = [] %}
+                        {% set total_sum = total_value %}
+                        {% set total_items = total_items_count %}
+                        
+                        <!-- Schleife: Werte extrahieren und vorbereiten für Anzeige -->
+                        {% for item in selected_items %}
+                            <!-- Wert extrahieren und sichern -->
+                            {% if item.asset.value is none or item.asset.value == '' %}
+                                {% set item_value = 0 %}
+                            {% else %}
+                                {% set item_value = item.asset.value|float(0) %}
+                            {% endif %}
+                            
+                            <!-- Menge extrahieren und sichern -->
+                            {% if item.quantity is none or item.quantity == '' %}
+                                {% set item_qty = 1 %}
+                            {% else %}
+                                {% set item_qty = item.quantity|int(1) %}
+                            {% endif %}
+                            {% if item_qty <= 0 %}{% set item_qty = 1 %}{% endif %}
+                            
+                            <!-- Zeilensumme berechnen - verwende dieselbe Logik wie im Backend -->
+                            {% set line_sum = item_value * item_qty %}
+                            
+                            <!-- In Ergebnisliste speichern -->
+                            {% set _ = calculation_results.append({
+                                'item': item,
+                                'asset_value': item_value,
+                                'qty': item_qty,
+                                'line_total': line_sum
+                            }) %}
+                        {% endfor %}
+                        
+                        <!-- Finale Werte festlegen -->
+                        {% set total_value = total_sum %}
+
+                        <!-- Liste der Artikel mit den berechneten Werten -->
+                        {% for result in calculation_results %}
+                        <tr>
+                            <td>{{ result.item.asset.name }}</td>
+                            <td>{{ result.item.asset.article_number or '-' }}</td>
+                            <td>
+                                <input type="text" name="serial_number_{{ result.item.asset.id }}" 
+                                       class="input is-small" placeholder="Seriennummer"
+                                       value="{{ result.item.serial_number or '' }}">
+                            </td>
+                            <td>{{ result.item.asset.category.name if result.item.asset.category else '-' }}</td>
+                            <td>{{ "%.2f €"|format(result.asset_value) }}</td>
+                            <td>{{ result.qty }}</td>
+                            <td class="has-text-weight-bold">{{ "%.2f €"|format(result.line_total) }}</td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="has-background-light">
+                            <td colspan="6" class="has-text-right has-text-weight-bold">Gesamtwert:</td>
+                            <td class="has-text-weight-bold has-text-success">{{ "%.2f €"|format(total_sum) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Navigation -->
+        <div class="columns">
+            <div class="column is-6">
+                <a href="{{ url_for('order.wizard_step2') }}" class="button">
+                    <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                    <span>Zurück</span>
+                </a>
+            </div>
+            <div class="column is-6 has-text-right">
+                <button type="submit" class="button is-primary">
+                    <span>Weiter zu Schritt 4</span>
+                    <span class="icon"><i class="fas fa-arrow-right"></i></span>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.wizard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+.steps {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    position: relative;
+}
+.steps::before {
+    content: "";
+    position: absolute;
+    top: 15px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #dbdbdb;
+    z-index: -1;
+}
+.steps-segment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+.steps-marker {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #dbdbdb;
+    color: white;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+.steps-segment.is-active .steps-marker {
+    background: #3273dc;
+}
+.steps-segment.is-completed .steps-marker {
+    background: #48c774;
+}
+.steps-content {
+    text-align: center;
+}
+.steps-segment.is-active .steps-content p {
+    font-weight: bold;
+    color: #3273dc;
+}
+.steps-segment.is-completed .steps-content p {
+    color: #48c774;
+}
+</style>
+
+<!-- JavaScript zur Synchronisierung aller Gesamtwert-Anzeigen -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gespeicherter korrekter Gesamtwert aus dem Template
+    const correctTotalValue = {{ total_value|default(0) }};
+    
+    // Format-Funktion für Währungsbeträge
+    function formatCurrency(value) {
+        return value.toFixed(2) + ' €';
+    }
+    
+    // Alle Elemente finden, die möglicherweise Gesamtwerte anzeigen
+    const possibleTotalElements = document.querySelectorAll(
+        '.gesamtwert, ' +
+        '[data-content="gesamtwert"], ' +
+        '[data-label="gesamtwert"], ' +
+        '.order-total, ' +
+        '.total-value, ' +
+        '.has-text-right.has-text-weight-bold + td'
+    );
+    
+    // Alle gefundenen Elemente aktualisieren
+    possibleTotalElements.forEach(function(element) {
+        // Nur aktualisieren, wenn der Wert auf 0.00 € steht oder leer ist
+        const currentText = element.textContent.trim();
+        const isZeroValue = (currentText === '0.00 €' || 
+                          currentText === '0,00 €' || 
+                          currentText === '');
+                          
+        if (isZeroValue) {
+            element.textContent = formatCurrency(correctTotalValue);
+            element.classList.add('has-text-success');
+        }
+    });
+    
+    // Auch mögliche Inputfelder aktualisieren, falls vorhanden
+    document.querySelectorAll('input[name="total_value"], input[name="gesamtwert"]').forEach(function(input) {
+        input.value = correctTotalValue;
+    });
+});
+</script>
+
+{% endblock %}

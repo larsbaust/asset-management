@@ -120,6 +120,7 @@ class Order(db.Model):
     location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=True)  # NEU: Standort als ForeignKey
     tracking_number = db.Column(db.String(100))
     tracking_carrier = db.Column(db.String(50))  # AfterShip Carrier Slug, z.B. 'dhl', 'dpd', 'ups'  # NEU: Sendungsverfolgungsnummer
+    expected_delivery_date = db.Column(db.DateTime, nullable=True)  # NEU: Erwartetes Lieferdatum
     archived = db.Column(db.Boolean, default=False)  # NEU: Für Archivierung
     supplier = db.relationship('Supplier', backref='orders')
     items = db.relationship('OrderItem', backref='order', cascade="all, delete-orphan", lazy=True)
@@ -545,4 +546,34 @@ class LocationImage(db.Model):
     uploader = db.Column(db.String(100))
 
     def __repr__(self):
-        return f'<LocationImage {self.filename}>'
+        return f'<LocationImage {self.id}>'
+
+class OrderTemplate(db.Model):
+    """Modell für Bestellvorlagen, die vom Benutzer gespeichert werden können"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('supplier.id'), nullable=True)
+    location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Beziehungen
+    supplier = db.relationship('Supplier', backref='order_templates')
+    location = db.relationship('Location', backref='order_templates')
+    items = db.relationship('OrderTemplateItem', backref='template', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<OrderTemplate {self.name}>'
+
+class OrderTemplateItem(db.Model):
+    """Ein einzelnes Asset in einer Bestellvorlage"""
+    id = db.Column(db.Integer, primary_key=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('order_template.id'), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
+    quantity = db.Column(db.Integer, default=1)
+    
+    # Beziehungen
+    asset = db.relationship('Asset')
+    
+    def __repr__(self):
+        return f'<OrderTemplateItem {self.id} for template {self.template_id} with asset {self.asset_id}>'

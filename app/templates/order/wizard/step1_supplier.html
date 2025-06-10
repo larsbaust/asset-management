@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="wizard-container">
+    <!-- Fortschrittsleiste -->
+    <div class="steps-container mb-5">
+        <ul class="steps is-centered">
+            <li class="steps-segment is-active">
+                <span class="steps-marker">1</span>
+                <div class="steps-content">
+                    <p class="is-size-5">Lieferant & Standort</p>
+                </div>
+            </li>
+            <li class="steps-segment">
+                <span class="steps-marker">2</span>
+                <div class="steps-content">
+                    <p class="is-size-5">Artikel auswählen</p>
+                </div>
+            </li>
+            <li class="steps-segment">
+                <span class="steps-marker">3</span>
+                <div class="steps-content">
+                    <p class="is-size-5">Details</p>
+                </div>
+            </li>
+            <li class="steps-segment">
+                <span class="steps-marker">4</span>
+                <div class="steps-content">
+                    <p class="is-size-5">Bestätigen</p>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <h1 class="title is-3">Bestellung planen - Schritt 1: Lieferant & Standort wählen</h1>
+    
+    <div class="box">
+        <form method="post" action="{{ url_for('order.wizard_step1') }}">
+            {{ form.hidden_tag() }}
+            
+            <div class="field">
+                <label class="label">Lieferanten wählen</label>
+                <div class="control">
+                    <div class="supplier-cards-container">
+                        {% for supplier in suppliers %}
+                        <div class="supplier-card mb-3">
+                            <label class="card radio-card">
+                                <div class="card-content">
+                                    <input type="radio" name="supplier_id" value="{{ supplier.id }}" 
+                                           {% if form.supplier_id.data|int == supplier.id %}checked{% endif %}
+                                           required>
+                                    <div class="supplier-info">
+                                        <div class="supplier-name has-text-weight-bold">{{ supplier.name }}</div>
+                                        <div class="supplier-details">
+                                            {% if supplier.email %}<div><i class="fas fa-envelope"></i> {{ supplier.email }}</div>{% endif %}
+                                            {% if supplier.phone %}<div><i class="fas fa-phone"></i> {{ supplier.phone }}</div>{% endif %}
+                                            {% if supplier.contact_name %}<div><i class="fas fa-user"></i> {{ supplier.contact_name }}</div>{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if form.supplier_id.errors %}
+                    <p class="help is-danger">{{ form.supplier_id.errors[0] }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="field mt-5">
+                <label class="label">Lieferstandort wählen</label>
+                <div class="control">
+                    <div class="select is-fullwidth">
+                        {{ form.location(class="select") }}
+                    </div>
+                    {% if form.location.errors %}
+                    <p class="help is-danger">{{ form.location.errors[0] }}</p>
+                    {% endif %}
+                </div>
+                <p class="help">Wählen Sie den Standort aus, an den die bestellten Artikel geliefert werden sollen.</p>
+            </div>
+            
+            <div class="field mt-5">
+                <div class="control">
+                    <button type="submit" class="button is-primary">Weiter zu Schritt 2</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.wizard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+.supplier-cards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+.supplier-card {
+    height: 100%;
+}
+.radio-card {
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+    height: 100%;
+}
+.radio-card:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+input[type="radio"] {
+    margin-right: 10px;
+}
+input[type="radio"]:checked + .supplier-info {
+    font-weight: bold;
+}
+input[type="radio"]:checked {
+    accent-color: #48c774;
+}
+.supplier-card input[type="radio"]:checked + .supplier-info .supplier-name {
+    color: #48c774;
+}
+.supplier-card label.card:has(input[type="radio"]:checked) {
+    border-color: #48c774;
+    box-shadow: 0 0 0 2px #48c774;
+}
+.supplier-details {
+    margin-top: 8px;
+    font-size: 0.9em;
+    color: #666;
+}
+.steps {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    position: relative;
+}
+.steps::before {
+    content: "";
+    position: absolute;
+    top: 15px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #dbdbdb;
+    z-index: -1;
+}
+.steps-segment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+.steps-marker {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #dbdbdb;
+    color: white;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+.steps-segment.is-active .steps-marker {
+    background: #3273dc;
+}
+.steps-content {
+    text-align: center;
+}
+.steps-segment.is-active .steps-content p {
+    font-weight: bold;
+    color: #3273dc;
+}
+</style>
+{% endblock %}

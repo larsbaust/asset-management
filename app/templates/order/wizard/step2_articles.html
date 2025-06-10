@@ -1,0 +1,371 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="wizard-container">
+    <!-- Fortschrittsleiste -->
+    <div class="steps-container mb-5">
+        <ul class="steps is-centered">
+            <li class="steps-segment is-completed">
+                <span class="steps-marker">
+                    <i class="fas fa-check"></i>
+                </span>
+                <div class="steps-content">
+                    <p class="is-size-5">Lieferant & Standort</p>
+                </div>
+            </li>
+            <li class="steps-segment is-active">
+                <span class="steps-marker">2</span>
+                <div class="steps-content">
+                    <p class="is-size-5">Artikel auswählen</p>
+                </div>
+            </li>
+            <li class="steps-segment">
+                <span class="steps-marker">3</span>
+                <div class="steps-content">
+                    <p class="is-size-5">Details</p>
+                </div>
+            </li>
+            <li class="steps-segment">
+                <span class="steps-marker">4</span>
+                <div class="steps-content">
+                    <p class="is-size-5">Bestätigen</p>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <h1 class="title is-3">Bestellung planen - Schritt 2: Artikel auswählen</h1>
+    
+    <div class="box mb-4">
+        <div class="columns">
+            <div class="column is-8">
+                <h4 class="title is-5 mb-2">Bestellinformationen</h4>
+                <div class="columns">
+                    <div class="column">
+                        <div class="field">
+                            <label class="label">Lieferant:</label>
+                            <div class="control">
+                                <div class="is-size-5">{{ supplier.name }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="field">
+                            <label class="label">Zielstandort:</label>
+                            <div class="control">
+                                <div class="is-size-5">{{ location.name if location else 'Kein Standort ausgewählt' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column is-4 has-text-right">
+                <a href="{{ url_for('order.wizard_step1') }}" class="button">
+                    <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                    <span>Zurück zu Schritt 1</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hauptformular - URL explizit setzen -->
+    <form id="main-form" method="post" action="/wizard/step2">
+        {{ form.hidden_tag() }}
+        <!-- Verstecktes Feld für die Aktion, wird von den Buttons gesetzt -->
+        <input type="hidden" id="form_action" name="form_action" value="filter">
+        
+        <!-- Filter-Bereich -->
+        <div class="box mb-4">
+            <h4 class="title is-5 mb-2">Artikel filtern</h4>
+            <div class="columns is-multiline">
+                <div class="column is-3">
+                    {{ form.filter_name(class_="input", placeholder="Name") }}
+                </div>
+                <div class="column is-3">
+                    <div class="select is-fullwidth">
+                        {{ form.filter_category(class_="") }}
+                    </div>
+                </div>
+                <div class="column is-3">
+                    <div class="select is-fullwidth">
+                        {{ form.filter_manufacturer(class_="") }}
+                    </div>
+                </div>
+                <div class="column is-3">
+                    <button type="submit" onclick="document.getElementById('form_action').value='filter';" class="button is-info">
+                    <span class="icon"><i class="fas fa-filter"></i></span>
+                    <span>Filtern</span>
+                </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Artikel-Überschrift -->
+        <div class="mb-3">
+            <h4 class="title is-5">Artikelauswahl</h4>
+            <p class="subtitle is-6">Bitte wählen Sie die zu bestellenden Artikel aus.</p>
+        </div>
+        
+        <!-- Artikelliste mit Kacheln -->
+        <div class="article-grid mb-5">
+            {% for asset_form in form.assets %}
+            {% set asset_id = asset_form.asset_id.data|string %}
+            {% if asset_id and asset_id in asset_infos %}
+            {% set asset = asset_infos[asset_id] %}
+            <div class="article-card box">
+                <div class="article-header">
+                    <div class="article-select">
+                        <!-- Expliziter Name für die Checkbox, damit wir sie im Backend besser finden können -->
+                        <input type="checkbox" name="asset_select_{{ asset_id }}" value="y" {% if asset_form.select.data %}checked{% endif %}>
+                        <input type="hidden" name="asset_id_{{ asset_id }}" value="{{ asset_id }}">
+                    </div>
+                    <div class="article-name has-text-weight-bold">{{ asset.name }}</div>
+                </div>
+                <div class="article-details">
+                    <div class="article-info">
+                        <div><strong>Kategorie:</strong> {{ asset.category.name if asset.category else '-' }}</div>
+                        <div><strong>Artikelnr.:</strong> {{ asset.article_number or '-' }}</div>
+                        <div><strong>Wert:</strong> {{ "%.2f €"|format(asset.value or 0) }}</div>
+                        {% if asset.manufacturers %}
+                        <div>
+                            <strong>Hersteller:</strong> 
+                            {% for manufacturer in asset.manufacturers %}
+                            <span class="tag is-dark is-light">{{ manufacturer.name }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="article-quantity">
+                        <label class="label">Menge:</label>
+                        <input type="number" name="quantity_{{ asset.id }}" id="quantity_{{ asset.id }}" 
+                               class="input" min="1" value="{{ asset_form.quantity.data or 1 }}">
+                        <!-- Debug-Info anzeigen -->
+                        <div class="is-size-7 has-text-grey">Asset-ID: {{ asset.id }}</div>
+                        <input type="hidden" name="asset_id_{{ asset.id }}" value="{{ asset.id }}">
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="notification is-warning">
+                Keine Artikel gefunden. Bitte passen Sie die Filterkriterien an.
+            </div>
+            {% endfor %}
+        </div>
+        
+    <!-- Vorlagen-Auswahlbereich direkt im Hauptformular -->
+    <div class="box mb-4">
+        <div class="columns">
+            <div class="column is-6">
+                <div class="field">
+                    <label class="label">Vorlage laden:</label>
+                    <div class="control is-expanded">
+                        <div class="select is-fullwidth">
+                            <select name="template_id" id="template_select">
+                                <option value="">-- Vorlage auswählen --</option>
+                                {% for template in templates %}
+                                <option value="{{ template.id }}">{{ template.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" onclick="document.getElementById('form_action').value='load_template';" class="button is-info">
+                    <span class="icon"><i class="fas fa-folder-open"></i></span>
+                    <span>Vorlage laden</span>
+                </button>
+            </div>
+            
+            <div class="column is-6">
+                <!-- Vorlagenspeicherung direkt im Hauptformular -->
+                <div class="field">
+                    <label class="label">Auswahl als Vorlage speichern:</label>
+                    <div class="control">
+                        <input type="text" name="save_template_name" class="input" placeholder="Vorlagenname">
+                    </div>
+                </div>
+                
+                <button type="submit" onclick="validateAndSaveTemplate();" class="button is-info">
+                    <span class="icon"><i class="fas fa-save"></i></span>
+                    <span>Als Vorlage speichern</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Debug-Information -->
+        <div class="notification is-info is-light is-hidden" id="debug-message">
+            <button class="delete" id="close-debug"></button>
+            <strong>Debug-Info:</strong> <span id="debug-text">Debug-Nachricht</span>
+        </div>
+        
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Debug-Funktion
+            function showDebug(message) {
+                document.getElementById('debug-text').textContent = message;
+                document.getElementById('debug-message').classList.remove('is-hidden');
+                console.log("Debug: " + message);
+            }
+            
+            // Close-Button für Debug-Nachricht
+            document.getElementById('close-debug').addEventListener('click', function() {
+                document.getElementById('debug-message').classList.add('is-hidden');
+            });
+            
+            // Globale Funktion für Template-Validierung und Speicherung
+            window.validateAndSaveTemplate = function() {
+                // Prüfen ob ein Vorlagenname angegeben wurde
+                var templateName = document.querySelector('input[name="save_template_name"]').value;
+                if (!templateName || templateName.trim() === '') {
+                    showDebug("Bitte geben Sie einen Namen für die Vorlage ein.");
+                    event.preventDefault();
+                    return false;
+                }
+                
+                // Ausgewählte Assets finden (Checkboxen)
+                var assetCheckboxes = document.querySelectorAll('input[type="checkbox"][name^="asset_select_"]:checked');
+                if (assetCheckboxes.length === 0) {
+                    showDebug("Bitte wählen Sie mindestens ein Asset für die Vorlage aus.");
+                    event.preventDefault();
+                    return false;
+                }
+                
+                // Debug-Info anzeigen
+                showDebug("Speichere Vorlage mit " + assetCheckboxes.length + " ausgewählten Assets...");
+                
+                // Setze die Aktion auf 'save_template'
+                document.getElementById('form_action').value = 'save_template';
+                
+                // Formular absenden lassen
+                return true;
+            };
+            
+            // Hervorhebung für die Buttons
+            var primaryButton = document.querySelector('.button.is-primary');
+            if (primaryButton) {
+                primaryButton.style.boxShadow = '0 0 10px rgba(0,209,178,0.5)';
+            }
+        });
+        </script>
+    </div>
+    <div class="container">
+        <!-- Hier kein doppeltes form.hidden_tag() mehr - wurde bereits oben im Formular eingefügt -->
+        
+        <!-- Navigation -->
+        <div class="columns">
+            <div class="column is-6">
+                <a href="{{ url_for('order.wizard_step1') }}" class="button">
+                    <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                    <span>Zurück</span>
+                </a>
+            </div>
+        </div>
+        <div class="field is-grouped mt-5">
+            <div class="control">
+                <button type="submit" onclick="document.getElementById('form_action').value='continue';" class="button is-primary is-medium">
+                    <span>Weiter zu Schritt 3</span>
+                    <span class="icon"><i class="fas fa-arrow-right"></i></span>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.wizard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+.steps {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    position: relative;
+}
+.steps::before {
+    content: "";
+    position: absolute;
+    top: 15px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #dbdbdb;
+    z-index: -1;
+}
+.steps-segment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+.steps-marker {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #dbdbdb;
+    color: white;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+.steps-segment.is-active .steps-marker {
+    background: #3273dc;
+}
+.steps-segment.is-completed .steps-marker {
+    background: #48c774;
+}
+.steps-content {
+    text-align: center;
+}
+.steps-segment.is-active .steps-content p {
+    font-weight: bold;
+    color: #3273dc;
+}
+.steps-segment.is-completed .steps-content p {
+    color: #48c774;
+}
+.article-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+.article-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    transition: all 0.2s ease;
+}
+.article-card:hover {
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+.article-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.article-select {
+    margin-right: 10px;
+}
+.article-name {
+    font-size: 1.1rem;
+}
+.article-details {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+.article-info {
+    margin-bottom: 15px;
+    flex-grow: 1;
+}
+.article-quantity {
+    margin-top: auto;
+}
+.article-quantity .input {
+    width: 80px;
+}
+</style>
+{% endblock %}

@@ -28,6 +28,33 @@ def create_app():
     def has_permission(user, perm_name):
         return user and user.role and any(p.name == perm_name for p in user.role.permissions)
     app.jinja_env.globals['has_permission'] = has_permission
+    
+    # Benutzerdefinierte Filter für Zahlenkonvertierung
+    def safe_int(value, default=1):
+        """Konvertiert einen Wert sicher zu einem Integer"""
+        if value is None:
+            return default
+        try:
+            if isinstance(value, str) and value.strip() == '':
+                return default
+            return int(float(value)) if int(float(value)) > 0 else default
+        except (ValueError, TypeError):
+            return default
+    
+    def safe_float(value, default=0.0):
+        """Konvertiert einen Wert sicher zu einem Float"""
+        if value is None:
+            return default
+        try:
+            if isinstance(value, str) and value.strip() == '':
+                return default
+            return float(value)
+        except (ValueError, TypeError):
+            return default
+    
+    # Filter zur Verfügung stellen
+    app.jinja_env.filters['safe_int'] = safe_int
+    app.jinja_env.filters['safe_float'] = safe_float
     app.config['SECRET_KEY'] = 'your-secret-key'
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False

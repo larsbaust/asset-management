@@ -1,0 +1,340 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="wizard-container">
+    <!-- Fortschrittsleiste -->
+    <div class="steps-container mb-5">
+        <ul class="steps is-centered">
+            <li class="steps-segment is-completed">
+                <span class="steps-marker">
+                    <i class="fas fa-check"></i>
+                </span>
+                <div class="steps-content">
+                    <p class="is-size-5">Lieferant & Standort</p>
+                </div>
+            </li>
+            <li class="steps-segment is-completed">
+                <span class="steps-marker">
+                    <i class="fas fa-check"></i>
+                </span>
+                <div class="steps-content">
+                    <p class="is-size-5">Artikel auswählen</p>
+                </div>
+            </li>
+            <li class="steps-segment is-completed">
+                <span class="steps-marker">
+                    <i class="fas fa-check"></i>
+                </span>
+                <div class="steps-content">
+                    <p class="is-size-5">Details</p>
+                </div>
+            </li>
+            <li class="steps-segment is-active">
+                <span class="steps-marker">4</span>
+                <div class="steps-content">
+                    <p class="is-size-5">Bestätigen</p>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <h1 class="title is-3">Bestellung planen - Schritt 4: Bestellung bestätigen</h1>
+    
+    <div class="box mb-4">
+        <div class="columns">
+            <div class="column is-8">
+                <h4 class="title is-5 mb-2">Bestellübersicht</h4>
+            </div>
+            <div class="column is-4 has-text-right">
+                <a href="{{ url_for('order.wizard_step3') }}" class="button">
+                    <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                    <span>Zurück zu Schritt 3</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" action="{{ url_for('order.wizard_step4') }}">
+        {{ form.hidden_tag() }}
+        <input type="hidden" name="action" id="action" value="save">
+        
+        <!-- Bestelldetails -->
+        <div class="box mb-4">
+            <h4 class="title is-4">Bestelldetails</h4>
+            
+            <div class="columns is-multiline">
+                <div class="column is-6">
+                    <div class="field">
+                        <label class="label">Lieferant:</label>
+                        <div class="is-size-5">{{ supplier.name }}</div>
+                    </div>
+                </div>
+                
+                <div class="column is-6">
+                    <div class="field">
+                        <label class="label">Lieferstandort:</label>
+                        <div class="is-size-5">{{ location.name if location else 'Kein Standort ausgewählt' }}</div>
+                    </div>
+                </div>
+                
+                <div class="column is-6">
+                    <div class="field">
+                        <label class="label">Bestelldatum:</label>
+                        <div class="is-size-5">{{ today.strftime('%d.%m.%Y') }}</div>
+                    </div>
+                </div>
+                
+                <div class="column is-6">
+                    <div class="field">
+                        <label class="label">Geplantes Lieferdatum:</label>
+                        <div class="is-size-5">{% if order_data.expected_delivery_date %}{% if order_data.expected_delivery_date is string %}{{ order_data.expected_delivery_date }}{% else %}{{ order_data.expected_delivery_date.strftime('%d.%m.%Y') }}{% endif %}{% else %}Nicht angegeben{% endif %}</div>
+                    </div>
+                </div>
+                
+                {% if order_data.tracking_number %}
+                <div class="column is-6">
+                    <div class="field">
+                        <label class="label">Sendungsverfolgungsnummer:</label>
+                        <div class="is-size-5">{{ order_data.tracking_number }}</div>
+                    </div>
+                </div>
+                
+                <div class="column is-6">
+                    <div class="field">
+                        <label class="label">Paketdienst:</label>
+                        <div class="is-size-5">{{ order_data.tracking_carrier }}</div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if order_data.comment %}
+                <div class="column is-12">
+                    <div class="field">
+                        <label class="label">Kommentar:</label>
+                        <div class="content">
+                            <p>{{ order_data.comment }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Artikelübersicht -->
+        <div class="box mb-5">
+            <h4 class="title is-4">Bestellte Artikel</h4>
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Artikelnummer</th>
+                            <th>Seriennummer</th>
+                            <th>Kategorie</th>
+                            <th>Wert</th>
+                            <th>Menge</th>
+                            <th>Gesamt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set item_values = [] %}
+                        {% set item_qtys = [] %}
+                        
+                        {% set calculation_results = [] %}
+                        {% set total_sum = total_value %}
+                        {% set total_items = total_items_count %}
+                        
+                        <!-- Schleife: Werte extrahieren und vorbereiten für Anzeige -->
+                        {% for item in selected_items %}
+                            <!-- Wert extrahieren und sichern -->
+                            {% if item.asset.value is none or item.asset.value == '' %}
+                                {% set item_value = 0 %}
+                            {% else %}
+                                {% set item_value = item.asset.value|float(0) %}
+                            {% endif %}
+                            
+                            <!-- Menge extrahieren und sichern -->
+                            {% if item.quantity is none or item.quantity == '' %}
+                                {% set item_qty = 1 %}
+                            {% else %}
+                                {% set item_qty = item.quantity|int(1) %}
+                            {% endif %}
+                            {% if item_qty <= 0 %}{% set item_qty = 1 %}{% endif %}
+                            
+                            <!-- Zeilensumme berechnen - verwende dieselbe Logik wie im Backend -->
+                            {% set line_sum = item_value * item_qty %}
+                            
+                            <!-- In Ergebnisliste speichern -->
+                            {% set _ = calculation_results.append({
+                                'item': item,
+                                'asset_value': item_value,
+                                'qty': item_qty,
+                                'line_total': line_sum
+                            }) %}
+                            
+
+                        {% endfor %}
+                        
+
+                        
+                        <!-- Finale Werte festlegen -->
+                        {% set total_value = total_sum %}
+
+                        <!-- Liste der Artikel mit den berechneten Werten -->
+                        {% for result in calculation_results %}
+                        <tr>
+                            <td>{{ result.item.asset.name }}</td>
+                            <td>{{ result.item.asset.article_number or '-' }}</td>
+                            <td>{{ result.item.serial_number or '-' }}</td>
+                            <td>{{ result.item.asset.category.name if result.item.asset.category else '-' }}</td>
+                            <td>{{ "%.2f €"|format(result.asset_value) }}</td>
+                            <td>{{ result.qty }}</td>
+                            <td>{{ "%.2f €"|format(result.line_total) }}</td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="has-background-light">
+                            <td colspan="5" class="has-text-right has-text-weight-bold">Gesamt:</td>
+                            <td class="has-text-weight-bold">{{ total_items }}</td>
+                            <td class="has-text-weight-bold has-text-success">{{ "%.2f €"|format(total_sum) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Hinweisfeld: Asset-Import -->
+        <div class="notification is-info is-light mb-5">
+            <div class="content">
+                <h5 class="title is-5 mb-2"><i class="fas fa-info-circle"></i> Nach Abschluss der Bestellung</h5>
+                <p>Sobald die Bestellung als <strong>"erledigt"</strong> markiert wird, werden die bestellten Artikel automatisch als Assets in das System importiert.</p>
+                <p>Seriennummern und andere Details können Sie später im Bestelldetail bearbeiten.</p>
+            </div>
+        </div>
+        
+        <!-- Navigation -->
+        <div class="columns">
+            <div class="column is-4">
+                <a href="{{ url_for('order.wizard_step3') }}" class="button">
+                    <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                    <span>Zurück</span>
+                </a>
+            </div>
+            <div class="column is-8 has-text-right">
+                <div class="buttons is-right">
+                    <button type="submit" class="button is-light" onclick="document.getElementById('action').value='save';">
+                        <span class="icon"><i class="fas fa-save"></i></span>
+                        <span>Bestellung speichern</span>
+                    </button>
+                    <button type="submit" class="button is-info" onclick="document.getElementById('action').value='send_email';">
+                        <span class="icon"><i class="fas fa-envelope"></i></span>
+                        <span>Bestellung mit E-Mail senden</span>
+                    </button>
+                    <button type="submit" class="button is-success" onclick="document.getElementById('action').value='import';">
+                        <span class="icon"><i class="fas fa-check"></i></span>
+                        <span>Bestellung bestätigen und importieren</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.wizard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+.steps {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    position: relative;
+}
+.steps::before {
+    content: "";
+    position: absolute;
+    top: 15px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #dbdbdb;
+    z-index: -1;
+}
+.steps-segment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+.steps-marker {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #dbdbdb;
+    color: white;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+.steps-segment.is-active .steps-marker {
+    background: #3273dc;
+}
+.steps-segment.is-completed .steps-marker {
+    background: #48c774;
+}
+.steps-content {
+    text-align: center;
+}
+.steps-segment.is-active .steps-content p {
+    font-weight: bold;
+    color: #3273dc;
+}
+.steps-segment.is-completed .steps-content p {
+    color: #48c774;
+}
+</style>
+
+<!-- JavaScript zur Synchronisierung aller Gesamtwert-Anzeigen -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gespeicherter korrekter Gesamtwert aus dem Template
+    const correctTotalValue = {{ total_value|default(0) }};
+    
+    // Format-Funktion für Währungsbeträge
+    function formatCurrency(value) {
+        return value.toFixed(2) + ' €';
+    }
+    
+    // Alle Elemente finden, die möglicherweise Gesamtwerte anzeigen
+    const possibleTotalElements = document.querySelectorAll(
+        '.gesamtwert, ' +
+        '[data-content="gesamtwert"], ' +
+        '[data-label="gesamtwert"], ' +
+        '.order-total, ' +
+        '.total-value, ' +
+        '.has-text-right.has-text-weight-bold + td'
+    );
+    
+    // Alle gefundenen Elemente aktualisieren
+    possibleTotalElements.forEach(function(element) {
+        // Nur aktualisieren, wenn der Wert auf 0.00 € steht oder leer ist
+        const currentText = element.textContent.trim();
+        const isZeroValue = (currentText === '0.00 €' || 
+                          currentText === '0,00 €' || 
+                          currentText === '');
+                          
+        if (isZeroValue) {
+            element.textContent = formatCurrency(correctTotalValue);
+            element.classList.add('has-text-success');
+        }
+    });
+    
+    // Auch mögliche Inputfelder aktualisieren, falls vorhanden
+    document.querySelectorAll('input[name="total_value"], input[name="gesamtwert"]').forEach(function(input) {
+        input.value = correctTotalValue;
+    });
+});
+</script>
+
+{% endblock %}
