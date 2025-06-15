@@ -3,7 +3,14 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1>Lieferanten</h1>
     <div>
-        <a href="{{ url_for('suppliers.import_suppliers') }}" class="btn btn-success">Import per CSV</a>
+        <a href="{{ url_for('suppliers.supplier_add') }}" class="button is-primary mr-2">
+            <span class="icon"><i class="fas fa-plus"></i></span>
+            <span>Neuer Lieferant</span>
+        </a>
+        <a href="{{ url_for('suppliers.import_suppliers') }}" class="button is-success">
+            <span class="icon"><i class="fas fa-file-import"></i></span>
+            <span>Import per CSV</span>
+        </a>
     </div>
 </div>
 <form method="get" class="mb-4">
@@ -26,18 +33,38 @@
             <th>Website</th>
             <th>Kundennr.</th>
             <th>Kreditornr.</th>
+            <th>Aktionen</th>
         </tr>
     </thead>
     <tbody>
     {% for supplier in suppliers %}
         <tr>
-            <td><strong>{{ supplier.name }}</strong></td>
+            <td><strong><a href="{{ url_for('suppliers.supplier_detail', supplier_id=supplier.id) }}">{{ supplier.name }}</a></strong></td>
             <td>{{ supplier.address or '-' }}</td>
             <td>{{ supplier.phone or '-' }}</td>
             <td>{{ supplier.email or '-' }}</td>
             <td>{% if supplier.website %}<a href="{{ supplier.website }}" target="_blank">{{ supplier.website }}</a>{% else %}-{% endif %}</td>
             <td>{{ supplier.customer_number or '-' }}</td>
             <td>{{ supplier.creditor_number or '-' }}</td>
+            <td>
+                <div class="buttons are-small">
+                    <a href="{{ url_for('suppliers.supplier_detail', supplier_id=supplier.id) }}" class="button is-info" title="Bestellbare Assets anzeigen">
+                        <span class="icon">
+                            <i class="fas fa-boxes"></i>
+                        </span>
+                    </a>
+                    <a href="{{ url_for('suppliers.supplier_edit', supplier_id=supplier.id) }}" class="button is-link" title="Bearbeiten">
+                        <span class="icon">
+                            <i class="fas fa-edit"></i>
+                        </span>
+                    </a>
+                    <button class="button is-danger delete-supplier" data-id="{{ supplier.id }}" data-name="{{ supplier.name }}" title="Löschen">
+                        <span class="icon">
+                            <i class="fas fa-trash"></i>
+                        </span>
+                    </button>
+                </div>
+            </td>
         </tr>
     {% else %}
         <tr><td colspan="7">Keine Lieferanten gefunden.</td></tr>
@@ -45,4 +72,56 @@
     </tbody>
 </table>
 </div>
+
+<!-- Lösch-Bestätigungsmodal -->
+<div class="modal" id="deleteModal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">Lieferant löschen</p>
+            <button class="delete modal-close" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <p>Sind Sie sicher, dass Sie den Lieferanten <strong id="supplierNameToDelete"></strong> löschen möchten?</p>
+            <p class="has-text-danger mt-3">Diese Aktion kann nicht rückgängig gemacht werden.</p>
+        </section>
+        <footer class="modal-card-foot">
+            <form id="deleteForm" method="post">
+                <button class="button is-danger" type="submit">Löschen</button>
+                <button class="button modal-close" type="button">Abbrechen</button>
+            </form>
+        </footer>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Löschfunktionalität
+    const deleteButtons = document.querySelectorAll('.delete-supplier');
+    const deleteModal = document.getElementById('deleteModal');
+    const deleteForm = document.getElementById('deleteForm');
+    const supplierNameToDelete = document.getElementById('supplierNameToDelete');
+    const modalCloseButtons = document.querySelectorAll('.modal-close, .modal-background');
+    
+    // Löschmodal öffnen
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const supplierId = this.dataset.id;
+            const supplierName = this.dataset.name;
+            
+            supplierNameToDelete.textContent = supplierName;
+            deleteForm.action = `/suppliers/delete/${supplierId}`;
+            deleteModal.classList.add('is-active');
+        });
+    });
+    
+    // Modal schließen
+    modalCloseButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            deleteModal.classList.remove('is-active');
+        });
+    });
+});
+</script>
+
 {% endblock %}

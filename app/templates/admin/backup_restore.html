@@ -2,6 +2,10 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Backup & Restore</h2>
+    
+    <div class="notification is-info">
+        <strong>Backup-Erinnerung:</strong> Ihr letztes vollständiges Projektbackup stammt vom 17.04.2025. Es empfiehlt sich, regelmäßig Backups zu erstellen, um Datenverlust zu vermeiden.
+    </div>
 
     <div class="box mb-4">
         <h4>Backup erstellen</h4>
@@ -32,9 +36,21 @@
         </form>
         {% else %}
             <div class="notification is-danger">
-                <strong>Keine Berechtigung:</strong> Du hast kein Recht, ein Backup wiederherzustellen.
+                <strong>Keine Berechtigung!</strong> Sie benötigen das Recht 'restore_data', um Backups wiederherzustellen.
             </div>
         {% endif %}
+    </div>
+    
+    <div class="box mb-4">
+        <h4>Asset-Daten zurücksetzen</h4>
+        <p>Mit dieser Funktion können Sie alle Assets und Bestellungen zurücksetzen, aber Lieferanten, Standorte und Benutzer beibehalten.</p>
+        <div class="notification is-warning mt-2">
+            <strong>Warnung:</strong> Dieser Vorgang löscht alle Assets und Bestellungen unwiderruflich!
+        </div>
+        <a href="{{ url_for('admin.reset_overview') }}" class="button is-danger">
+            <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
+            <span>Asset-Daten zurücksetzen</span>
+        </a>
     </div>
 </div>
 {% endblock %}

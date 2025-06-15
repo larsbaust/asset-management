@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Asset und Bestelldaten zurücksetzen - Ergebnis</h2>
+
+    <div class="notification {% if results.assets.success and results.orders.success and results.inventory.success %}is-success{% else %}is-warning{% endif %} mb-4">
+        {% if results.assets.success and results.orders.success and results.inventory.success %}
+        <strong>ERFOLG!</strong> Die Daten wurden erfolgreich zurückgesetzt.
+        {% else %}
+        <strong>WARNUNG:</strong> Es sind Fehler beim Zurücksetzen aufgetreten.
+        {% endif %}
+    </div>
+
+    <div class="box mb-4">
+        <h4>Backup</h4>
+        <p>Ein Backup der Datenbank wurde erstellt, bevor Daten gelöscht wurden.</p>
+        <p><strong>Backup-Datei:</strong> {{ results.backup }}</p>
+        <p class="help">Diese Datei befindet sich im Verzeichnis "backups" der Anwendung und kann bei Bedarf wiederhergestellt werden.</p>
+    </div>
+
+    <div class="box mb-4">
+        <h4>Gelöschte Assets</h4>
+        {% if results.assets.success %}
+            {% if results.assets.deleted|length > 0 %}
+                <table class="table is-fullwidth">
+                    <thead>
+                        <tr>
+                            <th>Tabelle</th>
+                            <th>Anzahl gelöschter Einträge</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for table, count in results.assets.deleted.items() %}
+                        <tr>
+                            <td>{{ table }}</td>
+                            <td>{{ count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Keine Assets zum Löschen gefunden.</p>
+            {% endif %}
+        {% else %}
+            <div class="notification is-danger">
+                <strong>Fehler beim Zurücksetzen der Assets:</strong> {{ results.assets.error }}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="box mb-4">
+        <h4>Gelöschte Bestellungen</h4>
+        {% if results.orders.success %}
+            {% if results.orders.deleted|length > 0 %}
+                <table class="table is-fullwidth">
+                    <thead>
+                        <tr>
+                            <th>Tabelle</th>
+                            <th>Anzahl gelöschter Einträge</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for table, count in results.orders.deleted.items() %}
+                        <tr>
+                            <td>{{ table }}</td>
+                            <td>{{ count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Keine Bestellungen zum Löschen gefunden.</p>
+            {% endif %}
+        {% else %}
+            <div class="notification is-danger">
+                <strong>Fehler beim Zurücksetzen der Bestellungen:</strong> {{ results.orders.error }}
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="box mb-4">
+        <h4>Gelöschte Inventurdaten</h4>
+        {% if results.inventory.success %}
+            {% if results.inventory.deleted|length > 0 %}
+                <table class="table is-fullwidth">
+                    <thead>
+                        <tr>
+                            <th>Tabelle</th>
+                            <th>Anzahl gelöschter Einträge</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for table, count in results.inventory.deleted.items() %}
+                        <tr>
+                            <td>{{ table }}</td>
+                            <td>{{ count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Keine Inventurdaten zum Löschen gefunden.</p>
+            {% endif %}
+        {% else %}
+            <div class="notification is-danger">
+                <strong>Fehler beim Zurücksetzen der Inventurdaten:</strong> {{ results.inventory.error }}
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="box mb-4">
+        <h4>Lieferanten</h4>
+        {% if results.suppliers.skipped %}
+            <div class="notification is-info">
+                <strong>Information:</strong> Lieferanten wurden nicht zurückgesetzt (Option nicht ausgewählt).
+            </div>
+        {% else %}
+            {% if results.suppliers.success %}
+                {% if results.suppliers.deleted|length > 0 %}
+                    <table class="table is-fullwidth">
+                        <thead>
+                            <tr>
+                                <th>Tabelle</th>
+                                <th>Anzahl gelöschter Einträge</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for table, count in results.suppliers.deleted.items() %}
+                            <tr>
+                                <td>{{ table }}</td>
+                                <td>{{ count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>Keine Lieferanten zum Löschen gefunden.</p>
+                {% endif %}
+            {% else %}
+                <div class="notification is-danger">
+                    <strong>Fehler beim Zurücksetzen der Lieferanten:</strong> {{ results.suppliers.error }}
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+    
+    <div class="box mb-4">
+        <h4>Standorte</h4>
+        {% if results.locations.skipped %}
+            <div class="notification is-info">
+                <strong>Information:</strong> Standorte wurden nicht zurückgesetzt (Option nicht ausgewählt).
+            </div>
+        {% else %}
+            {% if results.locations.success %}
+                {% if results.locations.deleted|length > 0 %}
+                    <table class="table is-fullwidth">
+                        <thead>
+                            <tr>
+                                <th>Tabelle</th>
+                                <th>Anzahl gelöschter Einträge</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for table, count in results.locations.deleted.items() %}
+                            <tr>
+                                <td>{{ table }}</td>
+                                <td>{{ count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>Keine Standorte zum Löschen gefunden.</p>
+                {% endif %}
+            {% else %}
+                <div class="notification is-danger">
+                    <strong>Fehler beim Zurücksetzen der Standorte:</strong> {{ results.locations.error }}
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+    
+    <div class="box mb-4">
+        <h4>Hersteller</h4>
+        {% if results.manufacturers.skipped %}
+            <div class="notification is-info">
+                <strong>Information:</strong> Hersteller wurden nicht zurückgesetzt (Option nicht ausgewählt).
+            </div>
+        {% else %}
+            {% if results.manufacturers.success %}
+                {% if results.manufacturers.deleted|length > 0 %}
+                    <table class="table is-fullwidth">
+                        <thead>
+                            <tr>
+                                <th>Tabelle</th>
+                                <th>Anzahl gelöschter Einträge</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for table, count in results.manufacturers.deleted.items() %}
+                            <tr>
+                                <td>{{ table }}</td>
+                                <td>{{ count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>Keine Hersteller zum Löschen gefunden.</p>
+                {% endif %}
+            {% else %}
+                <div class="notification is-danger">
+                    <strong>Fehler beim Zurücksetzen der Hersteller:</strong> {{ results.manufacturers.error }}
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+    
+    <div class="box mb-4">
+        <h4>Zuordnungen</h4>
+        {% if results.assignments.skipped %}
+            <div class="notification is-info">
+                <strong>Information:</strong> Zuordnungen wurden nicht zurückgesetzt (Option nicht ausgewählt).
+            </div>
+        {% else %}
+            {% if results.assignments.success %}
+                {% if results.assignments.deleted|length > 0 %}
+                    <table class="table is-fullwidth">
+                        <thead>
+                            <tr>
+                                <th>Tabelle</th>
+                                <th>Anzahl gelöschter Einträge</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for table, count in results.assignments.deleted.items() %}
+                            <tr>
+                                <td>{{ table }}</td>
+                                <td>{{ count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>Keine Zuordnungen zum Löschen gefunden.</p>
+                {% endif %}
+            {% else %}
+                <div class="notification is-danger">
+                    <strong>Fehler beim Zurücksetzen der Zuordnungen:</strong> {{ results.assignments.error }}
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <div class="box">
+        <h4>Nächste Schritte</h4>
+        <div class="buttons">
+            <a href="{{ url_for('admin.reset_overview') }}" class="button is-info">
+                <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                <span>Zurück zur Reset-Übersicht</span>
+            </a>
+            <a href="{{ url_for('admin.backup_restore') }}" class="button is-link">
+                <span class="icon"><i class="fas fa-database"></i></span>
+                <span>Backup & Restore</span>
+            </a>
+            <a href="{{ url_for('main.index') }}" class="button is-primary">
+                <span class="icon"><i class="fas fa-home"></i></span>
+                <span>Zur Startseite</span>
+            </a>
+        </div>
+        <div class="mt-4">
+            <p class="has-text-weight-bold">Erinnerung:</p>
+            <p>Es empfiehlt sich, regelmäßig vollständige Backups der Anwendung zu erstellen, um Datenverlust zu vermeiden.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

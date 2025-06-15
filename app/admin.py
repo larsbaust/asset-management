@@ -220,6 +220,379 @@ def restore():
 def backup_restore():
     return render_template('admin/backup_restore.html')
 
+
+# --- Datenbank Reset Funktionen ---
+import sys
+import os
+import shutil
+from datetime import datetime
+from sqlalchemy import text
+
+def backup_database_for_reset():
+    """Erstellt ein Backup der Datenbank vor dem Zurücksetzen"""
+    try:
+        # Datenbank-Datei identifizieren (standardmäßig instance/app.db)
+        db_path = os.path.join('instance', 'app.db')
+        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        backup_name = f'db_reset_backup_{timestamp}.db'
+        backup_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backups')
+        os.makedirs(backup_dir, exist_ok=True)
+        backup_path = os.path.join(backup_dir, backup_name)
+        
+        # Datenbank kopieren
+        shutil.copy2(db_path, backup_path)
+        return backup_path
+    except Exception as e:
+        return None
+
+def reset_assets_database():
+    """Direkte SQL-Ausführung zum Löschen aller Asset-bezogenen Daten"""
+    try:
+        # Tabellen, die gelöscht werden müssen (in Reihenfolge der Abhängigkeiten)
+        tables = [
+            'asset_log',           # Asset-Logs
+            'inventory_item',      # Inventur-Positionen
+            'loan',                # Leihverhältnisse
+            'document',            # Dokumente (mit asset_id)
+            'cost_entry',          # Kosteneinträge
+            'asset_suppliers',     # Asset-Lieferanten (Zuordnungstabelle)
+            'asset_manufacturers', # Asset-Hersteller (Zuordnungstabelle)
+            'asset',               # Assets selbst
+        ]
+        
+        # Gelöschte Einträge zählen
+        deleted = {}
+        
+        # Daten löschen
+        for table in tables:
+            try:
+                if table == 'document':
+                    # Bei Dokumenten nur die mit asset_id löschen
+                    result = db.session.execute(text("DELETE FROM document WHERE asset_id IS NOT NULL"))
+                    deleted[table] = result.rowcount
+                else:
+                    # Alle Daten löschen
+                    result = db.session.execute(text(f"DELETE FROM {table}"))
+                    deleted[table] = result.rowcount
+            except Exception as e:
+                db.session.rollback()
+                raise e
+        
+        # Auto-Increment-IDs zurücksetzen (SQLite-spezifisch)
+        for table in tables:
+            db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table}'"))
+        
+        # Änderungen speichern
+        db.session.commit()
+        return True, deleted
+    except Exception as e:
+        db.session.rollback()
+        return False, {}
+
+def reset_orders_database():
+    """Direkte SQL-Ausführung zum Löschen aller Bestellungen"""
+    try:
+        # Tabellen, die gelöscht werden müssen (in Reihenfolge der Abhängigkeiten)
+        tables = [
+            'order_item',     # Bestellpositionen
+            '"order"',       # Bestellungen selbst - mit Anführungszeichen, da SQL-Reserviertes Wort
+        ]
+        
+        # Gelöschte Einträge zählen
+        deleted = {}
+        
+        # Daten löschen
+        for table in tables:
+            try:
+                result = db.session.execute(text(f"DELETE FROM {table}"))
+                deleted[table] = result.rowcount
+            except Exception as e:
+                db.session.rollback()
+                raise e
+        
+        # Auto-Increment-IDs zurücksetzen
+        for table in tables:
+            db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table}'"))
+        
+        # Änderungen speichern
+        db.session.commit()
+        return True, deleted
+    except Exception as e:
+        db.session.rollback()
+        return False, {}
+        
+def reset_inventory_database():
+    """Direkte SQL-Ausführung zum Löschen aller Inventurdaten"""
+    try:
+        # Tabellen, die gelöscht werden müssen (in Reihenfolge der Abhängigkeiten)
+        # Hinweis: inventory_item wird bereits bei den Assets behandelt
+        tables = [
+            'inventory_team',    # Inventur-Teams
+            'inventory_session', # Inventur-Sessions/Vorgänge
+        ]
+        
+        # Gelöschte Einträge zählen
+        deleted = {}
+        
+        # Daten löschen
+        for table in tables:
+            try:
+                result = db.session.execute(text(f"DELETE FROM {table}"))
+                deleted[table] = result.rowcount
+            except Exception as e:
+                db.session.rollback()
+                raise e
+        
+        # Auto-Increment-IDs zurücksetzen
+        for table in tables:
+            db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table}'"))
+        
+        # Änderungen speichern
+        db.session.commit()
+        return True, deleted
+    except Exception as e:
+        db.session.rollback()
+        return False, {}
+        
+def reset_suppliers_database():
+    """Direkte SQL-Ausführung zum Löschen aller Lieferanten"""
+    try:
+        # Tabellen, die gelöscht werden müssen
+        # Hinweis: asset_suppliers wird bereits bei den Assets behandelt
+        tables = ['supplier']
+        
+        # Gelöschte Einträge zählen
+        deleted = {}
+        
+        # Daten löschen
+        for table in tables:
+            try:
+                result = db.session.execute(text(f"DELETE FROM {table}"))
+                deleted[table] = result.rowcount
+            except Exception as e:
+                db.session.rollback()
+                raise e
+        
+        # Auto-Increment-IDs zurücksetzen
+        for table in tables:
+            db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table}'"))
+        
+        # Änderungen speichern
+        db.session.commit()
+        return True, deleted
+    except Exception as e:
+        db.session.rollback()
+        return False, {}
+        
+def reset_locations_database():
+    """Direkte SQL-Ausführung zum Löschen aller Standorte"""
+    try:
+        # Tabellen, die gelöscht werden müssen
+        tables = ['location']
+        
+        # Gelöschte Einträge zählen
+        deleted = {}
+        
+        # Daten löschen
+        for table in tables:
+            try:
+                result = db.session.execute(text(f"DELETE FROM {table}"))
+                deleted[table] = result.rowcount
+            except Exception as e:
+                db.session.rollback()
+                raise e
+        
+        # Auto-Increment-IDs zurücksetzen
+        for table in tables:
+            db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table}'"))
+        
+        # Änderungen speichern
+        db.session.commit()
+        return True, deleted
+    except Exception as e:
+        db.session.rollback()
+        return False, {}
+        
+def reset_manufacturers_database():
+    """Direkte SQL-Ausführung zum Löschen aller Hersteller"""
+    try:
+        # Tabellen, die gelöscht werden müssen
+        # Hinweis: asset_manufacturers wird bereits bei den Assets behandelt
+        tables = ['manufacturer']
+        
+        # Gelöschte Einträge zählen
+        deleted = {}
+        
+        # Daten löschen
+        for table in tables:
+            try:
+                result = db.session.execute(text(f"DELETE FROM {table}"))
+                deleted[table] = result.rowcount
+            except Exception as e:
+                db.session.rollback()
+                raise e
+        
+        # Auto-Increment-IDs zurücksetzen
+        for table in tables:
+            db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table}'"))
+        
+        # Änderungen speichern
+        db.session.commit()
+        return True, deleted
+    except Exception as e:
+        db.session.rollback()
+        return False, {}
+        
+def reset_assignments_database():
+    """Direkte SQL-Ausführung zum Löschen aller Zuordnungen"""
+    try:
+        # Tabellen, die gelöscht werden müssen
+        tables = ['assignment']
+        
+        # Gelöschte Einträge zählen
+        deleted = {}
+        
+        # Daten löschen
+        for table in tables:
+            try:
+                result = db.session.execute(text(f"DELETE FROM {table}"))
+                deleted[table] = result.rowcount
+            except Exception as e:
+                db.session.rollback()
+                raise e
+        
+        # Auto-Increment-IDs zurücksetzen
+        for table in tables:
+            db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table}'"))
+        
+        # Änderungen speichern
+        db.session.commit()
+        return True, deleted
+    except Exception as e:
+        db.session.rollback()
+        return False, {}
+
+@admin.route('/reset', methods=['GET'])
+@login_required
+@admin_required
+def reset_overview():
+    return render_template('admin/reset_data.html')
+
+@admin.route('/reset/execute', methods=['POST'])
+@login_required
+@admin_required
+def execute_reset():
+    # Sicherheitsabfrage - überprüfen Sie, ob der Benutzer ein spezielles Feld ausgefüllt hat
+    confirmation = request.form.get('confirmation_text', '')
+    if confirmation != 'RESET':
+        flash('Der Reset wurde abgebrochen. Bitte geben Sie "RESET" ein, um zu bestätigen.', 'danger')
+        return redirect(url_for('admin.reset_overview'))
+        
+    # Optionale Reset-Optionen
+    reset_suppliers = 'reset_suppliers' in request.form
+    reset_locations = 'reset_locations' in request.form
+    reset_manufacturers = 'reset_manufacturers' in request.form
+    reset_assignments = 'reset_assignments' in request.form
+    
+    # Backup erstellen
+    backup_path = backup_database_for_reset()
+    if not backup_path:
+        flash('Backup konnte nicht erstellt werden! Reset abgebrochen.', 'danger')
+        return redirect(url_for('admin.reset_overview'))
+    
+    results = {
+        'backup': os.path.basename(backup_path),
+        'assets': { 'success': False, 'deleted': {} },
+        'orders': { 'success': False, 'deleted': {} },
+        'inventory': { 'success': False, 'deleted': {} },
+        'suppliers': { 'success': True, 'deleted': {}, 'skipped': not reset_suppliers },
+        'locations': { 'success': True, 'deleted': {}, 'skipped': not reset_locations },
+        'manufacturers': { 'success': True, 'deleted': {}, 'skipped': not reset_manufacturers },
+        'assignments': { 'success': True, 'deleted': {}, 'skipped': not reset_assignments }
+    }
+    
+    # Assets zurücksetzen
+    try:
+        success, deleted = reset_assets_database()
+        results['assets']['success'] = success
+        results['assets']['deleted'] = deleted
+    except Exception as e:
+        results['assets']['error'] = str(e)
+    
+    # Bestellungen zurücksetzen
+    try:
+        success, deleted = reset_orders_database()
+        results['orders']['success'] = success
+        results['orders']['deleted'] = deleted
+    except Exception as e:
+        results['orders']['error'] = str(e)
+    
+    # Inventurdaten zurücksetzen
+    try:
+        success, deleted = reset_inventory_database()
+        results['inventory']['success'] = success
+        results['inventory']['deleted'] = deleted
+    except Exception as e:
+        results['inventory']['error'] = str(e)
+        
+    # Optional: Lieferanten zurücksetzen
+    if reset_suppliers:
+        try:
+            success, deleted = reset_suppliers_database()
+            results['suppliers']['success'] = success
+            results['suppliers']['deleted'] = deleted
+        except Exception as e:
+            results['suppliers']['success'] = False
+            results['suppliers']['error'] = str(e)
+    
+    # Optional: Standorte zurücksetzen
+    if reset_locations:
+        try:
+            success, deleted = reset_locations_database()
+            results['locations']['success'] = success
+            results['locations']['deleted'] = deleted
+        except Exception as e:
+            results['locations']['success'] = False
+            results['locations']['error'] = str(e)
+            
+    # Optional: Hersteller zurücksetzen
+    if reset_manufacturers:
+        try:
+            success, deleted = reset_manufacturers_database()
+            results['manufacturers']['success'] = success
+            results['manufacturers']['deleted'] = deleted
+        except Exception as e:
+            results['manufacturers']['success'] = False
+            results['manufacturers']['error'] = str(e)
+            
+    # Optional: Zuordnungen zurücksetzen
+    if reset_assignments:
+        try:
+            success, deleted = reset_assignments_database()
+            results['assignments']['success'] = success
+            results['assignments']['deleted'] = deleted
+        except Exception as e:
+            results['assignments']['success'] = False
+            results['assignments']['error'] = str(e)
+    
+    # Erfolg überprüfen - für optionale Tabellen nur prüfen wenn sie zurückgesetzt werden sollten
+    success = results['assets']['success'] and results['orders']['success'] and results['inventory']['success']
+    if reset_suppliers:
+        success = success and results['suppliers']['success']
+    if reset_locations:
+        success = success and results['locations']['success']
+    if reset_manufacturers:
+        success = success and results['manufacturers']['success']
+    if reset_assignments:
+        success = success and results['assignments']['success']
+        
+    if success:
+        flash(f'Alle Daten wurden erfolgreich zurückgesetzt! Backup wurde erstellt: {results["backup"]}', 'success')
+    else:
+        flash('Es sind Fehler beim Zurücksetzen aufgetreten. Details finden Sie in den Ergebnissen.', 'warning')
+    
+    return render_template('admin/reset_results.html', results=results)
+
 @admin.route('/changelog', methods=['GET', 'POST'])
 @login_required
 @admin_required

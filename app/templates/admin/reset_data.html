@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Asset und Bestelldaten zurücksetzen</h2>
+
+    <div class="notification is-warning mb-4">
+        <strong>WARNUNG:</strong> Diese Aktion kann nicht rückgängig gemacht werden! Es werden ALLE Assets, Bestellungen und zugehörige Daten unwiderruflich gelöscht.
+    </div>
+    
+    <div class="notification is-info">
+        <strong>Backup-Erinnerung:</strong> Ihr letztes vollständiges Projektbackup stammt vom 17.04.2025. Es wird empfohlen, ein aktuelles Backup zu erstellen, bevor Sie den Reset durchführen.
+    </div>
+
+    <div class="box mb-4">
+        <h4 class="has-text-danger">Vor dem Zurücksetzen</h4>
+        <p>Vor dem Zurücksetzen der Daten wird automatisch ein Backup der Datenbank erstellt. Dieses kann bei Bedarf wiederhergestellt werden.</p>
+        <p><strong>Folgendes wird gelöscht:</strong></p>
+        <ul class="ml-5 mb-3">
+            <li>Alle Assets und Asset-Daten (Dokumente, Kosten, Bilder)</li>
+            <li>Alle Leihverhältnisse und Verlauf</li>
+            <li>Alle Bestellungen und Bestellpositionen</li>
+            <li>Alle Inventurdaten</li>
+        </ul>
+        <p><strong>Folgendes bleibt erhalten:</strong></p>
+        <ul class="ml-5 mb-3">
+            <li>Alle Lieferanten (suppliers)</li>
+            <li>Alle Standorte (locations)</li>
+            <li>Alle Benutzer und Rollen (users, roles)</li>
+            <li>Systemeinstellungen und Konfiguration</li>
+        </ul>
+    </div>
+
+    <div class="box mb-4">
+        <h4>Daten zurücksetzen</h4>
+        <form method="post" action="{{ url_for('admin.execute_reset') }}">
+            <div class="field">
+                <label class="label">Optionale Stammdaten zurücksetzen</label>
+                <div class="control">
+                    <label class="checkbox">
+                        <input type="checkbox" name="reset_suppliers">
+                        Alle Lieferanten löschen
+                    </label>
+                </div>
+                <div class="control mt-2">
+                    <label class="checkbox">
+                        <input type="checkbox" name="reset_locations">
+                        Alle Standorte löschen
+                    </label>
+                </div>
+                <div class="control mt-2">
+                    <label class="checkbox">
+                        <input type="checkbox" name="reset_manufacturers">
+                        Alle Hersteller löschen
+                    </label>
+                </div>
+                <div class="control mt-2">
+                    <label class="checkbox">
+                        <input type="checkbox" name="reset_assignments">
+                        Alle Zuordnungen löschen
+                    </label>
+                </div>
+                <p class="help is-warning">Achtung: Das Löschen von Lieferanten oder Standorten kann sich auf andere Funktionen der Anwendung auswirken!</p>
+            </div>
+            
+            <div class="field mt-4">
+                <label class="label">Sicherheitsbestätigung</label>
+                <div class="control">
+                    <input class="input" type="text" name="confirmation_text" placeholder="Geben Sie 'RESET' ein, um zu bestätigen" required>
+                </div>
+                <p class="help is-danger">Bitte geben Sie exakt 'RESET' ein (Großbuchstaben), um den Löschvorgang zu bestätigen.</p>
+            </div>
+            <div class="field mt-4">
+                <div class="control">
+                    <button type="submit" class="button is-danger">
+                        <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
+                        <span>Alle Asset- und Bestelldaten zurücksetzen</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="box">
+        <h4>Alternative Optionen</h4>
+        <div class="buttons">
+            <a href="{{ url_for('admin.backup_restore') }}" class="button is-info">
+                <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                <span>Zurück zu Backup & Restore</span>
+            </a>
+            <a href="{{ url_for('admin.backup') }}" class="button is-primary">
+                <span class="icon"><i class="fas fa-download"></i></span>
+                <span>Vollständiges Backup erstellen</span>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

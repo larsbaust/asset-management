@@ -193,7 +193,9 @@ def import_assets_apply_mapping():
     if not name_mapped:
         print('[DEBUG] Kein Name-Feld zugeordnet, zurück zum UI!')
         flash('Mindestens eine CSV-Spalte muss dem Feld "Name" zugeordnet werden!', 'danger')
-        return render_template('import_assets.html', csv_headers=headers, csv_preview=None, system_fields=SYSTEM_FIELDS, field_labels=FIELD_LABELS, mapping_prefill=mapping, locations=Location.query.order_by(Location.name).all())
+        # Erzeuge safe_csv_categories für alle Spalten
+        safe_csv_categories = {col: col.replace(' ', '_').replace('-', '_').replace('.', '_').lower() for col in headers}
+        return render_template('import_assets.html', csv_headers=headers, csv_preview=None, system_fields=SYSTEM_FIELDS, field_labels=FIELD_LABELS, mapping_prefill=mapping, locations=Location.query.order_by(Location.name).all(), safe_csv_categories=safe_csv_categories)
 
     # Importiere Assets mit Mapping
     category_mapping = {}
@@ -275,8 +277,19 @@ def import_assets_apply_mapping():
             except Exception as e:
                 einzelpreis = None
         for _ in range(qty):
+            # Sicherstellen, dass jedes Asset einen Namen hat - verwende Artikelnummer oder generiere Standardnamen
+            asset_name = asset_data.get('name')
+            if not asset_name or asset_name.strip() == '':
+                # Verwende Artikelnummer als Fallback, wenn vorhanden
+                if asset_data.get('article_number') and asset_data.get('article_number').strip() != '':
+                    asset_name = f"Asset {asset_data.get('article_number')}"
+                # Wenn weder Name noch Artikelnummer vorhanden sind, generiere einen Standardnamen mit Zeilennummer
+                else:
+                    asset_name = f"Importiertes Asset #{row_num}"
+                print(f'[DEBUG] Asset ohne Namen in Zeile {row_num}: Verwende Standardnamen "{asset_name}"')
+                
             asset = Asset(
-                name=asset_data.get('name'),
+                name=asset_name,
                 article_number=asset_data.get('article_number'),
                 serial_number=asset_data.get('serial_number'),
                 category_id=cat_id,
@@ -341,14 +354,6 @@ def import_assets_apply_mapping():
             imported += 1
     print(f'[DEBUG] Insgesamt importierte Assets: {imported} (letzte Zeile: {row_num})')
     db.session.commit()
-    flash(f'{imported} Assets importiert!', 'success')
-    session.pop('import_csv_content', None)
-    session.pop('import_csv_headers', None)
-    return redirect(url_for('import_assets.import_assets_upload'))
-
-    # Übergabe an Template
-    safe_csv_categories = {col: safe_name(col) for col in headers}
-    return render_template('import_assets.html', csv_headers=headers, csv_preview=None, system_fields=SYSTEM_FIELDS, field_labels=FIELD_LABELS, mapping_prefill=mapping, locations=Location.query.order_by(Location.name).all(), safe_csv_categories=safe_csv_categories)
     flash(f'{imported} Assets importiert!', 'success')
     session.pop('import_csv_content', None)
     session.pop('import_csv_headers', None)

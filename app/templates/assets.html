@@ -175,8 +175,8 @@
                 <tr class="{% if asset.is_group %}grouped-asset{% endif %}">
                     <td>
                         {% if asset.is_group %}
-                            <div class="has-tooltip-arrow has-tooltip-right" data-tooltip="Gruppe kann nicht direkt ausgewählt werden">
-                                <input type="checkbox" disabled>
+                            <div class="has-tooltip-arrow has-tooltip-right" data-tooltip="Diese Gruppe mit {{ asset.group_count }} Assets auswählen">
+                                <input type="checkbox" class="asset-checkbox group-checkbox" value="{{ asset.group_ids|join(',') }}" data-is-group="true">
                             </div>
                         {% else %}
                             <input type="checkbox" class="asset-checkbox" value="{{ asset.id }}">
@@ -380,7 +380,7 @@
                                         <i class="fas fa-file-alt"></i>
                                     </span>
                                 </a>
-                                <button class="button is-danger" title="Löschen" onclick="deleteAsset({{ asset.id }}, '{{ asset.name|escape }}')">
+                                <button class="button is-danger" title="Löschen" onclick="deleteAsset({{ asset.id }}, '{{ asset.name|replace("'", "\'")|replace('"', '\\"')|e }}')">
                                     <span class="icon is-small">
                                         <i class="fas fa-trash"></i>
                                     </span>
@@ -401,24 +401,157 @@
 </div>
 
 <script>
-// Multi-Loan Button aktivieren/deaktivieren
+// Sichere Referenz auf DOM-Elemente mit Nullchecks
 const multiLoanBtn = document.getElementById('multi-loan-btn');
-const assetCheckboxes = document.querySelectorAll('.asset-checkbox');
+const bulkArchiveBtn = document.getElementById('bulk-archive-btn');
+const bulkRestoreBtn = document.getElementById('bulk-restore-btn');
+const assetCheckboxes = document.querySelectorAll('.asset-checkbox') || [];
 const selectAllAssets = document.getElementById('select-all-assets');
-function updateMultiLoanBtn() {
-    const checked = document.querySelectorAll('.asset-checkbox:checked');
-    multiLoanBtn.disabled = checked.length === 0;
+
+// Funktion zum Extrahieren aller Asset-IDs aus Checkboxen (inkl. Gruppen-IDs)
+function getSelectedAssetIds() {
+    const selectedIds = [];
+    const checkedBoxes = document.querySelectorAll('.asset-checkbox:checked') || [];
+    
+    checkedBoxes.forEach(checkbox => {
+        try {
+            // Prüfen ob es sich um eine Gruppe handelt und ob checkbox.value existiert
+            if (checkbox && checkbox.value) {
+                if (checkbox.dataset && checkbox.dataset.isGroup === 'true') {
+                    // Bei Gruppen: IDs sind als kommaseparierte Liste gespeichert
+                    const groupIds = checkbox.value.split(',');
+                    groupIds.forEach(id => {
+                        if (id && id.trim()) {
+                            selectedIds.push(id.trim());
+                        }
+                    });
+                } else {
+                    // Bei einzelnen Assets: Direkt ID hinzufügen
+                    selectedIds.push(checkbox.value);
+                }
+            }
+        } catch (e) {
+            console.error('Fehler beim Verarbeiten der Checkbox:', e);
+        }
+    });
+    
+    return selectedIds;
 }
-assetCheckboxes.forEach(cb => cb.addEventListener('change', updateMultiLoanBtn));
-if (selectAllAssets) selectAllAssets.addEventListener('change', updateMultiLoanBtn);
-// Klick auf Multi-Loan Button: IDs sammeln und weiterleiten
-multiLoanBtn.addEventListener('click', function() {
-    const checked = Array.from(document.querySelectorAll('.asset-checkbox:checked')).map(cb => cb.value);
-    if (checked.length > 0) {
-        // Per GET weiterleiten (kann später zu POST geändert werden)
-        window.location.href = `/multi_loan?asset_ids=${checked.join(',')}`;
+
+// Buttons aktivieren/deaktivieren basierend auf Auswahl
+function updateActionButtons() {
+    try {
+        const hasSelected = (document.querySelectorAll('.asset-checkbox:checked') || []).length > 0;
+        if (multiLoanBtn) multiLoanBtn.disabled = !hasSelected;
+        if (bulkArchiveBtn) bulkArchiveBtn.disabled = !hasSelected;
+        if (bulkRestoreBtn) bulkRestoreBtn.disabled = !hasSelected;
+    } catch (e) {
+        console.error('Fehler beim Aktualisieren der Action-Buttons:', e);
     }
-});
+}
+
+// Event-Listener für Checkboxen sicher hinzufügen
+try {
+    assetCheckboxes.forEach(cb => {
+        if (cb) cb.addEventListener('change', updateActionButtons);
+    });
+    if (selectAllAssets) selectAllAssets.addEventListener('change', updateActionButtons);
+} catch (e) {
+    console.error('Fehler beim Hinzufügen von Event-Listenern:', e);
+}
+
+// Klick auf Multi-Loan Button: IDs sammeln und weiterleiten
+if (multiLoanBtn) {
+    multiLoanBtn.addEventListener('click', function() {
+        const selectedIds = getSelectedAssetIds();
+        if (selectedIds.length > 0) {
+            // Per GET weiterleiten (kann später zu POST geändert werden)
+            window.location.href = `/multi_loan?asset_ids=${selectedIds.join(',')}`;
+        }
+    });
+}
+
+// Bulk-Archive-Button Funktionalität
+if (bulkArchiveBtn) {
+    bulkArchiveBtn.addEventListener('click', function() {
+        const selectedIds = getSelectedAssetIds();
+        if (selectedIds.length > 0) {
+            if (confirm(`Möchten Sie ${selectedIds.length} ausgewählte Assets wirklich archivieren?`)) {
+                // POST-Request zum Server senden
+                fetch('/bulk_archive', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ asset_ids: selectedIds })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        let message = `${data.count} Assets wurden erfolgreich archiviert.`;
+                        
+                        // Prüfen auf Warnungen
+                        if (data.warnings && data.warnings.length > 0) {
+                            console.warn('Warnungen:', data.warnings);
+                            message += "\n\nHinweis: Es gab einige Warnungen. Details finden Sie in der Browser-Konsole.";
+                        }
+                        
+                        alert(message);
+                        window.location.href = '/assets?status=active'; // Spezifischer Redirect zur aktiven Ansicht
+                    } else {
+                        alert('Fehler beim Archivieren der Assets: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Fehler beim Archivieren der Assets.');
+                });
+            }
+        }
+    });
+}
+
+// Bulk-Restore-Button (Wiederherstellung) Funktionalität
+if (bulkRestoreBtn) {
+    bulkRestoreBtn.addEventListener('click', function() {
+        try {
+            const selectedIds = getSelectedAssetIds();
+            if (selectedIds && selectedIds.length > 0) {
+                if (confirm(`Möchten Sie ${selectedIds.length} ausgewählte Assets wirklich wiederherstellen?`)) {
+                    // POST-Request zum Server senden
+                    fetch('/bulk_restore', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ asset_ids: selectedIds })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && data.success) {
+                            alert(`${data.count} Assets wurden erfolgreich wiederhergestellt!`);
+                            if (data.warnings && data.warnings.length > 0) {
+                                console.warn("Warnungen bei der Wiederherstellung:", data.warnings);
+                            }
+                            window.location.href = '/assets?status=inactive'; // Spezifischer Redirect zur inaktiven Ansicht
+                        } else {
+                            alert('Fehler beim Wiederherstellen der Assets: ' + (data && data.error ? data.error : 'Unbekannter Fehler'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Fehler beim Wiederherstellen der Assets.');
+                    });
+                }
+            } else {
+                alert('Bitte wählen Sie mindestens ein Asset aus.');
+            }
+        } catch (e) {
+            console.error('Fehler bei der Bulk-Restore-Funktion:', e);
+            alert('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
+        }
+    });
+}
 function deleteAsset(assetId, assetName) {
     if (confirm('Möchten Sie das Asset "' + assetName + '" wirklich löschen? Alle zugehörigen Daten (Dokumente, Kosten, etc.) werden ebenfalls gelöscht.')) {
         fetch('/assets/' + assetId + '/delete', {

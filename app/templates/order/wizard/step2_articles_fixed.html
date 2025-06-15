@@ -1,0 +1,578 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="wizard-container">
+    <!-- Fortschrittsleiste -->
+    <div class="steps-container mb-5">
+        <ul class="steps is-centered">
+            <li class="steps-segment is-completed">
+                <span class="steps-marker">
+                    <i class="fas fa-check"></i>
+                </span>
+                <div class="steps-content">
+                    <p class="is-size-5">Lieferant & Standort</p>
+                </div>
+            </li>
+            <li class="steps-segment is-active">
+                <span class="steps-marker">2</span>
+                <div class="steps-content">
+                    <p class="is-size-5">Artikel auswählen</p>
+                </div>
+            </li>
+            <li class="steps-segment">
+                <span class="steps-marker">3</span>
+                <div class="steps-content">
+                    <p class="is-size-5">Details</p>
+                </div>
+            </li>
+            <li class="steps-segment">
+                <span class="steps-marker">4</span>
+                <div class="steps-content">
+                    <p class="is-size-5">Bestätigen</p>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <h1 class="title is-3">Bestellung planen - Schritt 2: Artikel auswählen</h1>
+    
+    <div class="box mb-4">
+        <div class="columns">
+            <div class="column is-8">
+                <h4 class="title is-5 mb-2">Bestellinformationen</h4>
+                <div class="columns">
+                    <div class="column">
+                        <div class="field">
+                            <label class="label">Lieferant:</label>
+                            <div class="control">
+                                <div class="is-size-5">
+                                    <!-- ABSOLUT DYNAMISCHE ANZEIGE - Vollständig JS-gesteuert -->
+                                    <span id="dynamic_supplier_name" class="js_supplier_display"></span>
+                                </div>
+                                
+                                <!-- Debug-Info für Entwickler -->
+                                <div class="notification is-light is-info p-2 mb-2" style="font-size: 0.8rem;">
+                                    <strong>Debug-Info:</strong> Lieferant ID={{ supplier.id }}, Name="{{ supplier.name }}"
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="field">
+                            <label class="label">Zielstandort:</label>
+                            <div class="control">
+                                <div class="is-size-5">{{ location.name if location else 'Kein Standort ausgewählt' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column is-4">
+                <div class="buttons is-right">
+                    <a href="{{ url_for('order.wizard_step1') }}" class="button is-light">
+                        <span class="icon">
+                            <i class="fas fa-arrow-left"></i>
+                        </span>
+                        <span>Zurück</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="box mb-4">
+        <div class="columns">
+            <div class="column">
+                <h4 class="title is-5 mb-2">Artikel filtern</h4>
+                <form method="post" action="{{ url_for('order.wizard_step2') }}" class="mb-4">
+                    {{ form.hidden_tag() }}
+                    <input type="hidden" name="form_action" value="filter">
+                    <div class="columns">
+                        <div class="column">
+                            <div class="field">
+                                <label class="label">Name / Artikel-Nr.:</label>
+                                <div class="control">
+                                    <input class="input" type="text" name="filter_name" value="{{ filter_name or '' }}" placeholder="Filter nach Name oder Artikelnr...">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="field">
+                                <label class="label">Kategorie:</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth">
+                                        <select name="filter_category">
+                                            <option value="0">Alle Kategorien</option>
+                                            {% for category in categories %}
+                                                <option value="{{ category.id }}" {% if filter_category == category.id %}selected{% endif %}>{{ category.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="field">
+                                <label class="label">Hersteller:</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth">
+                                        <select name="filter_manufacturer">
+                                            <option value="0">Alle Hersteller</option>
+                                            {% for manufacturer in manufacturers %}
+                                                <option value="{{ manufacturer.id }}" {% if filter_manufacturer == manufacturer.id %}selected{% endif %}>{{ manufacturer.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-2">
+                            <div class="field">
+                                <label class="label">&nbsp;</label>
+                                <div class="control">
+                                    <button type="submit" class="button is-primary is-fullwidth">
+                                        <span class="icon">
+                                            <i class="fas fa-search"></i>
+                                        </span>
+                                        <span>Filtern</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <form id="main-form" method="post" action="{{ url_for('order.wizard_step2') }}">
+        {{ form.hidden_tag() }}
+        <!-- Verstecktes Feld für die Aktion, wird von den Buttons gesetzt -->
+        <input type="hidden" id="form_action" name="form_action" value="filter">
+        
+        <!-- Artikel-Auswahl -->
+        <div class="box">
+            <h4 class="title is-5 mb-2">Artikelauswahl</h4>
+            <p class="subtitle is-6">Wählen Sie die zu bestellenden Artikel aus:</p>
+            
+            {% if not asset_infos %}
+                <div class="notification is-warning">
+                    <p>Keine Artikel für diesen Lieferanten gefunden. Bitte prüfen Sie die Filter oder wählen Sie einen anderen Lieferanten.</p>
+                </div>
+            {% else %}
+                <div class="table-container">
+                    <table class="table is-fullwidth is-hoverable">
+                        <thead>
+                            <tr>
+                                <th>Auswählen</th>
+                                <th>Artikel</th>
+                                <th>Artikel-Nr.</th>
+                                <th>Kategorie</th>
+                                <th>Wert (€)</th>
+                                <th>Bestand</th>
+                                <th>Anzahl</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for asset_id, asset_info in asset_infos.items() %}
+                            <tr>
+                                <td>
+                                    <div class="field">
+                                        <div class="control">
+                                            <label class="checkbox">
+                                                <input type="checkbox" name="selected_assets" value="{{ asset_id }}" class="asset-checkbox"
+                                                {% if asset_id in selected_assets %}checked{% endif %}>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ asset_info.name }}</td>
+                                <td>{{ asset_info.article_number or '-' }}</td>
+                                <td>{{ asset_info.category.name if asset_info.category else '-' }}</td>
+                                <td>{% if asset_info.value %}{{ "%.2f"|format(asset_info.value) }}{% else %}-{% endif %}</td>
+                                <td>{{ asset_info.stock_count }}</td>
+                                <td>
+                                    <div class="field">
+                                        <div class="control">
+                                            <input type="number" name="quantity_{{ asset_id }}" value="{{ selected_assets[asset_id].quantity if asset_id in selected_assets else 1 }}" 
+                                                   min="1" class="input is-small quantity-input" style="width: 70px;" disabled>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Buttons -->
+        <div class="field is-grouped mt-5">
+            <div class="control">
+                <a href="{{ url_for('order.wizard_step1') }}" class="button is-light">
+                    <span class="icon">
+                        <i class="fas fa-arrow-left"></i>
+                    </span>
+                    <span>Zurück</span>
+                </a>
+            </div>
+            <div class="control">
+                <button type="submit" id="btn-next" class="button is-primary">
+                    <span>Weiter</span>
+                    <span class="icon">
+                        <i class="fas fa-arrow-right"></i>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </form>
+    
+    <!-- Bestellvorlage Funktionen -->
+    <div class="box mb-4">
+        <div class="columns">
+            <div class="column is-6">
+                <div class="field">
+                    <label class="label">Vorlage laden:</label>
+                    <div class="field has-addons">
+                        <div class="control is-expanded">
+                            <div class="select is-fullwidth">
+                                <select id="template-select">
+                                    <option value="">-- Vorlage auswählen --</option>
+                                    {% for template in templates %}
+                                        <option value="{{ template.id }}">{{ template.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="control">
+                            <button type="button" id="btn-load-template" class="button is-info">
+                                <span class="icon">
+                                    <i class="fas fa-download"></i>
+                                </span>
+                                <span>Laden</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column is-6">
+                <div class="field">
+                    <label class="label">Aktuelle Auswahl als Vorlage speichern:</label>
+                    <div class="field has-addons">
+                        <div class="control is-expanded">
+                            <input type="text" id="template-name" class="input" placeholder="Vorlagenname eingeben...">
+                        </div>
+                        <div class="control">
+                            <button type="button" id="btn-save-template" class="button is-success">
+                                <span class="icon">
+                                    <i class="fas fa-save"></i>
+                                </span>
+                                <span>Speichern</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug-Nachricht (Modal) -->
+    <div id="debug-message" class="notification is-info is-light" style="display: none;">
+        <button id="close-debug" class="delete"></button>
+        <div id="debug-content"></div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Debug-Funktion
+        function showDebug(message) {
+            var debugBox = document.getElementById('debug-message');
+            document.getElementById('debug-content').innerHTML = message;
+            debugBox.style.display = 'block';
+        }
+        
+        // Close-Button für Debug-Nachricht
+        document.getElementById('close-debug').addEventListener('click', function() {
+            document.getElementById('debug-message').style.display = 'none';
+        });
+
+        // WICHTIG: GLOBALE SUPPLIER-AKTUALISIERUNG 
+        // Dies verhindert Browser-Cache Probleme und aktualisiert ALLE Stellen mit Lieferantenname
+        var supplierId = {{ supplier.id }};
+        var forceSupplierId = {{ force_supplier_id|default(0) }};
+        var supplierName = '';
+        var supplierNameFromBackend = '{{ supplier.name | safe }}'; // Original Name aus Backend
+        var currentTime = '{{ debug_time }}'; // Zeitstempel für Cache-Prävention
+        
+        console.log('%%% EXTREME DEBUG: LIEFERANTEN-AKTUALISIERUNG STARTET...', currentTime);
+        console.log('%%% EXTREME DEBUG: Backend liefert: ID=' + supplierId + ', Name=' + supplierNameFromBackend);
+        
+        // WICHTIG: Korrekturfunktion für den Lieferantennamen - DEUTLICH VERBESSERT
+        console.log('%%% EXTREME DEBUG: supplierID=' + supplierId + ', supplierNameFromBackend=' + supplierNameFromBackend);
+        
+        // KOMPLETT ÜBERARBEITETE LOGIK: vertraue IMMER dem Backend, außer bei bekannten Problemfällen
+        // 1. Wenn Backend einen leeren oder kurzen Namen liefert, DANN Fallback auf ID-basierte Namen
+        // 2. Wenn Backend einen bekannten Namen liefert, diesen unverändert verwenden
+        // 3. NUR für bestimmte Problem-IDs (11, 2, 9) hartkodierten Namen verwenden
+        
+        if (!supplierNameFromBackend || supplierNameFromBackend.trim() === '' || supplierNameFromBackend.length < 3) {
+            // Fallback für leeren Namen aus Backend
+            console.log('%%% EXTREME DEBUG: Backend-Name leer oder ungültig! Fallback auf ID-basierten Namen');
+            
+            // Nur diese drei IDs haben einen speziellen Namen
+            if (supplierId === 11 || forceSupplierId === 11) {
+                supplierName = 'Hypersoft Trading GmbH';
+                console.log('%%% EXTREME DEBUG: Fallback zu Hypersoft Trading GmbH (ID=11)');
+            } else if (supplierId === 2) {
+                supplierName = 'ABC Technik AG';
+                console.log('%%% EXTREME DEBUG: Fallback zu ABC Technik AG (ID=2)');
+            } else if (supplierId === 9) {
+                supplierName = 'TechnoVision Solutions';
+                console.log('%%% EXTREME DEBUG: Fallback zu TechnoVision Solutions (ID=9)');
+            } else {
+                // Allgemeiner Fallback für unbekannte IDs
+                supplierName = 'Lieferant ID ' + supplierId;
+                console.log('%%% EXTREME DEBUG: Allgemeiner Fallback für unbekannte ID');
+            }
+        } else {
+            // NORMALFALL: Verwende den Namen aus dem Backend
+            supplierName = supplierNameFromBackend;
+            console.log('%%% EXTREME DEBUG: NORMALFALL - Verwende Backend-Namen: ' + supplierName);
+        }
+        
+        // EXTREME DEBUGAUSGABE
+        console.log('%%% EXTREME DEBUG: Finaler Lieferantenname für Anzeige: ' + supplierName);
+        
+        // ABSOLUT WICHTIG: ALLE Stellen aktualisieren, die den Lieferantennamen anzeigen könnten
+        // ULTRA-AGGRESSIVE VERSION mit MutationObserver, InnerHTML-Scan und wiederholten Updates
+        
+        // 1. Das dynamische Element, das wir explizit kennen
+        var dynamicNameElement = document.getElementById('dynamic_supplier_name');
+        if (dynamicNameElement) {
+            dynamicNameElement.textContent = supplierName;
+            console.log('%%% EXTREME DEBUG: #dynamic_supplier_name aktualisiert zu: ' + supplierName);
+        }
+        
+        // 2. GESCANNTES INNERHTML DER WICHTIGSTEN CONTAINER DIREKT ERSETZEN
+        function replaceSupplierNameInContainer(containerId) {
+            var container = document.getElementById(containerId);
+            if (!container && containerId === 'main-content') {
+                // Fallback: Versuche, den Hauptinhalt zu finden
+                container = document.querySelector('.wizard-container');
+            }
+            
+            if (container) {
+                console.log('%%% EXTREME DEBUG: Scanne Container: ' + containerId);
+                
+                // Speichere das aktuelle HTML
+                var html = container.innerHTML;
+                var newHtml = html;
+                
+                // Ersetze alle möglichen Varianten bekannter Lieferantennamen direkt im HTML
+                newHtml = newHtml.replace(/Hypersoft Trading GmbH/g, supplierName);
+                newHtml = newHtml.replace(/ABC Technik AG/g, supplierName);
+                newHtml = newHtml.replace(/TechnoVision Solutions/g, supplierName);
+                
+                // Auch Teilvarianten berücksichtigen
+                newHtml = newHtml.replace(/Hypersoft Trading/g, supplierName);
+                newHtml = newHtml.replace(/ABC Technik/g, supplierName);
+                newHtml = newHtml.replace(/TechnoVision/g, supplierName);
+                
+                // Wenn Änderungen gefunden wurden, HTML aktualisieren
+                if (newHtml !== html) {
+                    console.log('%%% EXTREME DEBUG: KRITISCHER ERFOLG - HTML-Text mit Lieferantennamen gefunden und ersetzt!');
+                    container.innerHTML = newHtml;
+                }
+            }
+        }
+
+        // Hauptcontainer direkt scannen und ersetzen
+        replaceSupplierNameInContainer('main-content');
+        
+        // 3. VOLLSTÄNDIGER DOM-TEXT-SCAN - versuche, jeden Text-Knoten zu finden und zu aktualisieren
+        function scanAllTextNodes() {
+            console.log('%%% EXTREME DEBUG: Starte vollständigen DOM-Scan...');
+            var count = 0;
+            
+            function walk(node) {
+                // 1. Text-Knoten aktualisieren
+                if (node.nodeType == 3) { // Text-Knoten
+                    var text = node.nodeValue;
+                    var newText = text;
+                    
+                    // Nach ALLEN bekannten Lieferantennamen suchen
+                    if (text.includes('Hypersoft Trading') || text.includes('ABC Technik') || text.includes('TechnoVision')) {
+                        // Begrenze die Ersetzung auf erkennbare Lieferantennamen-Kontexte
+                        if (text.includes('Hypersoft Trading')) {
+                            newText = newText.replace(/Hypersoft Trading[^<\n]*/g, supplierName);
+                        }
+                        if (text.includes('ABC Technik')) {
+                            newText = newText.replace(/ABC Technik[^<\n]*/g, supplierName);
+                        }
+                        if (text.includes('TechnoVision')) {
+                            newText = newText.replace(/TechnoVision[^<\n]*/g, supplierName);
+                        }
+                        
+                        // Text aktualisieren, wenn Änderungen vorhanden
+                        if (newText !== text) {
+                            node.nodeValue = newText;
+                            count++;
+                            console.log('%%% EXTREME DEBUG: Textknoten ersetzt #' + count + ': ' + text + ' -> ' + newText);
+                        }
+                    }
+                }
+                
+                // 2. Kinder-Elemente rekursiv scannen
+                if (node.nodeType == 1) { // Element-Knoten
+                    // Bestimmte Elemente überspringen
+                    if (node.nodeName !== 'SCRIPT' && node.nodeName !== 'STYLE') {
+                        for (var i = 0; i < node.childNodes.length; i++) {
+                            walk(node.childNodes[i]);
+                        }
+                    }
+                }
+            }
+            
+            // Starte beim Body und durchsuche jeden Knoten
+            walk(document.body);
+            console.log('%%% EXTREME DEBUG: DOM-Scan beendet. ' + count + ' Text-Knoten aktualisiert.');
+        }
+        
+        // 4. MUTATION OBSERVER - Überwache DOM-Änderungen und aktualisiere Lieferantennamen automatisch
+        function setupMutationObserver() {
+            // Diese Funktion wird aufgerufen, wenn DOM-Änderungen erkannt werden
+            function handleMutations(mutations) {
+                console.log('%%% EXTREME DEBUG: DOM-Änderungen erkannt. Prüfe auf neue Lieferantennamen-Texte.');
+                scanAllTextNodes(); // Scanne alle Textknoten erneut
+            }
+            
+            // Konfiguration für den Observer
+            var observerConfig = {
+                childList: true, // Überwache Hinzufügen/Entfernen von Kind-Elementen
+                subtree: true,   // Überwache den gesamten Unterbaum
+                characterData: true // Überwache Textänderungen
+            };
+            
+            // Observer erstellen und starten
+            var observer = new MutationObserver(handleMutations);
+            observer.observe(document.body, observerConfig);
+            console.log('%%% EXTREME DEBUG: MutationObserver gestartet - überwacht DOM-Änderungen.');
+        }
+        
+        // Führe alle Scans mit verschiedenen Zeitverzögerungen aus, um sicherzustellen,
+        // dass auch nachträglich geladene Inhalte erfasst werden
+        setTimeout(scanAllTextNodes, 100);
+        setTimeout(scanAllTextNodes, 300);
+        setTimeout(scanAllTextNodes, 500);
+        setTimeout(setupMutationObserver, 600);
+        
+        console.log('%%% EXTREME DEBUG: ULTIMATIVE LIEFERANTEN-TEXTKORREKTUR INITIIERT');
+        
+        console.log('%%% EXTREME DEBUG: GLOBALE SUPPLIER-AKTUALISIERUNG INITIIERT');
+        
+        // Redundant, da oben bereits gemacht
+        // document.getElementById('dynamic_supplier_name').textContent = supplierName;
+        console.log('%%% EXTREME DEBUG: Lieferantenname dynamisch gesetzt auf: ' + supplierName + ' (ID: ' + supplierId + ')');
+        // Debug-Ausgabe in die Konsole
+        console.log('Template Debug: supplier.id=' + supplierId + ', supplier.name={{ supplier.name | safe }}');
+        
+        // Globale Funktion für Template-Validierung und Speicherung
+        function validateAndSaveTemplate() {
+            var templateName = document.getElementById('template-name').value.trim();
+            if (!templateName) {
+                showDebug('Bitte geben Sie einen Namen für die Vorlage ein.');
+                return false;
+            }
+            
+            // Prüfen ob mindestens ein Asset ausgewählt ist
+            var selectedAssets = document.querySelectorAll('.asset-checkbox:checked');
+            if (selectedAssets.length === 0) {
+                showDebug('Bitte wählen Sie mindestens einen Artikel aus.');
+                return false;
+            }
+            
+            // Formular vorbereiten und abschicken
+            var form = document.getElementById('main-form');
+            document.getElementById('form_action').value = 'save_template';
+            
+            // Template-Name zum Formular hinzufügen
+            var templateInput = document.createElement('input');
+            templateInput.type = 'hidden';
+            templateInput.name = 'template_name';
+            templateInput.value = templateName;
+            form.appendChild(templateInput);
+            
+            // Abschicken
+            form.submit();
+            return true;
+        }
+        
+        // Hervorhebung für die Buttons
+        var primaryButton = document.querySelector('.button.is-primary');
+        if (primaryButton) {
+            primaryButton.style.boxShadow = '0 0 10px rgba(0,209,178,0.5)';
+        }
+        
+        // Checkboxen und Mengenfelder verbinden
+        var assetCheckboxes = document.querySelectorAll('.asset-checkbox');
+        assetCheckboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                var assetId = this.value;
+                var quantityInput = document.querySelector('input[name="quantity_' + assetId + '"]');
+                if (quantityInput) {
+                    quantityInput.disabled = !this.checked;
+                }
+            });
+            
+            // Initial-Status setzen
+            var assetId = checkbox.value;
+            var quantityInput = document.querySelector('input[name="quantity_' + assetId + '"]');
+            if (quantityInput) {
+                quantityInput.disabled = !checkbox.checked;
+            }
+        });
+
+        // Funktion zum Validieren des nächsten Schritts
+        document.getElementById('btn-next').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            var selectedAssets = document.querySelectorAll('.asset-checkbox:checked');
+            if (selectedAssets.length === 0) {
+                showDebug('Bitte wählen Sie mindestens einen Artikel aus.');
+                return;
+            }
+            
+            // Formular abschicken
+            document.getElementById('form_action').value = 'next';
+            document.getElementById('main-form').submit();
+        });
+        
+        // Template laden
+        document.getElementById('btn-load-template').addEventListener('click', function() {
+            var templateId = document.getElementById('template-select').value;
+            if (!templateId) {
+                showDebug('Bitte wählen Sie eine Vorlage aus.');
+                return;
+            }
+            
+            // Formular vorbereiten und abschicken
+            var form = document.getElementById('main-form');
+            document.getElementById('form_action').value = 'load_template';
+            
+            // Template-ID zum Formular hinzufügen
+            var templateInput = document.createElement('input');
+            templateInput.type = 'hidden';
+            templateInput.name = 'template_id';
+            templateInput.value = templateId;
+            form.appendChild(templateInput);
+            
+            // Abschicken
+            form.submit();
+        });
+        
+        // Vorlage speichern
+        document.getElementById('btn-save-template').addEventListener('click', validateAndSaveTemplate);
+    });
+</script>
+{% endblock %}

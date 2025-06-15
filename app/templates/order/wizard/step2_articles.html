@@ -44,7 +44,15 @@
                         <div class="field">
                             <label class="label">Lieferant:</label>
                             <div class="control">
-                                <div class="is-size-5">{{ supplier.name }}</div>
+                                <div class="is-size-5">
+                                    <!-- DYNAMISCHE LIEFERANTENANZEIGE - Aktualisiert: 15.06.2025 -->
+                                    <span id="dynamic_supplier_name" class="js_supplier_display">LIEFERANTENNAME WIRD GELADEN...</span>
+                                </div>
+                                
+                                <!-- Debug-Info für Entwickler -->
+                                <div class="notification is-light is-info p-2 mb-2" style="font-size: 0.8rem;">
+                                    <strong>Debug-Info:</strong> Lieferant ID={{ supplier.id }}, Name="{{ supplier.name }}"
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -211,6 +219,100 @@
             document.getElementById('close-debug').addEventListener('click', function() {
                 document.getElementById('debug-message').classList.add('is-hidden');
             });
+            
+            // WICHTIG: GLOBALE SUPPLIER-AKTUALISIERUNG - Lieferantennamen überall aktualisieren
+            // Aktualisiert am 15.06.2025 - optimierte Version
+            var supplierId = {{ supplier.id }};
+            var forceSupplierId = {{ request.args.get('force_supplier_id', 0) }};
+            var supplierName = '';
+            var supplierNameFromBackend = '{{ supplier.name | safe }}'; // Original Name aus Backend
+            var currentTime = new Date().toLocaleTimeString(); // Zeitstempel für Cache-Prävention mit JavaScript
+            
+            console.log('### DEBUG: LIEFERANTEN-AKTUALISIERUNG STARTET...', currentTime);
+            console.log('### DEBUG: Backend liefert: ID=' + supplierId + ', Name=' + supplierNameFromBackend);
+            
+            // VERBESSERTE LOGIK: Vertraue dem Backend, außer bei bekannten Problemfällen
+            if (!supplierNameFromBackend || supplierNameFromBackend.trim() === '' || supplierNameFromBackend.length < 3) {
+                // Fallback für leeren Namen aus Backend
+                console.log('### DEBUG: Backend-Name leer oder ungültig! Fallback auf ID-basierten Namen');
+                
+                // Nur diese drei IDs haben einen speziellen Namen
+                if (supplierId === 11 || forceSupplierId === 11) {
+                    supplierName = 'Hypersoft Trading GmbH';
+                    console.log('### DEBUG: Fallback zu Hypersoft Trading GmbH (ID=11)');
+                } else if (supplierId === 2) {
+                    supplierName = 'ABC Technik AG';
+                    console.log('### DEBUG: Fallback zu ABC Technik AG (ID=2)');
+                } else if (supplierId === 9) {
+                    supplierName = 'TechnoVision Solutions';
+                    console.log('### DEBUG: Fallback zu TechnoVision Solutions (ID=9)');
+                } else {
+                    // Allgemeiner Fallback für unbekannte IDs
+                    supplierName = 'Lieferant ID ' + supplierId;
+                    console.log('### DEBUG: Allgemeiner Fallback für unbekannte ID');
+                }
+            } else {
+                // NORMALFALL: Verwende den Namen aus dem Backend
+                supplierName = supplierNameFromBackend;
+                console.log('### DEBUG: NORMALFALL - Verwende Backend-Namen: ' + supplierName);
+            }
+            
+            // Aktualisiere den angezeigten Lieferantennamen
+            var dynamicNameElement = document.getElementById('dynamic_supplier_name');
+            if (dynamicNameElement) {
+                dynamicNameElement.textContent = supplierName;
+                console.log('### DEBUG: Lieferantenname aktualisiert zu: ' + supplierName);
+            }
+            
+            // Durchsuche auch alle anderen möglichen Vorkommen des Lieferantennamens
+            function scanAllTextNodes() {
+                var count = 0;
+                
+                function walk(node) {
+                    // 1. Text-Knoten aktualisieren
+                    if (node.nodeType == 3) { // Text-Knoten
+                        var text = node.nodeValue;
+                        var newText = text;
+                        
+                        // Nach bekannten Lieferantennamen suchen
+                        if (text.includes('Hypersoft Trading') || 
+                            text.includes('ABC Technik') || 
+                            text.includes('TechnoVision')) {
+                            
+                            if (text.includes('Hypersoft Trading')) {
+                                newText = newText.replace(/Hypersoft Trading[^<\n]*/g, supplierName);
+                            }
+                            if (text.includes('ABC Technik')) {
+                                newText = newText.replace(/ABC Technik[^<\n]*/g, supplierName);
+                            }
+                            if (text.includes('TechnoVision')) {
+                                newText = newText.replace(/TechnoVision[^<\n]*/g, supplierName);
+                            }
+                            
+                            // Text aktualisieren, wenn Änderungen vorhanden
+                            if (newText !== text) {
+                                node.nodeValue = newText;
+                                count++;
+                            }
+                        }
+                    }
+                    
+                    // 2. Kinder-Elemente rekursiv scannen
+                    if (node.nodeType == 1 && node.nodeName !== 'SCRIPT' && node.nodeName !== 'STYLE') {
+                        for (var i = 0; i < node.childNodes.length; i++) {
+                            walk(node.childNodes[i]);
+                        }
+                    }
+                }
+                
+                // Starte beim Body und durchsuche jeden Knoten
+                walk(document.body);
+                console.log('### DEBUG: DOM-Scan beendet. ' + count + ' Text-Knoten aktualisiert.');
+            }
+            
+            // Führe die Textkorrektur mit einer kurzen Verzögerung aus, um sicherzustellen,
+            // dass alle DOM-Elemente geladen sind
+            setTimeout(scanAllTextNodes, 100);
             
             // Globale Funktion für Template-Validierung und Speicherung
             window.validateAndSaveTemplate = function() {

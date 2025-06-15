@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file, current_app, json
 from dotenv import load_dotenv
 load_dotenv()
 from .models import Asset, db, Loan, Document, CostEntry, InventorySession, InventoryItem, InventoryTeam, OrderComment, AssetLog
@@ -834,6 +834,95 @@ def dashboard():
         location_delivery_status=location_delivery_status
     )
 
+# Route für die Massenarchivierung von Assets
+@main.route('/bulk_archive', methods=['POST'])
+@login_required
+@permission_required('archive_asset')
+def bulk_archive():
+    try:
+        data = request.json
+        asset_ids = data.get('asset_ids', [])
+        
+        if not asset_ids:
+            return jsonify({'success': False, 'error': 'Keine Assets ausgewählt'})
+            
+        # Archivierung durchführen (auf inaktiv setzen)
+        count = 0
+        errors = []
+        for asset_id in asset_ids:
+            try:
+                # Versuchen, asset_id als Integer zu konvertieren
+                asset_id = int(asset_id)
+                asset = Asset.query.get(asset_id)
+                if asset is None:
+                    errors.append(f"Asset mit ID {asset_id} nicht gefunden")
+                    continue
+                    
+                if asset.status == 'active':
+                    asset.status = 'inactive'
+                    count += 1
+            except ValueError:
+                errors.append(f"Ungültige Asset-ID: {asset_id}")
+            except Exception as inner_e:
+                errors.append(f"Fehler bei Asset {asset_id}: {str(inner_e)}")
+        
+        db.session.commit()
+        
+        result = {'success': True, 'count': count}
+        if errors:
+            result['warnings'] = errors
+            
+        return jsonify(result)
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+
+
+# Route für die Massenwiederherstellung von Assets
+@main.route('/bulk_restore', methods=['POST'])
+@login_required
+@permission_required('restore_asset')
+def bulk_restore():
+    try:
+        data = request.json
+        asset_ids = data.get('asset_ids', [])
+        
+        if not asset_ids:
+            return jsonify({'success': False, 'error': 'Keine Assets ausgewählt'})
+            
+        # Wiederherstellung durchführen (auf aktiv setzen)
+        count = 0
+        errors = []
+        for asset_id in asset_ids:
+            try:
+                # Versuchen, asset_id als Integer zu konvertieren
+                asset_id = int(asset_id)
+                asset = Asset.query.get(asset_id)
+                if asset is None:
+                    errors.append(f"Asset mit ID {asset_id} nicht gefunden")
+                    continue
+                    
+                if asset.status == 'inactive':
+                    asset.status = 'active'
+                    count += 1
+            except ValueError:
+                errors.append(f"Ungültige Asset-ID: {asset_id}")
+            except Exception as inner_e:
+                errors.append(f"Fehler bei Asset {asset_id}: {str(inner_e)}")
+        
+        db.session.commit()
+        
+        result = {'success': True, 'count': count}
+        if errors:
+            result['warnings'] = errors
+            
+        return jsonify(result)
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+
 @main.route('/assets')
 def assets():
     """Asset-Übersicht mit Filterfunktion"""
@@ -899,8 +988,8 @@ def assets():
         
         # Gruppierungsschlüssel erstellen und Assets gruppieren
         for asset in assets:
-            # Schlüssel aus Name, Artikelnummer und Kategorie-ID
-            key = (asset.name, asset.article_number or '', asset.category_id or 0)
+            # Schlüssel aus Name, Artikelnummer, Kategorie-ID und Standort-ID
+            key = (asset.name, asset.article_number or '', asset.category_id or 0, asset.location_id or 0)
             groups[key].append(asset)
         
         # Gruppierte Assets verarbeiten

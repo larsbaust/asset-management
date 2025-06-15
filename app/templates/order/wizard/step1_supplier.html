@@ -37,6 +37,22 @@
         <form method="post" action="{{ url_for('order.wizard_step1') }}">
             {{ form.hidden_tag() }}
             
+            <!-- Filter für Lieferanten -->
+            <div class="field">
+                <label class="label">Lieferanten filtern</label>
+                <div class="field has-addons">
+                    <div class="control is-expanded">
+                        <input type="text" class="input" id="supplierFilter" placeholder="Name, E-Mail oder Telefonnummer" autocomplete="off">
+                    </div>
+                    <div class="control">
+                        <button type="button" class="button is-info" id="clearFilter">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <p class="help">Filtern Sie die Lieferanten nach Name, E-Mail oder Telefonnummer</p>
+            </div>
+            
             <div class="field">
                 <label class="label">Lieferanten wählen</label>
                 <div class="control">
@@ -177,4 +193,60 @@ input[type="radio"]:checked {
     color: #3273dc;
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Referenzen auf HTML-Elemente
+    const filterInput = document.getElementById('supplierFilter');
+    const clearFilterButton = document.getElementById('clearFilter');
+    const supplierCards = document.querySelectorAll('.supplier-card');
+
+    // Funktion zum Filtern der Lieferanten
+    function filterSuppliers() {
+        const searchTerm = filterInput.value.trim().toLowerCase();
+        let matchCount = 0;
+
+        supplierCards.forEach(card => {
+            // Text aus dem Lieferanten-Element extrahieren
+            const supplierName = card.querySelector('.supplier-name').textContent.toLowerCase();
+            const supplierInfo = card.querySelector('.supplier-details').textContent.toLowerCase();
+            const allText = supplierName + ' ' + supplierInfo;
+
+            // Prüfen, ob der Suchbegriff im Text enthalten ist
+            if (searchTerm === '' || allText.includes(searchTerm)) {
+                card.style.display = '';
+                matchCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Anzeigen, wie viele Lieferanten gefunden wurden
+        const resultsInfo = document.getElementById('resultsInfo');
+        if (searchTerm) {
+            if (!resultsInfo) {
+                const newResultsInfo = document.createElement('div');
+                newResultsInfo.id = 'resultsInfo';
+                newResultsInfo.className = 'notification is-light is-info mb-4';
+                newResultsInfo.textContent = `${matchCount} Lieferant${matchCount !== 1 ? 'en' : ''} gefunden`;
+                document.querySelector('.supplier-cards-container').before(newResultsInfo);
+            } else {
+                resultsInfo.textContent = `${matchCount} Lieferant${matchCount !== 1 ? 'en' : ''} gefunden`;
+                resultsInfo.style.display = '';
+            }
+        } else if (resultsInfo) {
+            resultsInfo.style.display = 'none';
+        }
+    }
+
+    // Event-Listener für das Suchfeld
+    filterInput.addEventListener('input', filterSuppliers);
+
+    // Event-Listener für den Clear-Button
+    clearFilterButton.addEventListener('click', function() {
+        filterInput.value = '';
+        filterSuppliers();
+    });
+});
+</script>
 {% endblock %}

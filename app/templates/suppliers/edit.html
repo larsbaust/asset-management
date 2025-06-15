@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="title">{{ title }}</h1>
+    <div class="box">
+        <form method="post">
+            {{ form.hidden_tag() }}
+            
+            <div class="field">
+                <label class="label">{{ form.name.label }}</label>
+                <div class="control">
+                    {{ form.name(class="input", placeholder="Lieferantennamen eingeben") }}
+                </div>
+                {% if form.name.errors %}
+                <p class="help is-danger">{{ form.name.errors[0] }}</p>
+                {% endif %}
+            </div>
+            
+            <div class="field">
+                <label class="label">{{ form.address.label }}</label>
+                <div class="control">
+                    {{ form.address(class="textarea", rows=3, placeholder="Straße, PLZ, Ort") }}
+                </div>
+                {% if form.address.errors %}
+                <p class="help is-danger">{{ form.address.errors[0] }}</p>
+                {% endif %}
+            </div>
+            
+            <div class="columns">
+                <div class="column">
+                    <div class="field">
+                        <label class="label">{{ form.phone.label }}</label>
+                        <div class="control">
+                            {{ form.phone(class="input", placeholder="Telefonnummer") }}
+                        </div>
+                        {% if form.phone.errors %}
+                        <p class="help is-danger">{{ form.phone.errors[0] }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="field">
+                        <label class="label">{{ form.email.label }}</label>
+                        <div class="control">
+                            {{ form.email(class="input", placeholder="E-Mail-Adresse") }}
+                        </div>
+                        {% if form.email.errors %}
+                        <p class="help is-danger">{{ form.email.errors[0] }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="columns">
+                <div class="column">
+                    <div class="field">
+                        <label class="label">{{ form.website.label }}</label>
+                        <div class="control">
+                            {{ form.website(class="input", placeholder="https://www.example.com") }}
+                        </div>
+                        {% if form.website.errors %}
+                        <p class="help is-danger">{{ form.website.errors[0] }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="field">
+                        <label class="label">{{ form.contact_name.label }}</label>
+                        <div class="control">
+                            {{ form.contact_name(class="input", placeholder="Name des Ansprechpartners") }}
+                        </div>
+                        {% if form.contact_name.errors %}
+                        <p class="help is-danger">{{ form.contact_name.errors[0] }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="columns">
+                <div class="column">
+                    <div class="field">
+                        <label class="label">{{ form.customer_number.label }}</label>
+                        <div class="control">
+                            {{ form.customer_number(class="input", placeholder="Ihre Kundennummer beim Lieferanten") }}
+                        </div>
+                        {% if form.customer_number.errors %}
+                        <p class="help is-danger">{{ form.customer_number.errors[0] }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="column">
+                    <div class="field">
+                        <label class="label">{{ form.creditor_number.label }}</label>
+                        <div class="control">
+                            {{ form.creditor_number(class="input", placeholder="Kreditorennummer in Ihrer Buchhaltung") }}
+                        </div>
+                        {% if form.creditor_number.errors %}
+                        <p class="help is-danger">{{ form.creditor_number.errors[0] }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="field is-grouped mt-5">
+                <div class="control">
+                    {{ form.submit(class="button is-primary") }}
+                </div>
+                <div class="control">
+                    <a href="{{ url_for('suppliers.supplier_list') }}" class="button is-light">Abbrechen</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

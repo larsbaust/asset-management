@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav class="breadcrumb" aria-label="breadcrumbs">
+        <ul>
+            <li><a href="{{ url_for('main.index') }}">Dashboard</a></li>
+            <li><a href="{{ url_for('suppliers.supplier_list') }}">Lieferanten</a></li>
+            <li class="is-active"><a href="#" aria-current="page">{{ supplier.name }}</a></li>
+        </ul>
+    </nav>
+
+    <h1 class="title">Lieferant: {{ supplier.name }}</h1>
+    
+    <div class="columns">
+        <!-- Lieferantendetails -->
+        <div class="column is-4">
+            <div class="box">
+                <h2 class="title is-4">Kontaktdaten</h2>
+                <table class="table is-fullwidth">
+                    <tbody>
+                        <tr>
+                            <th>Anschrift:</th>
+                            <td>{{ supplier.address|replace('\n', '<br>') if supplier.address else '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Telefon:</th>
+                            <td>{{ supplier.phone }}</td>
+                        </tr>
+                        <tr>
+                            <th>E-Mail:</th>
+                            <td>
+                                {% if supplier.email %}
+                                <a href="mailto:{{ supplier.email }}">{{ supplier.email }}</a>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Website:</th>
+                            <td>
+                                {% if supplier.website %}
+                                <a href="{{ supplier.website }}" target="_blank">{{ supplier.website }}</a>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Ansprechpartner:</th>
+                            <td>{{ supplier.contact_name or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Kundennummer:</th>
+                            <td>{{ supplier.customer_number or '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Kreditorennummer:</th>
+                            <td>{{ supplier.creditor_number or '-' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="buttons mt-4">
+                    <a href="{{ url_for('suppliers.supplier_edit', supplier_id=supplier.id) }}" class="button is-info">
+                        <span class="icon">
+                            <i class="fas fa-edit"></i>
+                        </span>
+                        <span>Bearbeiten</span>
+                    </a>
+                    <a href="{{ url_for('order.start_wizard') }}?supplier_id={{ supplier.id }}" class="button is-success">
+                        <span class="icon">
+                            <i class="fas fa-shopping-cart"></i>
+                        </span>
+                        <span>Bestellen</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Assets-Liste -->
+        <div class="column is-8">
+            <div class="box">
+                <div class="level">
+                    <div class="level-left">
+                        <div class="level-item">
+                            <h2 class="title is-4">Bestellbare Assets ({{ assets|length }})</h2>
+                        </div>
+                    </div>
+                    <div class="level-right">
+                        <div class="level-item">
+                            <a href="{{ url_for('suppliers.supplier_assign_assets', supplier_id=supplier.id) }}" class="button is-success mr-2">
+                                <span class="icon">
+                                    <i class="fas fa-link"></i>
+                                </span>
+                                <span>Assets zuordnen</span>
+                            </a>
+                        </div>
+                        <div class="level-item">
+                            <div class="field has-addons">
+                                <div class="control">
+                                    <input type="text" id="assetSearchInput" class="input" placeholder="Assets suchen...">
+                                </div>
+                                <div class="control">
+                                    <a id="assetSearchButton" class="button is-info">
+                                        <span class="icon">
+                                            <i class="fas fa-search"></i>
+                                        </span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if assets %}
+                <div class="table-container">
+                    <table class="table is-striped is-hoverable is-fullwidth" id="assetsTable">
+                        <thead>
+                            <tr>
+                                <th>Artikelnr.</th>
+                                <th>Name</th>
+                                <th>Kategorie</th>
+                                <th>Preis</th>
+                                <th>Hersteller</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for asset in assets %}
+                            <tr>
+                                <td>{{ asset.article_number or '-' }}</td>
+                                <td>
+                                    <a href="{{ url_for('main.asset_details', id=asset.id) }}">{{ asset.name }}</a>
+                                </td>
+                                <td>{{ asset.category.name if asset.category else '-' }}</td>
+                                <td>
+                                    {% if asset.value %}
+                                    {{ "%.2f"|format(asset.value) }} €
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if asset.manufacturers %}
+                                    {{ asset.manufacturers[0].name if asset.manufacturers else '-' }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('main.asset_details', id=asset.id) }}" class="button is-small is-info">
+                                        <span class="icon is-small">
+                                            <i class="fas fa-eye"></i>
+                                        </span>
+                                    </a>
+                                    <a href="{{ url_for('order.start_wizard') }}?supplier_id={{ supplier.id }}&asset_id={{ asset.id }}" class="button is-small is-success">
+                                        <span class="icon is-small">
+                                            <i class="fas fa-shopping-cart"></i>
+                                        </span>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="notification is-warning">
+                    <p>Diesem Lieferanten sind noch keine Assets zugeordnet.</p>
+                    <p class="mt-2">
+                        <a href="{{ url_for('suppliers.supplier_assign_assets', supplier_id=supplier.id) }}" class="button is-small is-info">
+                            <span class="icon">
+                                <i class="fas fa-link"></i>
+                            </span>
+                            <span>Assets zuordnen</span>
+                        </a>
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Asset-Suche
+    const searchInput = document.getElementById('assetSearchInput');
+    const searchButton = document.getElementById('assetSearchButton');
+    const assetsTable = document.getElementById('assetsTable');
+    
+    function filterAssets() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const rows = assetsTable.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+    
+    if (searchInput && searchButton && assetsTable) {
+        searchButton.addEventListener('click', filterAssets);
+        searchInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                filterAssets();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
