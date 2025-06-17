@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, FormField, FieldList, IntegerField, BooleanField, HiddenField, SubmitField, TextAreaField
-from wtforms.validators import DataRequired, NumberRange
+from wtforms import StringField, SelectField, FormField, FieldList, IntegerField, BooleanField, HiddenField, SubmitField, TextAreaField, DateField
+from wtforms.validators import DataRequired, NumberRange, Optional
 
 class AssetOrderForm(FlaskForm):
     class Meta:
@@ -64,3 +64,44 @@ class OrderEditForm(FlaskForm):
         ('other', 'Andere')
     ])
     comment = TextAreaField('Kommentar')
+    
+# WizardStep Formulare für den Bestellassistenten
+class WizardStep1Form(FlaskForm):
+    supplier_id = SelectField('Lieferant', coerce=int, validators=[DataRequired()])
+    location = SelectField('Standort (optional)', coerce=int)
+    submit = SubmitField('Weiter zu Schritt 2')
+    
+class WizardStep2Form(FlaskForm):
+    filter_name = StringField('Artikelname')
+    filter_category = SelectField('Kategorie', coerce=int, default=0)
+    filter_manufacturer = SelectField('Hersteller', coerce=int, default=0)
+    select_all = BooleanField('Alle auswählen')
+    template_id = SelectField('Vorlage laden', coerce=int, choices=[(0, '-- Keine Vorlage --')], default=0)
+    load_template = SubmitField('Vorlage laden')
+    submit = SubmitField('Weiter zu Schritt 3')
+    assets = FieldList(FormField(AssetOrderForm))
+    
+class WizardStep3Form(FlaskForm):
+    tracking_number = StringField('Sendungsverfolgungsnummer (optional)')
+    tracking_carrier = SelectField('Paketdienst', choices=[
+        ('', 'Bitte wählen...'),
+        ('dhl', 'DHL'),
+        ('dpd', 'DPD'),
+        ('ups', 'UPS'),
+        ('gls', 'GLS'),
+        ('hermes', 'Hermes'),
+        ('fedex', 'FedEx'),
+        ('bpost', 'bpost'),
+        ('usps', 'USPS'),
+        ('other', 'Andere')
+    ])
+    expected_delivery_date = DateField('Erwartetes Lieferdatum (optional)', validators=[Optional()])
+    comment = TextAreaField('Kommentar (optional)')
+    submit = SubmitField('Weiter zu Schritt 4')
+    
+class WizardStep4Form(FlaskForm):
+    # Verstecktes Feld für die Aktionsart
+    action = HiddenField('Aktion')
+    save = SubmitField('Nur speichern')
+    send_email = SubmitField('Speichern und E-Mail senden')
+    import_assets = SubmitField('Speichern und als Assets importieren')

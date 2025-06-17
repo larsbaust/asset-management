@@ -1,5 +1,9 @@
 # Changelog (automatisch generiert)
 
+- 2025-06-16 wir haben die Logik grundlegend verändert, sodass jetzt der Backend-Name Vorrang hat. Das Problem lag darin, dass die JavaScript-Logik zuvor den Namen "Hypersoft Trading GmbH" für bestimmte Lieferanten-IDs hartcodiert hat, ungeachtet dessen, was das Backend tatsächlich lieferte.
+- 2025-06-10 erweiterung bestellprozess, Standort und Lieferant (csv- import) sowie erweiterte rollenverwaltung
+- 2025-06-10 Neuer Bestellprozess mit Wizard 4 Step route programmiert
+- 2025-06-07 - implmenetierung import csv modal - implementierung Standort inventurübersicht
 - 2025-06-03 *new* Implementation Multiloan über ein pdf export
 - 2025-06-02 erweiterung ausleisystem mit unterschriftpad und exportfunktion
 - 2025-05-31 Nachrichtendiesn und Livechat implementierung

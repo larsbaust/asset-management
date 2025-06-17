@@ -1,12 +1,18 @@
-<h2>Bestellung Nr. {{ order.id }}</h2>
-<p><strong>Lieferant:</strong> {{ order.supplier.name }}</p>
-<p><strong>Datum:</strong> {{ order.order_date.strftime('%d.%m.%Y %H:%M') }}</p>
-{% if order.location_obj %}
-<p><strong>Lieferadresse:</strong> {{ order.location_obj.name }}</p>
-{% endif %}
+<h2>Bestellung Nr. {{ order_id }}</h2>
+<p><strong>Lieferant:</strong> {{ supplier_name }}</p>
+<p><strong>Datum:</strong> {{ order_date }}</p>
+<!-- Lieferadresse-Block wird immer angezeigt -->
+<div style="margin: 15px 0; padding: 10px; border: 1px solid #dbdbdb; background-color: #f5f5f5; border-radius: 4px;">
+    <p><strong>Lieferadresse:</strong></p>
+    <p style="font-size: 16px; margin-left: 10px;">{{ location_name if location_name else 'Hauptstandort' }}</p>
+    {% if location_address %}
+    <p style="font-size: 14px; margin-left: 10px;">{{ location_address }}</p>
+    {% endif %}
+    <p style="font-size: 12px; color: #666; margin-left: 10px; margin-top: 5px; font-weight: bold;">Bitte liefern Sie an den angegebenen Standort.</p>
+</div>
 <hr>
-<p>Sehr geehrte Damen und Herren,</p>
-<p>bitte liefern Sie folgende Artikel:</p>
+<!-- Kommentar aus dem Formular verwenden -->
+{{ comment | safe }}
 <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;">
   <thead>
     <tr>
@@ -19,18 +25,18 @@
     </tr>
   </thead>
   <tbody>
-    {% for item in order.items %}
+    {% for item in items %}
     <tr>
-      <td>{{ item.asset.article_number or '-' }}</td>
-      <td>{{ item.asset.name }}</td>
-      <td>{{ item.asset.category.name if item.asset.category else '-' }}</td>
+      <td>{{ item.article_number }}</td>
+      <td>{{ item.name }}</td>
+      <td>{{ item.category }}</td>
       <td>
-        {% if item.asset.manufacturers %}
-          {% for manufacturer in item.asset.manufacturers %}{{ manufacturer.name }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% if item.manufacturers %}
+          {% for manufacturer in item.manufacturers %}{{ manufacturer }}{% if not loop.last %}, {% endif %}{% endfor %}
         {% else %}-{% endif %}
       </td>
       <td>{{ item.quantity }}</td>
-      <td>{{ item.serial_number or '-' }}</td>
+      <td>{{ item.serial_number }}</td>
     </tr>
     {% endfor %}
   </tbody>

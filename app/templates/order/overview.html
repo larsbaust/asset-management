@@ -122,7 +122,14 @@
 </td>
                 <td>{{ order.items|length }}</td>
                 <td><a href="{{ url_for('order.order_detail', order_id=order.id) }}" class="button is-small is-info">Anzeigen</a></td>
-                <td><a href="{{ url_for('order.order_export_dialog', order_id=order.id) }}" class="button is-small is-success">CSV</a></td>
+                <td>
+                  <a href="{{ url_for('order.order_export_dialog', order_id=order.id) }}" class="button is-small is-success">CSV</a>
+                  {% if order.pdf_path %}
+                  <a href="{{ url_for('order.view_order_html', order_id=order.id) }}" class="button is-small is-link" title="Bestellformular anzeigen" target="_blank">
+                    <span class="icon is-small"><i class="fas fa-file"></i></span>
+                  </a>
+                  {% endif %}
+                </td>
                 {% if not show_archived %}
                 <td>
                   <form method="post" action="{{ url_for('order.archive_order', order_id=order.id) }}" style="display:inline;">

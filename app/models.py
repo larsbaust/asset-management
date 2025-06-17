@@ -122,6 +122,7 @@ class Order(db.Model):
     tracking_carrier = db.Column(db.String(50))  # AfterShip Carrier Slug, z.B. 'dhl', 'dpd', 'ups'  # NEU: Sendungsverfolgungsnummer
     expected_delivery_date = db.Column(db.DateTime, nullable=True)  # NEU: Erwartetes Lieferdatum
     archived = db.Column(db.Boolean, default=False)  # NEU: Für Archivierung
+    pdf_path = db.Column(db.String(255), nullable=True)  # Pfad zur PDF-Bestelldatei
     supplier = db.relationship('Supplier', backref='orders')
     items = db.relationship('OrderItem', backref='order', cascade="all, delete-orphan", lazy=True)
     location_obj = db.relationship('Location', backref='orders')  # Relationship für Standort

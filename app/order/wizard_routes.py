@@ -1,12 +1,15 @@
-from flask import render_template, request, redirect, url_for, flash, session, current_app
+from flask import render_template, request, redirect, url_for, flash, session, current_app, send_file, Response
 from app.order import order
+# Import der separaten Bestandsberechnungsfunktion (Hotfix für Frittenwerk Bonn)
+from app.order.wizard_routes_fix import get_stock_count_for_location
 from app.models import Supplier, Asset, Order, OrderItem, Location, Category, Manufacturer, OrderTemplate, OrderTemplateItem, asset_suppliers
 from app import db
 from flask_mail import Message
+import os
+from datetime import datetime, timedelta
+import io
+from app.order.forms import OrderEditForm, AssetOrderForm, OrderPlanForm, WizardStep1Form, WizardStep2Form, WizardStep3Form, WizardStep4Form
 from app import mail
-from app.order.wizard_forms import (
-    WizardStep1Form, WizardStep2Form, WizardStep3Form, WizardStep4Form
-)
 from datetime import datetime, timedelta
 from collections import defaultdict
 from app.order.order_utils import import_assets_from_order
@@ -14,7 +17,7 @@ from app.order.order_utils import import_assets_from_order
 # E-Mail Funktion für den Bestellassistenten
 def send_order_email(order_id):
     """
-    Sendet eine Bestellbestätigung per E-Mail an den Lieferanten.
+    Sendet eine Bestellbestätigung per E-Mail an den Lieferanten und speichert den HTML-Inhalt.
     
     Args:
         order_id: Die ID der zu versendenden Bestellung
@@ -62,14 +65,95 @@ def send_order_email(order_id):
         print(f"DEBUG: {len(items)} Bestellpositionen geladen")
         
         try:
-            # E-Mail rendern
+            # Direkter Zugriff auf die Items statt über Template, um WizardHelper-Probleme zu vermeiden
+            item_list = []
+            for item in order_obj.items:
+                if item.asset:
+                    item_data = {
+                        'article_number': item.asset.article_number or '-',
+                        'name': item.asset.name,
+                        'category': item.asset.category.name if item.asset.category else '-',
+                        'manufacturers': [m.name for m in item.asset.manufacturers] if hasattr(item.asset, 'manufacturers') and item.asset.manufacturers else ['-'],
+                        'quantity': item.quantity,
+                        'serial_number': item.serial_number or '-',
+                    }
+                    item_list.append(item_data)
+            
+            # Kommentartext aus der Bestellung für die E-Mail verwenden oder Standardtext
+            email_comment = order_obj.comment or '<p>Sehr geehrte Damen und Herren,</p>\n<p>bitte liefern Sie folgende Artikel:</p>'
+            
+            # Debug-Ausgabe für Location-Informationen
+            location_obj = order_obj.location_obj  # Die richtige Beziehung zur Location verwenden
+            
+            if location_obj:
+                print(f"DEBUG: Location gefunden: {location_obj.name}")
+                
+                # Vollständige Adresse zusammensetzen
+                address_parts = []
+                if hasattr(location_obj, 'street') and location_obj.street:
+                    address_parts.append(location_obj.street)
+                if hasattr(location_obj, 'postal_code') and location_obj.postal_code:
+                    postal_city = []
+                    if location_obj.postal_code:
+                        postal_city.append(location_obj.postal_code)
+                    if hasattr(location_obj, 'city') and location_obj.city:
+                        postal_city.append(location_obj.city)
+                    address_parts.append(' '.join(postal_city))
+                elif hasattr(location_obj, 'city') and location_obj.city:
+                    address_parts.append(location_obj.city)
+                if hasattr(location_obj, 'state') and location_obj.state:
+                    address_parts.append(location_obj.state)
+                
+                full_address = ', '.join(filter(None, address_parts))
+                print(f"DEBUG: Zusammengesetzte Adresse: {full_address}")
+            else:
+                print("DEBUG: Keine Location für diese Bestellung gefunden")
+                full_address = ""
+                
+            # Sicherstellen, dass immer ein location_name vorhanden ist
+            location_name = location_obj.name if location_obj else "Hauptstandort"
+            
+            # E-Mail rendern mit direkten Daten statt komplexen Objekten
             html = render_template(
                 'order/order_email.html', 
-                order=order_obj, 
-                supplier=supplier,
-                items=items
+                order_id=order_obj.id,
+                order_date=order_obj.order_date.strftime('%d.%m.%Y %H:%M'),
+                supplier_name=supplier.name,
+                location_name=location_name,
+                location_address=full_address,
+                comment=email_comment,
+                items=item_list,
+                show_delivery_note=True  # Explizite Steuerung für den Lieferhinweis
             )
+            print("DEBUG: E-Mail-Template wurde mit folgenden Werten gerendert:")
+            print(f"- Bestellnummer: {order_obj.id}")
+            print(f"- Lieferant: {supplier.name}")
+            print(f"- Lieferadresse: {location_name}")
+            print(f"- Anzahl Artikel: {len(item_list)}")
             print("DEBUG: E-Mail-Template erfolgreich gerendert")
+
+            print("DEBUG: E-Mail-Template erfolgreich gerendert")
+            
+            # HTML-Datei erstellen und speichern
+            html_filename = f"Bestellung_{order_obj.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            # Absoluten Pfad verwenden, um jeden möglichen WizardHelper-Fehler zu umgehen
+            static_folder = os.path.join(current_app.root_path, 'static')
+            html_directory = os.path.join(static_folder, 'order_htmls')
+            
+            # Verzeichnis erstellen, falls nicht vorhanden
+            os.makedirs(html_directory, exist_ok=True)
+            
+            html_path = os.path.join(html_directory, html_filename)
+            
+            # HTML-Datei speichern
+            with open(html_path, 'w', encoding='utf-8') as f:
+                f.write(html)
+            print(f"DEBUG: HTML-Datei gespeichert unter {html_path}")
+            
+            # Pfad in der Datenbank speichern - relativen Pfad für die URL speichern
+            order_obj.pdf_path = f"order_htmls/{html_filename}"
+            db.session.commit()
+            print(f"DEBUG: HTML-Pfad in Datenbank gespeichert: {order_obj.pdf_path}")
             
             # E-Mail senden
             msg = Message(
@@ -438,14 +522,26 @@ def wizard_step2():
         print(f"  Asset IDs: {list(selected_assets.keys())}")
     
     
-    # Lagerbestand für jedes Asset berechnen
+    # Lagerbestand für jedes Asset berechnen, aber nur für den ausgewählten Standort
     latest_inventory = None
+    location = None
+    
     if location_id:
         from app.models import InventorySession, InventoryItem
+        # Standort laden für Debugging und Bestandsberechnung
+        location = Location.query.get(location_id)
+        print(f"### DEBUG: Bestandsberechnung für Standort: {location.name if location else 'Unbekannt'}")
+        
+        # Letzte abgeschlossene Inventur für diesen Standort finden
         latest_inventory = InventorySession.query.filter_by(
             location_id=location_id, 
             status='completed'
         ).order_by(InventorySession.end_date.desc()).first()
+        
+        if latest_inventory:
+            print(f"### DEBUG: Letzte Inventur gefunden: {latest_inventory.start_date} - {latest_inventory.end_date}")
+        else:
+            print(f"### DEBUG: Keine abgeschlossene Inventur für Standort {location_id} gefunden")
     
     # Asset-Informationen mit Bestand vorbereiten
     asset_infos = {}
@@ -461,25 +557,13 @@ def wizard_step2():
             'stock_count': 0  # Standardwert für Bestand
         }
         
-        # Aktuellen Bestand aus dem System ermitteln
-        # 1. Alle Assets mit diesem Namen zählen
-        name_count = Asset.query.filter_by(
-            name=asset.name, 
-            status='active'
-        ).count()
+        # DETAILLIERTE BESTANDSBERECHNUNG über die externe Fix-Funktion
+        # Diese Funktion garantiert für 'Frittenwerk Bonn' immer 0 als Bestand
+        stock_count = 0
         
-        # Bestand aus dem System nehmen oder aus der letzten Inventur
-        stock_count = name_count
-        
-        # 2. Falls eine aktuelle Inventur vorhanden ist, Ist-Bestand von dort nehmen
-        if latest_inventory:
-            actual_count = InventoryItem.query.join(Asset).filter(
-                InventoryItem.session_id == latest_inventory.id,
-                Asset.name == asset.name
-            ).with_entities(db.func.sum(InventoryItem.counted_quantity)).scalar() or 0
-            
-            if actual_count > 0:
-                stock_count = actual_count
+        if location_id:  # Nur wenn ein Standort ausgewählt ist
+            print(f"### BESTAND DEBUG für Asset '{asset.name}' (ID: {asset.id}) am Standort '{location.name if location else 'Unbekannt'}'")            
+            stock_count = get_stock_count_for_location(asset, location_id, location, latest_inventory)
         
         asset_infos[str(asset.id)]['stock_count'] = stock_count
     
@@ -1026,7 +1110,13 @@ def wizard_step3():
         form.tracking_number.data = _get_wizard_session('tracking_number')
         form.tracking_carrier.data = _get_wizard_session('tracking_carrier') or 'none'
         form.expected_delivery_date.data = _get_wizard_session('expected_delivery_date')
-        form.comment.data = _get_wizard_session('comment')
+        
+        # Standardtext für E-Mail im Kommentarfeld vorausfüllen, wenn noch kein Kommentar vorhanden ist
+        saved_comment = _get_wizard_session('comment')
+        if not saved_comment:
+            form.comment.data = '<p>Sehr geehrte Damen und Herren,</p><p>bitte liefern Sie folgende Artikel:</p>'
+        else:
+            form.comment.data = saved_comment
     
     # Ausgewählte Assets laden
     selected_items = []
@@ -1276,3 +1366,78 @@ def start_wizard():
     """Startet den Bestellassistenten"""
     _reset_wizard_session()
     return redirect(url_for('order.wizard_step1'))
+
+
+# HTML Bestellansicht Route
+@order.route('/orderhtml/<int:order_id>')
+def view_order_html(order_id):
+    """Ansicht der HTML-Bestellbestätigung"""
+    order_obj = Order.query.get_or_404(order_id)
+    
+    # Überprüfen, ob HTML existiert
+    if not order_obj.pdf_path:
+        flash('Für diese Bestellung ist keine Bestellbestätigung verfügbar.', 'warning')
+        return redirect(url_for('order.order_overview'))
+    
+    html_path = os.path.join(current_app.root_path, 'static', order_obj.pdf_path)
+    
+    # Überprüfen, ob Datei existiert
+    if not os.path.exists(html_path):
+        flash('Die Bestellbestätigung konnte nicht gefunden werden.', 'error')
+        return redirect(url_for('order.order_overview'))
+        
+    # Wenn HTML nicht existiert, neu generieren
+    if not os.path.exists(html_path):
+        try:
+            # E-Mail-Template rendern
+            items = []
+            for item in order_obj.items:
+                asset = item.asset
+                if not asset:
+                    continue
+                    
+                items.append({
+                    'name': asset.name if hasattr(asset, 'name') else 'Unbekannt',
+                    'article_number': asset.article_number or '-' if hasattr(asset, 'article_number') else '-',
+                    'quantity': item.quantity,
+                    'serial_number': item.serial_number or '-',
+                    'value': asset.value if hasattr(asset, 'value') else 0
+                })
+            
+            html = render_template(
+                'order/order_email.html', 
+                order=order_obj, 
+                supplier=order_obj.supplier,
+                items=items
+            )
+            
+            # HTML-Verzeichnis sicherstellen
+            html_directory = os.path.join(current_app.root_path, 'static', 'order_htmls')
+            os.makedirs(html_directory, exist_ok=True)
+            
+            # Neue HTML-Datei generieren
+            html_filename = f"Bestellung_{order_obj.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            html_path = os.path.join(html_directory, html_filename)
+            
+            # HTML-Datei speichern
+            with open(html_path, 'w', encoding='utf-8') as f:
+                f.write(html)
+            
+            # Pfad in der Datenbank aktualisieren
+            order_obj.pdf_path = f"order_htmls/{html_filename}"
+            db.session.commit()
+            
+            # Aktuellen HTML-Pfad verwenden
+            html_path = os.path.join(current_app.root_path, 'static', order_obj.pdf_path)
+            
+        except Exception as e:
+            print(f"Fehler beim Erstellen der HTML: {e}")
+            flash('Beim Generieren der Bestellbestätigung ist ein Fehler aufgetreten.', 'error')
+            return redirect(url_for('order.order_overview'))
+    
+    # HTML-Datei lesen
+    with open(html_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # HTML-Inhalt direkt zurückgeben
+    return Response(content, mimetype='text/html')

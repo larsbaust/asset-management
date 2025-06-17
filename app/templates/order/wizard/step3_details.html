@@ -1,4 +1,8 @@
 {% extends 'base.html' %}
+
+{% block head %}
+<!-- Keine externen Abhängigkeiten nötig für den nativen HTML5 Editor -->
+{% endblock %}
 {% block content %}
 <div class="wizard-container">
     <!-- Fortschrittsleiste -->
@@ -52,9 +56,12 @@
                     </div>
                     <div class="column">
                         <div class="field">
-                            <label class="label">Zielstandort:</label>
+                            <label class="label"><i class="fas fa-truck-loading"></i> Lieferadresse:</label>
                             <div class="control">
-                                <div class="is-size-5">{{ location.name if location else 'Kein Standort ausgewählt' }}</div>
+                                <div class="is-size-5 has-text-weight-bold">{{ location.name if location else 'Keine Lieferadresse ausgewählt' }}</div>
+                                {% if location %}
+                                <div class="has-text-grey">{{ location.address if location.address else '' }}</div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -117,10 +124,86 @@
                 </div>
             </div>
             
-            <div class="field">
-                <label class="label">Kommentar zur Bestellung (optional)</label>
+            <div class="field" id="kommentar-bereich">
+                <label class="label has-text-weight-bold has-text-primary" style="font-size: 1.25rem;">Kommentar zur Bestellung</label>
+                <div class="notification is-info is-light mb-2">
+                    <strong>Wichtig:</strong> Hier können Sie den Text anpassen, der in der E-Mail an den Lieferanten gesendet wird.
+                    Der vorausgefüllte Standardtext kann nach Bedarf geändert werden.
+                </div>
+                
+                <!-- Ganz einfache Formatierungsleiste in einer Zeile -->
+                <div class="editor-toolbar box has-background-white-ter" style="padding: 8px; margin-bottom: 10px; border-radius: 4px; display: flex; flex-wrap: nowrap; align-items: center; overflow-x: auto;">
+                    <!-- Textformatierung -->
+                    <button type="button" class="button is-small toolbar-btn" onclick="formatDoc('bold')" title="Fett">
+                        <span class="icon is-small"><i class="fas fa-bold"></i></span>
+                    </button>
+                    <button type="button" class="button is-small toolbar-btn" onclick="formatDoc('italic')" title="Kursiv">
+                        <span class="icon is-small"><i class="fas fa-italic"></i></span>
+                    </button>
+                    <button type="button" class="button is-small toolbar-btn" onclick="formatDoc('underline')" title="Unterstrichen">
+                        <span class="icon is-small"><i class="fas fa-underline"></i></span>
+                    </button>
+
+                    <span class="separator">|</span>
+
+                    <!-- Ausrichtung -->
+                    <button type="button" class="button is-small toolbar-btn" onclick="formatDoc('justifyLeft')" title="Linksbündig">
+                        <span class="icon is-small"><i class="fas fa-align-left"></i></span>
+                    </button>
+                    <button type="button" class="button is-small toolbar-btn" onclick="formatDoc('justifyCenter')" title="Zentriert">
+                        <span class="icon is-small"><i class="fas fa-align-center"></i></span>
+                    </button>
+                    <button type="button" class="button is-small toolbar-btn" onclick="formatDoc('justifyRight')" title="Rechtsbündig">
+                        <span class="icon is-small"><i class="fas fa-align-right"></i></span>
+                    </button>
+
+                    <span class="separator">|</span>
+
+                    <!-- Listen -->
+                    <button type="button" class="button is-small toolbar-btn" onclick="formatDoc('insertUnorderedList')" title="Aufzählungsliste">
+                        <span class="icon is-small"><i class="fas fa-list-ul"></i></span>
+                    </button>
+                    <button type="button" class="button is-small toolbar-btn" onclick="formatDoc('insertOrderedList')" title="Nummerierte Liste">
+                        <span class="icon is-small"><i class="fas fa-list-ol"></i></span>
+                    </button>
+                    <button type="button" class="button is-small toolbar-btn" onclick="formatDoc('createLink')" title="Link einfügen">
+                        <span class="icon is-small"><i class="fas fa-link"></i></span>
+                    </button>
+
+                    <span class="separator">|</span>
+                    
+                    <!-- Dropdown-Menüs -->
+                    <div class="select is-small" style="margin-right: 5px;">
+                        <select onchange="formatDoc('formatBlock', this.value); this.selectedIndex = 0;">
+                            <option value="" selected>Format</option>
+                            <option value="h1">Überschrift 1</option>
+                            <option value="h2">Überschrift 2</option>
+                            <option value="h3">Überschrift 3</option>
+                            <option value="p">Normal</option>
+                        </select>
+                    </div>
+                    
+                    <div class="select is-small">
+                        <select onchange="formatDoc('foreColor', this.value); this.selectedIndex = 0;">
+                            <option value="" selected>Textfarbe</option>
+                            <option value="#000000">Schwarz</option>
+                            <option value="#ff0000">Rot</option>
+                            <option value="#0000ff">Blau</option>
+                            <option value="#008000">Grün</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Editor Container -->
                 <div class="control">
-                    {{ form.comment(class_="textarea", placeholder="Zusätzliche Informationen zur Bestellung...") }}
+                    <div class="box has-background-white" style="border: 2px solid #3298dc; border-radius: 6px; margin-bottom: 20px;">
+                        <h5 class="title is-6 mb-2">E-Mail-Text bearbeiten:</h5>
+                        <div id="editor" contenteditable="true" style="border: 1px solid #dbdbdb; border-radius: 4px; min-height: 200px; padding: 15px; background-color: white; font-size: 1.1rem;"></div>
+                    </div>
+                    <!-- Wir verwenden ein textarea statt einem input, um mehr Zeichen aufnehmen zu können -->
+                    {{ form.comment(id="order-comment", style="display: none;", maxlength="65535") }}
+                    
+                    <!-- Fehlermeldung wird jetzt oben angezeigt -->
                 </div>
             </div>
         </div>
@@ -285,6 +368,84 @@
 <!-- JavaScript zur Synchronisierung aller Gesamtwert-Anzeigen -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Native HTML5-Editor-Funktionen
+    // Editor initialisieren
+    const editor = document.getElementById('editor');
+    const hiddenInput = document.getElementById('order-comment');
+    const form = document.querySelector('form');
+    const submitButton = document.querySelector('button[type="submit"]');
+    // Debug-Ausgabe
+    console.log("Editor und Formular initialisiert");
+    
+    // Wenn bereits Inhalte vorhanden sind, diese in den Editor laden
+    if (hiddenInput.value && hiddenInput.value.trim() !== '') {
+        editor.innerHTML = hiddenInput.value;
+    }
+    
+    // Bei Änderungen im Editor den HTML-Inhalt ins versteckte Formularfeld übernehmen
+    // aber nicht bei jedem Tastendruck, um Leistungsprobleme zu vermeiden
+    let debounceTimer;
+    editor.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function() {
+            hiddenInput.value = editor.innerHTML;
+            console.log('Editor-Inhalt gespeichert, Länge:', hiddenInput.value.length);
+        }, 500); // Warte 500ms nach der letzten Änderung
+    });
+    
+    // Formatierungsfunktionen
+    function formatDoc(cmd, value = null) {
+        document.execCommand(cmd, false, value);
+        editor.focus();
+        // Sofortige Synchronisierung
+        hiddenInput.value = editor.innerHTML;
+        console.log('Nach Formatierung, Länge:', hiddenInput.value.length);
+    }
+    
+    // Links einfügen
+    window.formatDoc = function(cmd, value = null) {
+        if (cmd === 'createLink') {
+            const url = prompt('Geben Sie die URL ein:', 'http://');
+            if (url) {
+                document.execCommand(cmd, false, url);
+            }
+        } else {
+            document.execCommand(cmd, false, value);
+        }
+        editor.focus();
+        // Sofortige Synchronisierung
+        hiddenInput.value = editor.innerHTML;
+    };
+    
+    // ABSOLUTE NOTLÖSUNG - GARANTIERT FUNKTIONIEREND
+    form.addEventListener('submit', function(event) {
+        // Standardverarbeitung NICHT unterbrechen - einfach durchlaufen lassen
+        console.log('EINFACHE SUBMIT-METHODE - GARANTIERT FUNKTIONIEREND');
+        
+        try {
+            // Plain Text aus Editor extrahieren - KEINE HTML-FORMATIERUNG
+            const plainText = editor.textContent || editor.innerText || "";
+            
+            // Auf sichere Größe beschränken (5000 Zeichen sollten immer funktionieren)
+            const safeText = plainText.substring(0, 5000);
+            
+            // Einfachen Text in das versteckte Feld setzen
+            hiddenInput.value = safeText;
+            
+            console.log('Kommentar wurde auf Plain-Text umgewandelt, Länge:', safeText.length);
+            
+            // KEIN preventDefault() - einfach das Formular normal absenden lassen
+            return true;
+        } catch (e) {
+            console.error('FEHLER:', e);
+            hiddenInput.value = "";
+            return true; // Formular trotzdem absenden
+        }
+    });
+    
+    /* Kein separater Event-Listener für den Submit-Button mehr nötig,
+       da das Formular-Event alle Aktionen übernimmt */
+    
     // Gespeicherter korrekter Gesamtwert aus dem Template
     const correctTotalValue = {{ total_value|default(0) }};
     
@@ -324,4 +485,95 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+{% endblock %}
+
+{% block styles %}
+<!-- Zusätzliche Styles für TinyMCE Editor -->
+<style>
+.tox-tinymce {
+    border-radius: 4px;
+    border-color: #dbdbdb;
+}
+
+/* Editor Styles */
+#editor {
+    min-height: 250px;
+    border: 1px solid #dbdbdb;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: white;
+    overflow-y: auto;
+}
+
+#editor:focus {
+    outline: none;
+    border-color: #3273dc;
+    box-shadow: 0 0 0 0.125em rgba(50, 115, 220, 0.25);
+}
+
+/* Verbesserte Toolbar-Styles */
+.editor-toolbar {
+    border-radius: 4px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1);
+}
+
+/* Button-Styling */
+.toolbar-btn {
+    margin: 0 2px;
+    border: 1px solid #dbdbdb;
+    background-color: white;
+}
+
+.toolbar-btn:hover {
+    background-color: #f5f5f5;
+}
+
+.toolbar-btn.is-active {
+    background-color: #3273dc;
+    color: white;
+    border-color: #3273dc;
+}
+
+/* Trennlinie zwischen Button-Gruppen */
+.separator {
+    display: inline-block;
+    margin: 0 8px;
+    color: #dbdbdb;
+    font-weight: 300;
+}
+
+/* Styles für formatierten Text im Editor */
+#editor h1 {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+#editor h2 {
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+#editor h3 {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+#editor ul, #editor ol {
+    margin-left: 2em;
+    margin-bottom: 1em;
+}
+
+#editor a {
+    color: #3273dc;
+    text-decoration: underline;
+}
+
+#editor a:hover {
+    color: #363636;
+}
+</style>
 {% endblock %}

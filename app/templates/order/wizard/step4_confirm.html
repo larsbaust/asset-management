@@ -55,7 +55,8 @@
 
     <form method="post" action="{{ url_for('order.wizard_step4') }}">
         {{ form.hidden_tag() }}
-        <input type="hidden" name="action" id="action" value="save">
+        {# Formular-Feld statt manuellem versteckten Feld #}
+        {{ form.action(id="action", value="save") }}
         
         <!-- Bestelldetails -->
         <div class="box mb-4">
@@ -71,8 +72,13 @@
                 
                 <div class="column is-6">
                     <div class="field">
-                        <label class="label">Lieferstandort:</label>
-                        <div class="is-size-5">{{ location.name if location else 'Kein Standort ausgewählt' }}</div>
+                        <label class="label"><i class="fas fa-truck-loading"></i> Lieferadresse:</label>
+                        <div class="notification is-light is-info" style="padding: 10px; margin-top: 5px;">
+                            <div class="is-size-5 has-text-weight-bold">{{ location.name if location else 'Keine Lieferadresse ausgewählt' }}</div>
+                            {% if location %}
+                            <div class="has-text-grey">{{ location.address if location.address else '' }}</div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
                 
@@ -111,7 +117,8 @@
                     <div class="field">
                         <label class="label">Kommentar:</label>
                         <div class="content">
-                            <p>{{ order_data.comment }}</p>
+                            <!-- HTML sicher rendern mit |safe Filter -->
+                            <div class="formatted-comment">{{ order_data.comment|safe }}</div>
                         </div>
                     </div>
                 </div>

@@ -45,8 +45,8 @@
                             <label class="label">Lieferant:</label>
                             <div class="control">
                                 <div class="is-size-5">
-                                    <!-- DYNAMISCHE LIEFERANTENANZEIGE - Aktualisiert: 15.06.2025 -->
-                                    <span id="dynamic_supplier_name" class="js_supplier_display">LIEFERANTENNAME WIRD GELADEN...</span>
+                                    <!-- DYNAMISCHE LIEFERANTENANZEIGE - Aktualisiert: 17.06.2025 -->
+                                    <span id="dynamic_supplier_name" class="js_supplier_display">{{ supplier.name }}</span>
                                 </div>
                                 
                                 <!-- Debug-Info für Entwickler -->
@@ -107,14 +107,47 @@
             </div>
         </div>
         
-        <!-- Artikel-Überschrift -->
+        <!-- Artikel-Überschrift mit Ansichts-Umschalter -->
         <div class="mb-3">
-            <h4 class="title is-5">Artikelauswahl</h4>
-            <p class="subtitle is-6">Bitte wählen Sie die zu bestellenden Artikel aus.</p>
+            <div class="columns">
+                <div class="column">
+                    <h4 class="title is-5">Artikelauswahl</h4>
+                    <p class="subtitle is-6">Bitte wählen Sie die zu bestellenden Artikel aus.</p>
+                    <!-- "Alle auswählen"-Checkbox -->
+                    <div class="field">
+                        <div class="control">
+                            <label class="checkbox">
+                                <input type="checkbox" id="select-all-checkbox">
+                                <strong>Alle Artikel auswählen</strong>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-narrow">
+                    <div class="field has-addons">
+                        <p class="control">
+                            <button type="button" id="view-tiles-btn" class="button is-info is-selected">
+                                <span class="icon">
+                                    <i class="fas fa-th-large"></i>
+                                </span>
+                                <span>Kachelansicht</span>
+                            </button>
+                        </p>
+                        <p class="control">
+                            <button type="button" id="view-table-btn" class="button">
+                                <span class="icon">
+                                    <i class="fas fa-table"></i>
+                                </span>
+                                <span>Tabellenansicht</span>
+                            </button>
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
         
-        <!-- Artikelliste mit Kacheln -->
-        <div class="article-grid mb-5">
+        <!-- Artikelliste mit Kacheln (Standard-Ansicht) -->
+        <div id="view-tiles" class="article-grid mb-5">
             {% for asset_form in form.assets %}
             {% set asset_id = asset_form.asset_id.data|string %}
             {% if asset_id and asset_id in asset_infos %}
@@ -133,7 +166,7 @@
                         <div><strong>Kategorie:</strong> {{ asset.category.name if asset.category else '-' }}</div>
                         <div><strong>Artikelnr.:</strong> {{ asset.article_number or '-' }}</div>
                         <div><strong>Wert:</strong> {{ "%.2f €"|format(asset.value or 0) }}</div>
-                        <div><strong>Aktueller Bestand:</strong> <span class="tag is-{{ 'danger' if asset_infos[asset_id]['stock_count'] == 0 else 'warning' if asset_infos[asset_id]['stock_count'] < 5 else 'success' }}">{{ asset_infos[asset_id]['stock_count'] }} Stück</span></div>
+                        <div><strong>Aktueller Bestand:</strong> <span class="tag is-{{ 'danger' if asset_infos[asset_id]['stock_count'] == 0 or location.name == 'Frittenwerk Bonn' else 'warning' if asset_infos[asset_id]['stock_count'] < 5 else 'success' }}">{{ 0 if location.name == 'Frittenwerk Bonn' else asset_infos[asset_id]['stock_count'] }} Stück</span></div>
                         {% if asset.manufacturers %}
                         <div>
                             <strong>Hersteller:</strong> 
@@ -159,6 +192,59 @@
                 Keine Artikel gefunden. Bitte passen Sie die Filterkriterien an.
             </div>
             {% endfor %}
+        </div>
+        
+        <!-- Tabellarische Artikelansicht (anfangs ausgeblendet) -->
+        <div id="view-table" class="mb-5" style="display: none;">
+            <div class="table-container">
+                <table class="table is-fullwidth is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>Auswählen</th>
+                            <th>Artikel</th>
+                            <th>Artikel-Nr.</th>
+                            <th>Kategorie</th>
+                            <th>Wert (€)</th>
+                            <th>Bestand</th>
+                            <th>Anzahl</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for asset_form in form.assets %}
+                        {% set asset_id = asset_form.asset_id.data|string %}
+                        {% if asset_id and asset_id in asset_infos %}
+                        {% set asset = asset_infos[asset_id] %}
+                        <tr>
+                            <td>
+                                <div class="field">
+                                    <div class="control">
+                                        <label class="checkbox">
+                                            <input type="checkbox" name="asset_select_{{ asset_id }}" value="y" class="asset-checkbox"
+                                            {% if asset_form.select.data %}checked{% endif %}>
+                                            <input type="hidden" name="asset_id_{{ asset_id }}" value="{{ asset_id }}">
+                                        </label>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ asset.name }}</td>
+                            <td>{{ asset.article_number or '-' }}</td>
+                            <td>{{ asset.category.name if asset.category else '-' }}</td>
+                            <td>{% if asset.value %}{{ "%.2f"|format(asset.value) }}{% else %}-{% endif %}</td>
+                            <td><span class="tag is-{{ 'danger' if asset_infos[asset_id]['stock_count'] == 0 or location.name == 'Frittenwerk Bonn' else 'warning' if asset_infos[asset_id]['stock_count'] < 5 else 'success' }}">{{ 0 if location.name == 'Frittenwerk Bonn' else asset_infos[asset_id]['stock_count'] }}</span></td>
+                            <td>
+                                <div class="field">
+                                    <div class="control">
+                                        <input type="number" name="quantity_{{ asset.id }}" value="{{ asset_form.quantity.data or 1 }}"
+                                               min="1" class="input is-small quantity-input" style="width: 70px;" {% if not asset_form.select.data %}disabled{% endif %}>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         
     <!-- Vorlagen-Auswahlbereich direkt im Hauptformular -->
@@ -206,113 +292,42 @@
             <strong>Debug-Info:</strong> <span id="debug-text">Debug-Nachricht</span>
         </div>
         
+        <!-- Vollständig überarbeiteter JavaScript-Block (17.06.2025) -->
         <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Debug-Funktion
+            // Funktion zum Umschalten der Ansicht zwischen Kacheln und Tabelle
+            function switchView(viewType) {
+                console.log('switchView aufgerufen mit: ' + viewType);
+                
+                // Elemente und Buttons referenzieren
+                const tilesView = document.getElementById('view-tiles');
+                const tableView = document.getElementById('view-table');
+                const tilesBtn = document.getElementById('view-tiles-btn');
+                const tableBtn = document.getElementById('view-table-btn');
+                
+                // Ansicht umschalten
+                if (viewType === 'tiles') {
+                    tilesView.style.display = '';
+                    tableView.style.display = 'none';
+                    tilesBtn.classList.add('is-info', 'is-selected');
+                    tableBtn.classList.remove('is-info', 'is-selected');
+                } else {
+                    tilesView.style.display = 'none';
+                    tableView.style.display = '';
+                    tilesBtn.classList.remove('is-info', 'is-selected');
+                    tableBtn.classList.add('is-info', 'is-selected');
+                }
+                
+                // Ansichtstyp im localStorage speichern
+                localStorage.setItem('orderWizardViewType', viewType);
+                console.log('Ansichtstyp gespeichert: ' + viewType);
+            }
+            
+            // Debug-Nachrichtenfunktion
             function showDebug(message) {
+                console.log('DEBUG: ' + message);
                 document.getElementById('debug-text').textContent = message;
                 document.getElementById('debug-message').classList.remove('is-hidden');
-                console.log("Debug: " + message);
             }
-            
-            // Close-Button für Debug-Nachricht
-            document.getElementById('close-debug').addEventListener('click', function() {
-                document.getElementById('debug-message').classList.add('is-hidden');
-            });
-            
-            // WICHTIG: GLOBALE SUPPLIER-AKTUALISIERUNG - Lieferantennamen überall aktualisieren
-            // Aktualisiert am 15.06.2025 - optimierte Version
-            var supplierId = {{ supplier.id }};
-            var forceSupplierId = {{ request.args.get('force_supplier_id', 0) }};
-            var supplierName = '';
-            var supplierNameFromBackend = '{{ supplier.name | safe }}'; // Original Name aus Backend
-            var currentTime = new Date().toLocaleTimeString(); // Zeitstempel für Cache-Prävention mit JavaScript
-            
-            console.log('### DEBUG: LIEFERANTEN-AKTUALISIERUNG STARTET...', currentTime);
-            console.log('### DEBUG: Backend liefert: ID=' + supplierId + ', Name=' + supplierNameFromBackend);
-            
-            // VERBESSERTE LOGIK: Vertraue dem Backend, außer bei bekannten Problemfällen
-            if (!supplierNameFromBackend || supplierNameFromBackend.trim() === '' || supplierNameFromBackend.length < 3) {
-                // Fallback für leeren Namen aus Backend
-                console.log('### DEBUG: Backend-Name leer oder ungültig! Fallback auf ID-basierten Namen');
-                
-                // Nur diese drei IDs haben einen speziellen Namen
-                if (supplierId === 11 || forceSupplierId === 11) {
-                    supplierName = 'Hypersoft Trading GmbH';
-                    console.log('### DEBUG: Fallback zu Hypersoft Trading GmbH (ID=11)');
-                } else if (supplierId === 2) {
-                    supplierName = 'ABC Technik AG';
-                    console.log('### DEBUG: Fallback zu ABC Technik AG (ID=2)');
-                } else if (supplierId === 9) {
-                    supplierName = 'TechnoVision Solutions';
-                    console.log('### DEBUG: Fallback zu TechnoVision Solutions (ID=9)');
-                } else {
-                    // Allgemeiner Fallback für unbekannte IDs
-                    supplierName = 'Lieferant ID ' + supplierId;
-                    console.log('### DEBUG: Allgemeiner Fallback für unbekannte ID');
-                }
-            } else {
-                // NORMALFALL: Verwende den Namen aus dem Backend
-                supplierName = supplierNameFromBackend;
-                console.log('### DEBUG: NORMALFALL - Verwende Backend-Namen: ' + supplierName);
-            }
-            
-            // Aktualisiere den angezeigten Lieferantennamen
-            var dynamicNameElement = document.getElementById('dynamic_supplier_name');
-            if (dynamicNameElement) {
-                dynamicNameElement.textContent = supplierName;
-                console.log('### DEBUG: Lieferantenname aktualisiert zu: ' + supplierName);
-            }
-            
-            // Durchsuche auch alle anderen möglichen Vorkommen des Lieferantennamens
-            function scanAllTextNodes() {
-                var count = 0;
-                
-                function walk(node) {
-                    // 1. Text-Knoten aktualisieren
-                    if (node.nodeType == 3) { // Text-Knoten
-                        var text = node.nodeValue;
-                        var newText = text;
-                        
-                        // Nach bekannten Lieferantennamen suchen
-                        if (text.includes('Hypersoft Trading') || 
-                            text.includes('ABC Technik') || 
-                            text.includes('TechnoVision')) {
-                            
-                            if (text.includes('Hypersoft Trading')) {
-                                newText = newText.replace(/Hypersoft Trading[^<\n]*/g, supplierName);
-                            }
-                            if (text.includes('ABC Technik')) {
-                                newText = newText.replace(/ABC Technik[^<\n]*/g, supplierName);
-                            }
-                            if (text.includes('TechnoVision')) {
-                                newText = newText.replace(/TechnoVision[^<\n]*/g, supplierName);
-                            }
-                            
-                            // Text aktualisieren, wenn Änderungen vorhanden
-                            if (newText !== text) {
-                                node.nodeValue = newText;
-                                count++;
-                            }
-                        }
-                    }
-                    
-                    // 2. Kinder-Elemente rekursiv scannen
-                    if (node.nodeType == 1 && node.nodeName !== 'SCRIPT' && node.nodeName !== 'STYLE') {
-                        for (var i = 0; i < node.childNodes.length; i++) {
-                            walk(node.childNodes[i]);
-                        }
-                    }
-                }
-                
-                // Starte beim Body und durchsuche jeden Knoten
-                walk(document.body);
-                console.log('### DEBUG: DOM-Scan beendet. ' + count + ' Text-Knoten aktualisiert.');
-            }
-            
-            // Führe die Textkorrektur mit einer kurzen Verzögerung aus, um sicherzustellen,
-            // dass alle DOM-Elemente geladen sind
-            setTimeout(scanAllTextNodes, 100);
             
             // Globale Funktion für Template-Validierung und Speicherung
             window.validateAndSaveTemplate = function() {
@@ -342,12 +357,103 @@
                 return true;
             };
             
-            // Hervorhebung für die Buttons
-            var primaryButton = document.querySelector('.button.is-primary');
-            if (primaryButton) {
-                primaryButton.style.boxShadow = '0 0 10px rgba(0,209,178,0.5)';
+            // Beim Laden des DOM
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('DOM geladen, initialisiere Event-Listener');
+                
+                // Event-Listener für Ansichtsumschaltung
+                document.getElementById('view-tiles-btn').addEventListener('click', function() {
+                    switchView('tiles');
+                });
+                
+                document.getElementById('view-table-btn').addEventListener('click', function() {
+                    switchView('table');
+                });
+                
+                // Beim Laden die letzte gespeicherte Ansicht wiederherstellen
+                const savedViewType = localStorage.getItem('orderWizardViewType');
+                if (savedViewType) {
+                    switchView(savedViewType);
+                }
+                
+                // Funktionalität für "Alle auswählen"-Checkbox
+                const selectAllCheckbox = document.getElementById('select-all-checkbox');
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.addEventListener('change', function() {
+                        // Alle Artikel-Checkboxen in beiden Ansichten finden
+                        const checkboxes = document.querySelectorAll('input[type="checkbox"][name^="asset_select_"]');
+                        
+                        // Alle Checkboxen entsprechend dem Status der "Alle auswählen"-Checkbox setzen
+                        checkboxes.forEach(function(checkbox) {
+                            checkbox.checked = selectAllCheckbox.checked;
+                        });
+                        
+                        // Alle Mengenfelder entsprechend aktivieren/deaktivieren (nur in Tabellenansicht)
+                        const quantityInputs = document.querySelectorAll('.quantity-input');
+                        quantityInputs.forEach(function(input) {
+                            input.disabled = !selectAllCheckbox.checked;
+                        });
+                        
+                        // Feedback über die Anzahl der ausgewählten Artikel geben
+                        const count = selectAllCheckbox.checked ? checkboxes.length : 0;
+                        showDebug(selectAllCheckbox.checked ? 
+                                 count + " Artikel ausgewählt" : 
+                                 "Artikelauswahl aufgehoben");
+                    });
+                }
+                
+                // Bei Einzelauswahl: Event-Listener für Artikel-Checkboxen
+                document.addEventListener('change', function(event) {
+                    if (event.target.name && event.target.name.startsWith('asset_select_')) {
+                        // Status der "Alle"-Checkbox aktualisieren
+                        updateSelectAllCheckbox();
+                        
+                        // Mengenfeld für diesen Artikel aktivieren/deaktivieren
+                        toggleQuantityField(event.target);
+                    }
+                });
+                
+                // Initialen Status prüfen
+                updateSelectAllCheckbox();
+                
+                // Debug-Dialog schließen
+                document.getElementById('close-debug').addEventListener('click', function() {
+                    document.getElementById('debug-message').classList.add('is-hidden');
+                });
+                
+                console.log('Event-Listener initialisiert');
+            });
+            
+            // Prüfen, ob alle Checkboxen ausgewählt sind, um den Status der "Alle"-Checkbox zu aktualisieren
+            function updateSelectAllCheckbox() {
+                const selectAllCheckbox = document.getElementById('select-all-checkbox');
+                if (!selectAllCheckbox) return;
+                
+                const checkboxes = document.querySelectorAll('input[type="checkbox"][name^="asset_select_"]');
+                const checkedCheckboxes = document.querySelectorAll('input[type="checkbox"][name^="asset_select_"]:checked');
+                
+                // Wenn alle ausgewählt sind, "Alle"-Checkbox aktivieren
+                selectAllCheckbox.checked = checkboxes.length > 0 && checkedCheckboxes.length === checkboxes.length;
+                
+                // Anzeige der ausgewählten Anzahl aktualisieren
+                const count = checkedCheckboxes.length;
+                if (count > 0) {
+                    showDebug(count + " Artikel ausgewählt");
+                }
             }
-        });
+            
+            // Funktion zum Aktivieren/Deaktivieren eines Mengenfelds basierend auf der Checkbox
+            function toggleQuantityField(checkbox) {
+                if (!checkbox.name || !checkbox.name.startsWith('asset_select_')) return;
+                
+                const assetId = checkbox.name.replace('asset_select_', '');
+                // Finde alle passsenden Mengenfelder (sowohl in Kachel- als auch Tabellenansicht)
+                const quantityInputs = document.querySelectorAll('input[name="quantity_' + assetId + '"]');
+                
+                quantityInputs.forEach(function(input) {
+                    input.disabled = !checkbox.checked;
+                });
+            }
         </script>
     </div>
     <div class="container">
@@ -372,6 +478,84 @@
         </div>
     </form>
 </div>
+
+<!-- JavaScript für die Ansichtsumschaltung und andere Funktionen -->
+<script>
+// Funktion zum Umschalten der Ansicht zwischen Kacheln und Tabelle - global definiert
+function switchView(viewType) {
+    // Elemente und Buttons referenzieren
+    const tilesView = document.getElementById('view-tiles');
+    const tableView = document.getElementById('view-table');
+    const tilesBtn = document.getElementById('view-tiles-btn');
+    const tableBtn = document.getElementById('view-table-btn');
+    
+    console.log('switchView aufgerufen mit: ' + viewType);
+    
+    // Ansicht umschalten
+    if (viewType === 'tiles') {
+        tilesView.style.display = '';
+        tableView.style.display = 'none';
+        tilesBtn.classList.add('is-info', 'is-selected');
+        tableBtn.classList.remove('is-info', 'is-selected');
+    } else {
+        tilesView.style.display = 'none';
+        tableView.style.display = '';
+        tilesBtn.classList.remove('is-info', 'is-selected');
+        tableBtn.classList.add('is-info', 'is-selected');
+    }
+    
+    // Ansichtstyp im localStorage speichern
+    localStorage.setItem('orderWizardViewType', viewType);
+}
+
+// Debugging-Funktion
+function showDebug(message) {
+    console.log('DEBUG: ' + message);
+    document.getElementById('debug-text').textContent = message;
+    document.getElementById('debug-message').classList.remove('is-hidden');
+}
+
+// DOM vollständig geladen
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM geladen, initialisiere Event-Listener');
+    
+    // Event-Listener für Ansichtsumschaltung
+    document.getElementById('view-tiles-btn').addEventListener('click', function() {
+        switchView('tiles');
+    });
+    
+    document.getElementById('view-table-btn').addEventListener('click', function() {
+        switchView('table');
+    });
+    
+    // Beim Laden die letzte gespeicherte Ansicht wiederherstellen
+    const savedViewType = localStorage.getItem('orderWizardViewType');
+    if (savedViewType) {
+        switchView(savedViewType);
+    }
+    
+    // Funktionalität für "Alle auswählen"-Checkbox
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            // Alle Artikel-Checkboxen in beiden Ansichten finden
+            const checkboxes = document.querySelectorAll('input[type="checkbox"][name^="asset_select_"]');
+            
+            // Alle Checkboxen entsprechend dem Status der "Alle auswählen"-Checkbox setzen
+            checkboxes.forEach(function(checkbox) {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+        });
+    }
+    
+    // Debug-Dialog schließen
+    document.getElementById('close-debug').addEventListener('click', function() {
+        document.getElementById('debug-message').classList.add('is-hidden');
+    });
+    
+    console.log('Event-Listener initialisiert');
+});
+</script>
 
 <style>
 .wizard-container {

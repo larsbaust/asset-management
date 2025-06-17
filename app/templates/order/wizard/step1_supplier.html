@@ -84,7 +84,10 @@
             </div>
             
             <div class="field mt-5">
-                <label class="label">Lieferstandort wählen</label>
+                <label class="label"><i class="fas fa-truck-loading"></i> Lieferadresse wählen</label>
+                <div class="notification is-light is-info mb-2" style="padding: 8px;">
+                    <strong>Hinweis:</strong> Der gewählte Standort wird als Lieferadresse für diese Bestellung verwendet.
+                </div>
                 <div class="control">
                     <div class="select is-fullwidth">
                         {{ form.location(class="select") }}
