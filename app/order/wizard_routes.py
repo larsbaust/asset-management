@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash, session, current_app, send_file, Response
+from flask import render_template, request, redirect, url_for, flash, session, current_app, send_file, Response, jsonify
 from app.order import order
 # Import der separaten Bestandsberechnungsfunktion (Hotfix für Frittenwerk Bonn)
 from app.order.wizard_routes_fix import get_stock_count_for_location
@@ -113,6 +113,14 @@ def send_order_email(order_id):
             # Sicherstellen, dass immer ein location_name vorhanden ist
             location_name = location_obj.name if location_obj else "Hauptstandort"
             
+            # Geplantes Lieferdatum formatieren, wenn vorhanden
+            expected_delivery_date = ''
+            if order_obj.expected_delivery_date:
+                expected_delivery_date = order_obj.expected_delivery_date.strftime('%d.%m.%Y')
+            
+            # E-Mail-Betreff erstellen
+            email_subject = f"Bestellung #{order_obj.id} von Asset Management System"
+            
             # E-Mail rendern mit direkten Daten statt komplexen Objekten
             html = render_template(
                 'order/order_email.html', 
@@ -123,7 +131,12 @@ def send_order_email(order_id):
                 location_address=full_address,
                 comment=email_comment,
                 items=item_list,
-                show_delivery_note=True  # Explizite Steuerung für den Lieferhinweis
+                expected_delivery_date=expected_delivery_date,
+                show_delivery_note=True,  # Explizite Steuerung für den Lieferhinweis
+                show_email_info=False,  # E-Mail-Header NICHT in der tatsächlichen E-Mail anzeigen
+                email_subject=email_subject,
+                sender_email=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@assetmanagement.de'),
+                recipient_email=supplier.email
             )
             print("DEBUG: E-Mail-Template wurde mit folgenden Werten gerendert:")
             print(f"- Bestellnummer: {order_obj.id}")
@@ -155,12 +168,29 @@ def send_order_email(order_id):
             db.session.commit()
             print(f"DEBUG: HTML-Pfad in Datenbank gespeichert: {order_obj.pdf_path}")
             
+            # Absender-E-Mail abrufen
+            sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@assetmanagement.de')
+            
+            # CC-Empfänger aus der Bestellung holen, falls vorhanden
+            cc_list = []
+            if hasattr(order_obj, 'cc_emails') and order_obj.cc_emails:
+                # Mehrere E-Mails durch Komma trennen und als Liste aufbereiten
+                cc_emails = order_obj.cc_emails
+                if isinstance(cc_emails, str):
+                    cc_list = [email.strip() for email in cc_emails.split(',') if email.strip()]
+            
+            print(f"DEBUG: CC-Empfänger: {cc_list}")
+                
+            # E-Mail-Betreff erstellen
+            email_subject = f"Bestellung #{order_obj.id} von Asset Management System"
+            
             # E-Mail senden
             msg = Message(
-                subject=f"Bestellung #{order_obj.id} von Asset Management System",
+                subject=email_subject,
                 recipients=[supplier.email],
+                cc=cc_list,
                 html=html,
-                sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@assetmanagement.de')
+                sender=sender_email
             )
             
             print(f"DEBUG: Sende E-Mail an {supplier.email}...")
@@ -301,6 +331,41 @@ def wizard_debug_session():
     <pre>{wizard_data}</pre>
     <p><a href="{url_for('order.wizard_step1')}">Zurück zu Schritt 1</a></p>
     """
+
+# Hilfsfunktion zur Berechnung der Assets in offenen Bestellungen ("in transfer")
+def get_assets_in_transfer_for_supplier(supplier_id):
+    """
+    Berechnet für einen bestimmten Lieferanten, wie viele Assets eines Typs
+    sich bereits in offenen Bestellungen befinden.
+    
+    Args:
+        supplier_id: ID des Lieferanten
+        
+    Returns:
+        Dictionary mit asset_id als Schlüssel und Anzahl als Wert
+    """
+    # Finde alle offenen Bestellungen für den Lieferanten
+    open_orders = Order.query.filter_by(
+        supplier_id=supplier_id,
+        status='offen'  # Nur offene Bestellungen berücksichtigen
+    ).all()
+    
+    # Dictionary initialisieren
+    assets_in_transfer = {}
+    
+    # Für jede Bestellung die bestellten Assets zählen
+    for order in open_orders:
+        for item in order.items:
+            asset_id = item.asset_id
+            quantity = item.quantity
+            
+            # Aktualisiere das Dictionary
+            if asset_id in assets_in_transfer:
+                assets_in_transfer[asset_id] += quantity
+            else:
+                assets_in_transfer[asset_id] = quantity
+    
+    return assets_in_transfer
 
 # Schritt 2: Artikel auswählen
 @order.route('/wizard/step2', methods=['GET', 'POST'])
@@ -543,6 +608,13 @@ def wizard_step2():
         else:
             print(f"### DEBUG: Keine abgeschlossene Inventur für Standort {location_id} gefunden")
     
+    # Assets in Transfer für diesen Lieferanten berechnen
+    print(f"### DEBUG: Berechne Assets in Transfer für Lieferant ID {supplier_id}")
+    assets_in_transfer = get_assets_in_transfer_for_supplier(supplier_id)
+    print(f"### DEBUG: Anzahl Assets in Transfer: {len(assets_in_transfer)}")
+    if assets_in_transfer:
+        print(f"### DEBUG: Assets in Transfer: {assets_in_transfer}")
+    
     # Asset-Informationen mit Bestand vorbereiten
     asset_infos = {}
     for asset in assets:
@@ -554,18 +626,47 @@ def wizard_step2():
             'value': asset.value,
             'category': asset.category,
             'manufacturers': asset.manufacturers,
-            'stock_count': 0  # Standardwert für Bestand
+            'stock_count': 0,  # Standardwert für Bestand
+            'in_transfer_count': assets_in_transfer.get(asset.id, 0)  # Anzahl bereits bestellter Assets
         }
         
         # DETAILLIERTE BESTANDSBERECHNUNG über die externe Fix-Funktion
-        # Diese Funktion garantiert für 'Frittenwerk Bonn' immer 0 als Bestand
         stock_count = 0
         
         if location_id:  # Nur wenn ein Standort ausgewählt ist
-            print(f"### BESTAND DEBUG für Asset '{asset.name}' (ID: {asset.id}) am Standort '{location.name if location else 'Unbekannt'}'")            
-            stock_count = get_stock_count_for_location(asset, location_id, location, latest_inventory)
+            print(f"### BESTAND DEBUG für Asset '{asset.name}' (ID: {asset.id}) am Standort '{location.name if location else 'Unbekannt'}'")
+            
+            # WICHTIG: Bei gruppierten Assets müssen wir den korrekten Bestand für alle Assets in der Gruppe berechnen
+            stock_count = 0
+            
+            # Finde alle Asset-IDs für diese Gruppe (gleicher Name und Artikelnummer)
+            group_key = (asset.name, asset.article_number or '')
+            group_asset_ids = article_number_map.get(group_key, [asset.id])
+            
+            # Bug-Fix: Gruppengröße in Debugausgabe für Vergleich mit UI-Werten
+            group_size = len(group_asset_ids)
+            print(f"### BESTAND DEBUG: Asset '{asset.name}' ist Teil einer Gruppe mit {group_size} Assets: {group_asset_ids}")
+            
+            # KRITISCHER FIX: Für gruppierte Assets NIEMALS die Anzahl der Assets als Bestand verwenden!
+            # Stattdessen den tatsächlichen Bestand für den Standort berechnen
+            
+            # Zuerst aktuelles Asset berechnen
+            indiv_stock = get_stock_count_for_location(asset, location_id, location, latest_inventory)
+            print(f"### BESTAND: Asset {asset.id} ('{asset.name}') einzeln: {indiv_stock}")
+            
+            # BUG-FIX: Stelle absolut sicher, dass wir den berechneten Bestand verwenden
+            # und NIEMALS die Gruppengröße als Ersatz!
+            # Der berechnete Bestand aus get_stock_count_for_location ist korrekt
+            stock_count = indiv_stock
+            
+            # Log mit beiden Werten zum Vergleich - sollten NICHT identisch sein bei 0-Beständen!
+            print(f"### BESTAND GRUPPE GESAMT: Asset-Gruppe '{asset.name}' - Gruppen-Größe: {group_size} vs. Echter Bestand: {stock_count}")
         
+        # BUG-FIX: Absolut sicherstellen, dass wir den ECHTEN Bestand verwenden, nicht die Gruppengröße
+        # KRITISCH: Dies ist die finale Zuweisung des Bestandes für die UI
         asset_infos[str(asset.id)]['stock_count'] = stock_count
+        # Gruppengröße als separaten Wert für Debug-Zwecke hinzufügen
+        asset_infos[str(asset.id)]['group_size'] = group_size if 'group_size' in locals() else 1
     
     # Asset-Formular aufbauen
     form.assets.entries = []
@@ -957,6 +1058,7 @@ def wizard_step2():
                             stock_count = actual_count
                 
                 asset_infos[str(asset.id)]['stock_count'] = stock_count
+            
             templates = OrderTemplate.query.filter_by(supplier_id=supplier_id).all()
             return render_template(
                 'order/wizard/step2_articles.html',
@@ -968,57 +1070,16 @@ def wizard_step2():
                 templates=templates
             )
     
-    # Asset-Daten für Anzeige vorbereiten (mit Bestandsinfo)
-    # Lagerbestand für jedes Asset berechnen
-    latest_inventory = None
-    if location_id:
-        from app.models import InventorySession, InventoryItem
-        latest_inventory = InventorySession.query.filter_by(
-            location_id=location_id, 
-            status='completed'
-        ).order_by(InventorySession.end_date.desc()).first()
+    # Hinweis: Die Bestandsberechnung wurde bereits weiter oben durchgeführt.
+    # Die vorherige doppelte Initialisierung von asset_infos wurde entfernt, um 
+    # zu verhindern, dass die korrekte Bestandsberechnung überschrieben wird.
     
-    # Asset-Informationen mit Bestand vorbereiten
-    asset_infos = {}
+    # Sicherstellen, dass all_assets_dict für die Template-Verarbeitung existiert
     all_assets_dict = {}
     for asset in assets:
-        # Assetdaten sammeln
         asset_id_int = int(asset.id)
         if asset_id_int not in all_assets_dict:
             all_assets_dict[asset_id_int] = asset
-        
-        # Standardwerte setzen
-        asset_infos[str(asset.id)] = {
-            'id': asset.id,
-            'name': asset.name,
-            'article_number': asset.article_number,
-            'value': asset.value,
-            'category': asset.category,
-            'manufacturers': asset.manufacturers,
-            'stock_count': 0  # Standardwert für Bestand
-        }
-        
-        # Aktuellen Bestand aus dem System ermitteln
-        # 1. Alle Assets mit diesem Namen zählen
-        name_count = Asset.query.filter_by(
-            name=asset.name, 
-            status='active'
-        ).count()
-        
-        # Bestand aus dem System nehmen oder aus der letzten Inventur
-        stock_count = name_count
-        
-        # 2. Falls eine aktuelle Inventur vorhanden ist, Ist-Bestand von dort nehmen
-        if latest_inventory:
-            actual_count = InventoryItem.query.join(Asset).filter(
-                InventoryItem.session_id == latest_inventory.id,
-                Asset.name == asset.name
-            ).with_entities(db.func.sum(InventoryItem.counted_quantity)).scalar() or 0
-            
-            if actual_count > 0:
-                stock_count = actual_count
-        
-        asset_infos[str(asset.id)]['stock_count'] = stock_count
     
     # Vorlagen laden - nur die, die zum ausgewählten Lieferanten passen
     templates = OrderTemplate.query.filter_by(supplier_id=supplier_id).all()
@@ -1066,6 +1127,18 @@ def wizard_step2():
         final_supplier = SupplierModel.query.get(11) or supplier
     
     print(f"### FINAL SUPPLIER CHECK: ID={final_supplier.id}, Name='{final_supplier.name}'")
+    
+    # FINAL DEBUG: Alle asset_infos Werte vor dem Rendering anzeigen
+    print("\n### FINAL ASSET_INFOS DEBUG ###")
+    for asset_id, info in asset_infos.items():
+        # Gruppe Key finden
+        group_ids = []
+        for key, ids in article_number_map.items():
+            if int(asset_id) in ids:
+                group_ids = ids
+                break
+        print(f"Asset ID {asset_id}: '{info['name']}' - Stock Count: {info['stock_count']} - Gruppen-IDs: {group_ids}")
+    print("### FINAL ASSET_INFOS DEBUG ENDE ###\n")
     
     # Verwende das ORIGINAL-Template (aktualisiert am 15.06.2025)
     return render_template(
@@ -1136,6 +1209,9 @@ def wizard_step3():
         _update_wizard_session('tracking_carrier', form.tracking_carrier.data)
         _update_wizard_session('expected_delivery_date', form.expected_delivery_date.data)
         _update_wizard_session('comment', form.comment.data)
+        # CC E-Mails speichern, falls vorhanden
+        if request.form.get('cc_emails'):
+            _update_wizard_session('cc_emails', request.form.get('cc_emails'))
         
         # Seriennummern aktualisieren
         for asset_id, data in selected_assets.items():
@@ -1260,6 +1336,7 @@ def wizard_step4():
                 tracking_number=wizard_data.get('tracking_number', '') or '',
                 tracking_carrier=wizard_data.get('tracking_carrier', '') or 'none',
                 comment=wizard_data.get('comment', '') or '',
+                cc_emails=wizard_data.get('cc_emails', ''),
                 order_date=datetime.utcnow(),
                 expected_delivery_date=expected_delivery_date,
                 status=status,
@@ -1348,6 +1425,10 @@ def wizard_step4():
     # Debug-Ausgabe
     print(f"DEBUG: Berechneter Gesamtwert in Step 4: {total_value} € für {total_items_count} Artikel")
     
+    # Debug-Block für asset_infos wurde entfernt, da diese Variable nicht mehr existiert
+    # Diese Debug-Information wurde nur für die Analyse des stock_count-Problems in Schritt 2 benötigt
+    print("### FINAL ASSET_INFOS DEBUG (deaktiviert) ###")
+    
     return render_template(
         'order/wizard/step4_confirm.html',
         form=form,
@@ -1359,6 +1440,112 @@ def wizard_step4():
         total_value=total_value,
         total_items_count=total_items_count
     )
+
+# E-Mail-Vorschau für Bestellung
+@order.route('/wizard/email-preview', methods=['POST'])
+def wizard_email_preview():
+    """Zeigt eine Vorschau der E-Mail, die an den Lieferanten gesendet wird"""
+    # Daten aus dem Formular extrahieren
+    wizard_data = _get_wizard_session()
+    supplier_id = wizard_data.get('supplier_id')
+    location_id = wizard_data.get('location_id')
+    selected_assets = wizard_data.get('selected_assets', {})
+    
+    if not supplier_id or not selected_assets:
+        return jsonify({
+            'status': 'error',
+            'message': 'Keine ausreichenden Daten für die E-Mail-Vorschau vorhanden.'
+        }), 400
+    
+    # Lieferant und Standort laden
+    supplier = Supplier.query.get_or_404(supplier_id)
+    location = Location.query.get(location_id) if location_id else None
+    
+    # Artikel-Daten sammeln
+    items = []
+    for asset_id, data in selected_assets.items():
+        asset = Asset.query.get(int(asset_id))
+        if asset:
+            # Hersteller-Namen extrahieren
+            manufacturers = []
+            if asset.manufacturers:
+                for manufacturer in asset.manufacturers:
+                    if isinstance(manufacturer, int):
+                        # Wenn es sich um eine ID handelt
+                        manufacturer_obj = Manufacturer.query.get(manufacturer)
+                        if manufacturer_obj:
+                            manufacturers.append(manufacturer_obj.name)
+                    elif hasattr(manufacturer, 'name'):
+                        # Wenn es sich direkt um ein Manufacturer-Objekt handelt
+                        manufacturers.append(manufacturer.name)
+                    else:
+                        # Falls es ein anderer Typ ist, ihn als String verwenden
+                        manufacturers.append(str(manufacturer))
+            
+            # Kategorie-Name abrufen
+            category_name = ""
+            if asset.category_id:
+                category = Category.query.get(asset.category_id)
+                if category:
+                    category_name = category.name
+            
+            items.append({
+                'name': asset.name,
+                'article_number': asset.article_number or '',
+                'category': category_name,
+                'manufacturers': manufacturers,
+                'quantity': data.get('quantity', 1),
+                'serial_number': data.get('serial_number', '')
+            })
+    
+    # Kommentar aus Session laden
+    comment = wizard_data.get('comment', '')
+    
+    # E-Mail-Template rendern
+    order_date = datetime.now().strftime("%d.%m.%Y")
+    location_name = location.name if location else 'Hauptstandort'
+    location_address = location.address if location and hasattr(location, 'address') else ''
+    
+    # Geplantes Lieferdatum aus der Session laden
+    expected_delivery_date = wizard_data.get('expected_delivery_date', '')
+    if expected_delivery_date:
+        # Wenn es ein Datetime-Objekt ist, formatieren
+        if not isinstance(expected_delivery_date, str):
+            expected_delivery_date = expected_delivery_date.strftime("%d.%m.%Y")
+    
+    # E-Mail-Absender und -Empfänger für die Vorschau vorbereiten
+    sender_email = current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@assetmanagement.de')
+    recipient_email = supplier.email if supplier and hasattr(supplier, 'email') and supplier.email else 'lieferant@beispiel.de'
+    
+    # Optional: CC-Empfänger
+    cc_emails = wizard_data.get('cc_emails', '')
+    
+    # E-Mail-Betreff für die Vorschau vorbereiten
+    email_subject = f"Bestellung #Vorschau von Asset Management System"
+    
+    # HTML mit Jinja2 rendern
+    html_content = render_template(
+        'order/order_email.html',
+        order_id='Vorschau',
+        supplier_name=supplier.name,
+        order_date=order_date,
+        location_name=location_name,
+        location_address=location_address,
+        comment=comment,
+        expected_delivery_date=expected_delivery_date,
+        show_email_info=True,  # E-Mail-Header anzeigen
+        sender_email=sender_email,
+        recipient_email=recipient_email,
+        cc_emails=cc_emails,
+        email_subject=email_subject,
+        items=items
+    )
+    
+    # Als JSON zurückgeben
+    return jsonify({
+        'status': 'success',
+        'html': html_content
+    })
 
 # Neuer Link in der Hauptnavigation zum Assistenten
 @order.route('/wizard/start')

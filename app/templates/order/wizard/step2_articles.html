@@ -1,5 +1,47 @@
 {% extends 'base.html' %}
 {% block content %}
+<style>
+    /* Tooltip-Stil */
+    .tooltip {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .tooltip .tooltip-text {
+        visibility: hidden;
+        width: 250px;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -125px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 0.8rem;
+        font-weight: normal;
+    }
+    
+    .tooltip .tooltip-text::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #333 transparent transparent transparent;
+    }
+    
+    .tooltip:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
+</style>
 <div class="wizard-container">
     <!-- Fortschrittsleiste -->
     <div class="steps-container mb-5">
@@ -166,7 +208,16 @@
                         <div><strong>Kategorie:</strong> {{ asset.category.name if asset.category else '-' }}</div>
                         <div><strong>Artikelnr.:</strong> {{ asset.article_number or '-' }}</div>
                         <div><strong>Wert:</strong> {{ "%.2f €"|format(asset.value or 0) }}</div>
-                        <div><strong>Aktueller Bestand:</strong> <span class="tag is-{{ 'danger' if asset_infos[asset_id]['stock_count'] == 0 or location.name == 'Frittenwerk Bonn' else 'warning' if asset_infos[asset_id]['stock_count'] < 5 else 'success' }}">{{ 0 if location.name == 'Frittenwerk Bonn' else asset_infos[asset_id]['stock_count'] }} Stück</span></div>
+                        <div><strong>Aktueller Bestand:</strong> <span class="tag is-{{ 'danger' if asset_infos[asset_id]['stock_count'] == 0 else 'warning' if asset_infos[asset_id]['stock_count'] < 5 else 'success' }}">{{ asset_infos[asset_id]['stock_count'] }} Stück</span></div>
+                        <div>
+                            <strong>In Transfer:</strong> 
+                            <span class="tag is-info" title="Anzahl der Assets, die sich bereits in offenen Bestellungen befinden">
+                                {{ asset_infos[asset_id]['in_transfer_count'] }} Stück
+                            </span>
+                            <span class="icon is-small has-tooltip-arrow has-tooltip-multiline" data-tooltip="Artikel, die sich bereits in offenen Bestellungen für denselben Lieferanten befinden und noch nicht geliefert wurden.">
+                                <i class="fas fa-question-circle"></i>
+                            </span>
+                        </div>
                         {% if asset.manufacturers %}
                         <div>
                             <strong>Hersteller:</strong> 
@@ -206,6 +257,13 @@
                             <th>Kategorie</th>
                             <th>Wert (€)</th>
                             <th>Bestand</th>
+                            <th>
+                                In Transfer
+                                <span class="icon is-small tooltip">
+                                    <i class="fas fa-question-circle"></i>
+                                    <span class="tooltip-text">Artikel, die sich bereits in offenen Bestellungen für denselben Lieferanten befinden und noch nicht geliefert wurden.</span>
+                                </span>
+                            </th>
                             <th>Anzahl</th>
                         </tr>
                     </thead>
@@ -230,7 +288,8 @@
                             <td>{{ asset.article_number or '-' }}</td>
                             <td>{{ asset.category.name if asset.category else '-' }}</td>
                             <td>{% if asset.value %}{{ "%.2f"|format(asset.value) }}{% else %}-{% endif %}</td>
-                            <td><span class="tag is-{{ 'danger' if asset_infos[asset_id]['stock_count'] == 0 or location.name == 'Frittenwerk Bonn' else 'warning' if asset_infos[asset_id]['stock_count'] < 5 else 'success' }}">{{ 0 if location.name == 'Frittenwerk Bonn' else asset_infos[asset_id]['stock_count'] }}</span></td>
+                            <td><span class="tag is-{{ 'danger' if asset_infos[asset_id]['stock_count'] == 0 else 'warning' if asset_infos[asset_id]['stock_count'] < 5 else 'success' }}">{{ asset_infos[asset_id]['stock_count'] }}</span> <!-- DEBUG: Stock für {{ asset.name }}: {{ asset_infos[asset_id]['stock_count'] }} | Asset ID: {{ asset_id }} --></td>
+                            <td><span class="tag is-info">{{ asset_infos[asset_id]['in_transfer_count'] }}</span></td>
                             <td>
                                 <div class="field">
                                     <div class="control">

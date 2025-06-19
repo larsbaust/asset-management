@@ -1,6 +1,21 @@
+{% if show_email_info %}
+<div style="margin-bottom: 20px; padding: 10px; border: 1px solid #dbdbdb; background-color: #f0f7ff; border-radius: 4px;">
+    {% if email_subject %}
+    <p><strong>Betreff:</strong> {{ email_subject }}</p>
+    <hr style="border: 0; height: 1px; background-color: #dbdbdb; margin: 10px 0;">
+    {% endif %}
+    <p><strong>Von:</strong> {{ sender_email }}</p>
+    <p><strong>An:</strong> {{ recipient_email }}</p>
+    {% if cc_emails %}
+    <p><strong>CC:</strong> {{ cc_emails }}</p>
+    {% endif %}
+</div>
+{% endif %}
+
 <h2>Bestellung Nr. {{ order_id }}</h2>
 <p><strong>Lieferant:</strong> {{ supplier_name }}</p>
 <p><strong>Datum:</strong> {{ order_date }}</p>
+<p><strong>Geplantes Lieferdatum:</strong> {{ expected_delivery_date if expected_delivery_date else 'Nicht angegeben' }}</p>
 <!-- Lieferadresse-Block wird immer angezeigt -->
 <div style="margin: 15px 0; padding: 10px; border: 1px solid #dbdbdb; background-color: #f5f5f5; border-radius: 4px;">
     <p><strong>Lieferadresse:</strong></p>

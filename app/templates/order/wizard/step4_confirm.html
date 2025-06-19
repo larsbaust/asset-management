@@ -96,6 +96,16 @@
                     </div>
                 </div>
                 
+                <div class="column is-6">
+                    <div class="field">
+                        <label class="label">CC-E-Mail-Adressen (optional):</label>
+                        <div class="control">
+                            <input class="input" type="text" name="cc_emails" placeholder="z.B. info@firma.de, buchhaltung@firma.de" value="{{ order_data.cc_emails or '' }}">
+                            <p class="help">Mehrere E-Mail-Adressen mit Komma trennen</p>
+                        </div>
+                    </div>
+                </div>
+                
                 {% if order_data.tracking_number %}
                 <div class="column is-6">
                     <div class="field">
@@ -231,6 +241,10 @@
                         <span class="icon"><i class="fas fa-save"></i></span>
                         <span>Bestellung speichern</span>
                     </button>
+                    <button type="button" class="button is-primary" onclick="showEmailPreview()">
+                        <span class="icon"><i class="fas fa-eye"></i></span>
+                        <span>E-Mail-Vorschau</span>
+                    </button>
                     <button type="submit" class="button is-info" onclick="document.getElementById('action').value='send_email';">
                         <span class="icon"><i class="fas fa-envelope"></i></span>
                         <span>Bestellung mit E-Mail senden</span>
@@ -243,6 +257,39 @@
             </div>
         </div>
     </form>
+
+<!-- E-Mail-Vorschau Modal -->
+<div class="modal" id="emailPreviewModal">
+    <div class="modal-background"></div>
+    <div class="modal-card" style="width: 80%; max-width: 1200px;">
+        <header class="modal-card-head">
+            <p class="modal-card-title">E-Mail-Vorschau</p>
+            <button class="delete" aria-label="close" onclick="closeEmailPreview()"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="notification is-light is-info mb-3">
+                <p class="mb-2"><strong>Information:</strong></p>
+                <p>Dies ist eine Vorschau der E-Mail, die an den Lieferanten gesendet wird. Die tatsächliche E-Mail kann je nach E-Mail-Client geringfügig anders aussehen.</p>
+            </div>
+            <div class="box" id="emailPreviewContent">
+                <div class="has-text-centered">
+                    <span class="icon is-large">
+                        <i class="fas fa-spinner fa-pulse fa-2x"></i>
+                    </span>
+                    <p class="mt-2">Vorschau wird geladen...</p>
+                </div>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button" onclick="closeEmailPreview()">Schließen</button>
+            <button class="button is-info" onclick="document.getElementById('action').value='send_email'; document.querySelector('form').submit();">
+                <span class="icon"><i class="fas fa-envelope"></i></span>
+                <span>E-Mail jetzt senden</span>
+            </button>
+        </footer>
+    </div>
+</div>
+
 </div>
 
 <style>
@@ -306,7 +353,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Gespeicherter korrekter Gesamtwert aus dem Template
-    const correctTotalValue = {{ total_value|default(0) }};
+    const correctTotalValue = parseFloat('{{ total_value|default(0) }}');
     
     // Format-Funktion für Währungsbeträge
     function formatCurrency(value) {
@@ -342,6 +389,68 @@ document.addEventListener('DOMContentLoaded', function() {
         input.value = correctTotalValue;
     });
 });
+</script>
+
+<script>
+// Funktionen für E-Mail-Vorschau
+function showEmailPreview() {
+    // Modal öffnen
+    document.getElementById('emailPreviewModal').classList.add('is-active');
+    
+    // CSRF-Token aus dem Formular holen
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    // Formulardaten sammeln
+    const formData = {
+        csrf_token: csrfToken,
+        expected_delivery_date: document.querySelector('input[name="expected_delivery_date"]')?.value || '',
+        tracking_number: document.querySelector('input[name="tracking_number"]')?.value || '',
+        tracking_carrier: document.querySelector('select[name="tracking_carrier"]')?.value || '',
+        comment: document.querySelector('textarea[name="comment"]')?.value || '',
+        cc_emails: document.querySelector('input[name="cc_emails"]')?.value || ''
+    };
+    
+    // AJAX-Request an den Server senden
+    fetch('{{ url_for("order.wizard_email_preview") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(formData),
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Fehler beim Laden der E-Mail-Vorschau');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            // HTML in das Modal einfügen
+            document.getElementById('emailPreviewContent').innerHTML = data.html;
+        } else {
+            // Fehlermeldung anzeigen
+            document.getElementById('emailPreviewContent').innerHTML = 
+                `<div class="notification is-danger">
+                    <p><strong>Fehler:</strong> ${data.message || 'Die E-Mail-Vorschau konnte nicht geladen werden.'}</p>
+                </div>`;
+        }
+    })
+    .catch(error => {
+        // Fehlermeldung anzeigen
+        document.getElementById('emailPreviewContent').innerHTML = 
+            `<div class="notification is-danger">
+                <p><strong>Fehler:</strong> ${error.message}</p>
+            </div>`;
+    });
+}
+
+function closeEmailPreview() {
+    // Modal schließen
+    document.getElementById('emailPreviewModal').classList.remove('is-active');
+}
 </script>
 
 {% endblock %}

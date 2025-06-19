@@ -121,6 +121,7 @@ class Order(db.Model):
     tracking_number = db.Column(db.String(100))
     tracking_carrier = db.Column(db.String(50))  # AfterShip Carrier Slug, z.B. 'dhl', 'dpd', 'ups'  # NEU: Sendungsverfolgungsnummer
     expected_delivery_date = db.Column(db.DateTime, nullable=True)  # NEU: Erwartetes Lieferdatum
+    cc_emails = db.Column(db.String(255), nullable=True)  # NEU: CC-E-Mail-Adressen für Bestellbenachrichtigungen
     archived = db.Column(db.Boolean, default=False)  # NEU: Für Archivierung
     pdf_path = db.Column(db.String(255), nullable=True)  # Pfad zur PDF-Bestelldatei
     supplier = db.relationship('Supplier', backref='orders')
