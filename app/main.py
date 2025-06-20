@@ -1826,15 +1826,35 @@ def asset_details(id):
 @main.route('/inventory/planning', methods=['GET'])
 def inventory_planning():
     """Zeigt die Inventurplanung an"""
-    sessions = InventorySession.query.filter(InventorySession.status.in_(['planned', 'in_progress'])).order_by(InventorySession.start_date).all()
-    locations = db.session.query(db.func.distinct(Asset.location)).filter(Asset.location != None).all()
-    locations = [l[0] for l in locations if l[0]]
-    return render_template('inventory/planning.html', sessions=sessions, locations=locations)
+    from .models import Location
+    
+    # Aktive und geplante Inventuren
+    active_sessions = InventorySession.query.filter(InventorySession.status.in_(['planned', 'in_progress', 'active'])).order_by(InventorySession.start_date).all()
+    
+    # Abgeschlossene Inventuren
+    completed_sessions = InventorySession.query.filter_by(status='completed').order_by(InventorySession.end_date.desc()).limit(5).all()
+    
+    locations = db.session.query(db.func.distinct(Asset.location_id)).filter(Asset.location_id != None).all()
+    location_ids = [l[0] for l in locations if l[0]]
+    locations = Location.query.filter(Location.id.in_(location_ids)).all() if location_ids else []
+    
+    return render_template('inventory/planning.html', active_sessions=active_sessions, completed_sessions=completed_sessions, locations=locations)
 
 @main.route('/inventory/planning/new', methods=['GET', 'POST'])
-def inventory_planning_new():
-    """Neue Inventur planen"""
+@main.route('/inventory/planning/new/<int:location_id>', methods=['GET', 'POST'])
+def inventory_planning_new(location_id=None):
+    """Neue Inventur planen, optional mit vorselektiertem Standort"""
+    from .models import Location
+    
     form = InventorySessionForm()
+    
+    # Wenn eine Standort-ID übergeben wurde und wir im GET-Modus sind, vorausfüllen
+    if location_id and request.method == 'GET':
+        location = Location.query.get_or_404(location_id)
+        form.location_id.data = location_id
+        form.name.data = f'Inventur {location.name} {datetime.now().strftime("%d.%m.%Y")}'
+        print(f"Vorselektierter Standort: {location.name} (ID: {location_id})")
+    
     
     if form.validate_on_submit():
         # Konvertiere die Datumswerte zu DateTime mit Standardzeit
@@ -1877,8 +1897,15 @@ def inventory_planning_detail(id):
     session = InventorySession.query.get_or_404(id)
     
     if request.method == 'POST':
+        # Prüfen, ob die Inventur bereits gestartet wurde
+        if session.status == 'planned':
+            flash('Die Inventur wurde noch nicht gestartet. Bitte starten Sie die Inventur, um Daten zu erfassen.', 'warning')
+            return redirect(url_for('main.inventory_planning_detail', id=id))
+            
         # Inline-Erfassung: Mengen und Felder für alle Gruppen übernehmen
+        print("DEBUG: POST-Daten beim Speichern:", dict(request.form))
         group_count = int(request.form.get('group_count', 0))
+        print(f"DEBUG: Verarbeite {group_count} Gruppen")
         updated_any = False
         for i in range(group_count):
             group_name = request.form.get(f'group_name_{i}')
@@ -1887,12 +1914,14 @@ def inventory_planning_detail(id):
             damaged_quantity = int(request.form.get(f'damaged_quantity_{i}', 0))
             actual_location = request.form.get(f'actual_location_{i}', '')
             notes = request.form.get(f'notes_{i}', '')
+            print(f"DEBUG: Gruppe {i}: {group_name} (Art.Nr. {group_article_number}), gezählt: {counted_quantity}, beschädigt: {damaged_quantity}")
 
             # Gruppensuche maximal tolerant
             def norm(val):
                 return (val or '').strip().lower()
             def is_no_artnr(val):
-                return val is None or str(val).strip() == '' or str(val).strip() == '-'
+                val_str = str(val).strip()
+                return val is None or val_str == '' or val_str == '-' or val_str.lower() == 'none'
             all_items = InventoryItem.query.filter_by(session_id=session.id).all()
             key_name = norm(group_name)
             key_artnr = norm(group_article_number)
@@ -1900,25 +1929,37 @@ def inventory_planning_detail(id):
                 items_same_type = [it for it in all_items if norm(it.asset.name) == key_name and is_no_artnr(it.asset.article_number)]
             else:
                 items_same_type = [it for it in all_items if norm(it.asset.name) == key_name and norm(it.asset.article_number) == key_artnr]
+            print(f"DEBUG: Gruppe {i}: {len(items_same_type)} Items gefunden, die auf \"{group_name}\" passen")
             # Mengen und Felder übernehmen
             for idx, it in enumerate(items_same_type):
                 if idx < counted_quantity:
                     if idx < damaged_quantity:
                         it.status = 'damaged'
                         it.condition = 'damaged'
+                        print(f"DEBUG: Item ID {it.id}, Name {it.asset.name} -> beschädigt, counted_quantity=1, damaged=Ja")
                     else:
                         it.status = 'found'
                         it.condition = 'good'
+                        print(f"DEBUG: Item ID {it.id}, Name {it.asset.name} -> gefunden, counted_quantity=1, damaged=Nein")
                     it.counted_quantity = 1
                 else:
                     it.status = 'missing'
                     it.condition = 'missing'
                     it.counted_quantity = 0
+                    print(f"DEBUG: Item ID {it.id}, Name {it.asset.name} -> fehlend, counted_quantity=0")
                 it.actual_location = actual_location
                 it.notes = notes
                 updated_any = True
         if updated_any:
+            print("DEBUG: Speichere Änderungen in Datenbank...")
             db.session.commit()
+            # Direkt nach dem Commit eine Überprüfung durchführen
+            verification_items = InventoryItem.query.filter_by(session_id=session.id).all()
+            print("--- DEBUG Verifikation nach Speichern ---")
+            for item in verification_items:
+                print(f"ID: {item.id}, Asset: {item.asset.name}, Soll: {item.expected_quantity}, Ist: {item.counted_quantity}, Status: {item.status}")
+            print("--- ENDE DEBUG ---")
+            
             # Wenn Inventur abschließen ausgelöst wurde, leite weiter zur Abschlussroute
             if request.form.get('complete_inventory') == '1':
                 # Abschluss-Logik direkt als Funktionsaufruf (POST bleibt erhalten)
@@ -1963,7 +2004,7 @@ def inventory_planning_detail(id):
         return (val or '').strip().lower()
     def is_no_artnr(val):
         return val is None or str(val).strip() == '' or str(val).strip() == '-'
-    items_grouped = defaultdict(lambda: {"name": None, "article_number": None, "category": None, "expected_location": None, "sum_expected_quantity": 0, "serial_numbers": [], "statuses": set()})
+    items_grouped = defaultdict(lambda: {"name": None, "article_number": None, "category": None, "expected_location": None, "sum_expected_quantity": 0, "sum_damaged_quantity": 0, "serial_numbers": [], "statuses": set()})
     for item in items:
         name = norm(item.asset.name)
         artnr = item.asset.article_number
@@ -1979,6 +2020,10 @@ def inventory_planning_detail(id):
         if "sum_counted_quantity" not in group:
             group["sum_counted_quantity"] = 0
         group["sum_counted_quantity"] += item.counted_quantity or 0
+        
+        # Beschädigte Menge aufsummieren, wenn Status = 'damaged'
+        if item.status == 'damaged':
+            group["sum_damaged_quantity"] += 1
         if item.asset.serial_number:
             group["serial_numbers"].append(item.asset.serial_number)
         group["statuses"].add(item.status)
@@ -2291,13 +2336,24 @@ def complete_inventory(id):
     # Setze Status für alle Items
     for item in session.items:
         if item.counted_quantity is not None:
-            # Prüfe Zustand
-            if (item.condition is not None and (item.condition == 'damaged' or item.condition == 'repair_needed')):
+            # Prüfe auf beschädigte Seriennummern
+            has_damaged_serial = False
+            if item.serial_statuses:
+                has_damaged_serial = any(s.get('status') in ['damaged', 'repair_needed'] for s in item.serial_statuses)
+                
+            # Prüfe Zustand - verschiedene Prüfungen für "damaged"
+            if (item.condition is not None and (item.condition == 'damaged' or item.condition == 'repair_needed')) or \
+               item.status == 'damaged' or has_damaged_serial:
                 item.status = 'damaged'
+                # Debug-Info ausgeben
+                print(f"DEBUG: Item {item.id} (Asset: {item.asset.name if item.asset else 'N/A'}) als DAMAGED markiert. Grund: condition={item.condition}, has_damaged_serial={has_damaged_serial}")
             else:
                 item.status = 'found'
+                print(f"DEBUG: Item {item.id} (Asset: {item.asset.name if item.asset else 'N/A'}) als FOUND markiert.")
         else:
             item.status = 'missing'
+            print(f"DEBUG: Item {item.id} (Asset: {item.asset.name if item.asset else 'N/A'}) als MISSING markiert.")
+
 
         # Standortprüfung
         if item.actual_location and item.expected_location:
@@ -2412,73 +2468,118 @@ def inventory_report_detail(id):
     if session.status != 'completed':
         flash('Diese Inventur ist noch nicht abgeschlossen.', 'warning')
         return redirect(url_for('main.inventory_reports'))
-    # Gruppierung nach Asset-Name und Artikelnummer
+    
+    # Importe zusammenfassen
     from collections import defaultdict
-    asset_groups = defaultdict(lambda: {"name": "", "article_number": "", "expected": 0, "counted": 0, "diff": 0})
-    # Aggregiere pro Asset-ID die höchste gezählte Menge (counted_quantity) und die Summe der expected_quantity
-    from collections import defaultdict
-    # Einzel-Asset-Zusammenfassung (statt pro Typ)
-    found = sum(1 for item in session.items if item.status == 'found')
-    missing = sum(1 for item in session.items if item.status == 'missing')
-    damaged = sum(1 for item in session.items if item.status == 'damaged')
-    total = len(session.items)
-    summary = {'found': found, 'missing': missing, 'damaged': damaged, 'total': total}
-
-    # DEBUG-Ausgabe: Welche Items werden gezählt?
+    import datetime
+    from collections import Counter
+    
+    # Debug-Informationen sammeln
     print('--- DEBUG für Bericht ---')
     for item in session.items:
         print(f'ID: {item.id}, Asset: {item.asset.name}, Status: {item.status}, counted_quantity: {item.counted_quantity}')
-    print(f"Summary: found={summary['found']}, missing={summary['missing']}, damaged={summary['damaged']}, total={summary['total']}")
+    
+    # Zählung übereinstimmend mit der Übersichtsseite: Typ-basierte Aggregationsmethode
+    # Aggregiere pro Typ (Name + Artikelnummer)
+    type_groups = {}
+    damaged = 0
+    for item in session.items:
+        key = (item.asset.name, item.asset.article_number or "-")
+        if key not in type_groups:
+            type_groups[key] = {"expected": 0, "counted": 0, "damaged": 0}
+        type_groups[key]["expected"] += item.expected_quantity or 0
+        type_groups[key]["counted"] += item.counted_quantity or 0
+        if item.status == 'damaged':
+            type_groups[key]["damaged"] += 1
+            damaged += 1
+    
+    # Nach Typ-Summen-Logik wie in inventory_reports
+    found = 0
+    missing = 0
+    total = 0
+    for stats in type_groups.values():
+        expected_sum = stats["expected"]
+        counted_sum = stats["counted"]
+        total += expected_sum  # Nur die Typ-Summe zählt!
+        if counted_sum >= expected_sum and expected_sum > 0:
+            found += expected_sum
+        else:
+            found += counted_sum if counted_sum > 0 else 0
+            missing += expected_sum - counted_sum if expected_sum > counted_sum else 0
+    
+    summary = {'found': found, 'missing': missing, 'damaged': damaged, 'total': total}
+    
+    print(f"Status-Zählung direkt: found={found}, missing={missing}, damaged={damaged}, total={total}")
+    
+    # Stelle sicher, dass diese Summen direkt an das Template übergeben werden
+    # und nicht durch die nachfolgenden Berechnungen überschrieben werden
+    print(f"Finale Summary: found={summary['found']}, missing={summary['missing']}, damaged={summary['damaged']}, total={summary['total']}")
     print('--- ENDE DEBUG Bericht ---')
-
-    # Aggregiere pro Typ für die Tabellenansicht
-    type_stats = {}
-    for item in session.items:
-        key = (item.asset.name, item.asset.article_number or "-")
-        if key not in type_stats:
-            type_stats[key] = {"expected": 0, "counted": 0, "damaged": False}
-        type_stats[key]["expected"] += item.expected_quantity or 0
-        type_stats[key]["counted"] += item.counted_quantity if item.counted_quantity is not None else 0
-        if item.status == 'damaged':
-            type_stats[key]["damaged"] = True
-    # Mappe Typen auf ihren Status
-    type_status = {}
-    for key, stats in type_stats.items():
-        if stats["damaged"]:
-            type_status[key] = 'damaged'
-        elif stats["counted"] >= stats["expected"] and stats["expected"] > 0:
-            type_status[key] = 'found'
-        else:
-            type_status[key] = 'missing'
-
+    
     # Gruppiere nach Gerätetyp (Name + Artikelnummer) und berechne Typ-Status
-    from collections import defaultdict
+    # NUR EINMAL definieren (doppelter Code entfernt)
     type_stats = {}
     for item in session.items:
         key = (item.asset.name, item.asset.article_number or "-")
         if key not in type_stats:
-            type_stats[key] = {"expected": 0, "counted": 0, "damaged": False}
+            type_stats[key] = {"expected": 0, "counted": 0, "damaged": False, "missing": False, "found": False}
+        
         type_stats[key]["expected"] += item.expected_quantity or 0
         type_stats[key]["counted"] += item.counted_quantity if item.counted_quantity is not None else 0
+        
+        # Übertrage den Status des Items auf den Typ
         if item.status == 'damaged':
             type_stats[key]["damaged"] = True
-    # Mappe Typen auf ihren Status
+        elif item.status == 'found':
+            type_stats[key]["found"] = True
+        elif item.status == 'missing':
+            type_stats[key]["missing"] = True
+    
+    # Bestimme den kombinierten Status pro Typ - Priorität: beschädigt > fehlend > gefunden
     type_status = {}
     for key, stats in type_stats.items():
         if stats["damaged"]:
             type_status[key] = 'damaged'
-        elif stats["counted"] >= stats["expected"] and stats["expected"] > 0:
+        elif stats["missing"]:
+            type_status[key] = 'missing'
+        elif stats["found"] or (stats["counted"] >= stats["expected"] and stats["expected"] > 0):
             type_status[key] = 'found'
         else:
             type_status[key] = 'missing'
-    # Erzeuge Asset-Liste mit dynamisch berechnetem Status
+    # Erzeuge Asset-Liste mit dynamisch berechnetem Status - JSON-serialisierbar
     asset_list = []
     for item in session.items:
         key = (item.asset.name, item.asset.article_number or "-")
         dyn_status = type_status[key]
         stats = type_stats[key]
+        
+        # Serialisiere das Asset und andere komplexe Objekte
+        asset_data = {
+            "id": item.asset.id,
+            "name": item.asset.name,
+            "serial_number": item.asset.serial_number,
+            "article_number": item.asset.article_number,
+            "location": {
+                "id": item.asset.location.id if item.asset.location else None,
+                "name": item.asset.location.name if item.asset.location else None
+            } if item.asset.location else None
+        }
+        
+        # Erstelle ein serialisierbares Dictionary für das Inventur-Item
+        item_data = {
+            "id": item.id,
+            "status": item.status,
+            "counted_quantity": item.counted_quantity,
+            "expected_quantity": item.expected_quantity,
+            "counted_at": item.counted_at.isoformat() if item.counted_at else None,
+            "actual_location": item.actual_location,
+            "condition": item.condition,
+            "asset": asset_data
+        }
+        
+        # Füge das serialisierbare Item zur Liste hinzu
         asset_list.append({
-            "item": item,
+            "item": item_data,
             "dyn_status": dyn_status,
             "expected": stats["expected"],
             "counted": stats["counted"],
@@ -2521,16 +2622,63 @@ def inventory_report_detail(id):
     category_labels = list(category_counter.keys())
     category_counts = [category_counter[cat] for cat in category_labels]
 
+    # Standort-Analyse: Anzahl Assets pro Standort
+    from .models import Location
+    
+    # Vorbereiten der Zählung pro Standort
+    location_counter = Counter()
+    
+    # Direktes Abfragen der Assets pro Standort mit Namen
+    for item in session.items:
+        # Standardwert falls kein Asset existiert
+        if not item.asset:
+            location_label = 'Unbekannt'
+            location_counter[location_label] += 1
+            continue
+            
+        # Asset existiert, hole den Standortnamen
+        location_id = getattr(item.asset, 'location_id', None)
+        
+        if not location_id:
+            location_label = 'Kein Standort'
+        else:
+            # Location direkt abfragen
+            location = Location.query.get(location_id)
+            location_label = location.name if location else f'Standort {location_id}'
+            
+        location_counter[location_label] += 1
+    
+    # Sortiere die Standorte für bessere Lesbarkeit
+    location_labels = sorted(location_counter.keys())
+    location_counts = [location_counter[loc] for loc in location_labels]
+    
+    # Debug-Ausgabe
+    print("Debug Location Labels:", location_labels)
+    print("Debug Location Counts:", location_counts)
+
+    # WICHTIG: Explizit die korrekten Werte direkt definieren
+    # Diese werden im Template unter "Gefunden: X von Y" verwendet
+    gefunden = found
+    fehlend = missing
+    beschaedigt = damaged
+    gesamt = total
+    
     return render_template(
-        'inventory/report_detail.html',
-        session=session,
-        asset_list=asset_list,
-        summary=summary,
+        'inventory/report_detail.html', 
+        session=session, 
+        summary=summary, 
+        gefunden=gefunden,
+        fehlend=fehlend,
+        beschaedigt=beschaedigt,
+        gesamt=gesamt,
+        asset_list=sorted(asset_list, key=lambda x: x['item']['asset']['name']), 
         asset_type_list=asset_type_list,
         timeline_labels=timeline_labels,
         timeline_data=timeline_data,
         category_labels=category_labels,
-        category_counts=category_counts
+        category_counts=category_counts,
+        location_labels=location_labels,
+        location_counts=location_counts
     )
 
 

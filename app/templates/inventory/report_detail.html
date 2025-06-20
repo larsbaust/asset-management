@@ -106,9 +106,9 @@
     <div class="inventory-stats" style="max-width: 400px; margin-bottom: 2rem;">
         <h6>Zusammenfassung</h6>
         <ul class="list-unstyled">
-            <li><i class="fas fa-check text-success"></i> Gefunden: {{ summary.found }} von {{ summary.total }}</li>
-            <li><i class="fas fa-exclamation-triangle text-danger"></i> Fehlend: {{ summary.missing }}</li>
-            <li><i class="fas fa-tools text-warning"></i> Beschädigt: {{ summary.damaged }}</li>
+            <li><i class="fas fa-check text-success"></i> Gefunden: {{ gefunden }} von {{ gesamt }}</li>
+            <li><i class="fas fa-exclamation-triangle text-danger"></i> Fehlend: {{ fehlend }}</li>
+            <li><i class="fas fa-tools text-warning"></i> Beschädigt: {{ beschaedigt }}</li>
         </ul>
     </div>
 
@@ -118,78 +118,14 @@
             <canvas id="statusChart"></canvas>
             <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
             <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const ctx = document.getElementById('statusChart').getContext('2d');
-                const found = {{ summary.found|default(0) }};
-                const missing = {{ summary.missing|default(0) }};
-                const damaged = {{ summary.damaged|default(0) }};
-                const total = {{ summary.total|default(0) }};
-                const open = Math.max(total - found - missing - damaged, 0);
-                new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Gefunden', 'Fehlend', 'Beschädigt', 'Offen'],
-                        datasets: [{
-                            data: [found, missing, damaged, open],
-                            backgroundColor: [
-                                '#48c774', // grün
-                                '#f14668', // rot
-                                '#ffdd57', // gelb
-                                '#b5b5b5'  // grau
-                            ],
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    font: {size: 14}
-                                }
-                            }
-                        }
-                    }
-                });
-            });
+            // Status-Chart wird im gemeinsamen DOMContentLoaded-Handler am Ende des Templates generiert
             </script>
         </div>
         <div class="chart-box">
             <h2>Zeitlicher Verlauf</h2>
             <canvas id="timelineChart"></canvas>
             <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const timelineCtx = document.getElementById('timelineChart').getContext('2d');
-                const timelineLabels = {{ timeline_labels|tojson|safe }};
-                const timelineData = {{ timeline_data|tojson|safe }};
-                new Chart(timelineCtx, {
-                    type: 'line',
-                    data: {
-                        labels: timelineLabels,
-                        datasets: [{
-                            label: 'Gezählte Assets',
-                            data: timelineData,
-                            borderColor: '#3273dc',
-                            backgroundColor: 'rgba(50,115,220,0.1)',
-                            tension: 0.2,
-                            fill: true,
-                            pointRadius: 4,
-                            pointHoverRadius: 6
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: { display: false },
-                        },
-                        scales: {
-                            x: { title: { display: true, text: 'Zeit' } },
-                            y: { title: { display: true, text: 'Gezählt' }, beginAtZero: true }
-                        }
-                    }
-                });
-            });
+            // Timeline-Chart wird im gemeinsamen DOMContentLoaded-Handler am Ende des Templates generiert
             </script>
         </div>
         <div class="chart-box">
@@ -200,118 +136,86 @@
             <h2>Kategorien-Übersicht</h2>
             <canvas id="categoryChart"></canvas>
             <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-                const categoryLabels = {{ category_labels|tojson|safe }};
-                const categoryCounts = {{ category_counts|tojson|safe }};
-                new Chart(categoryCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: categoryLabels,
-                        datasets: [{
-                            label: 'Anzahl',
-                            data: categoryCounts,
-                            backgroundColor: '#48c774',
-                            borderColor: '#3273dc',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: { display: false },
-                        },
-                        scales: {
-                            x: { title: { display: true, text: 'Kategorie' } },
-                            y: { title: { display: true, text: 'Anzahl' }, beginAtZero: true }
-                        }
-                    }
-                });
-            });
+            // Kategorie-Chart wird im gemeinsamen DOMContentLoaded-Handler am Ende des Templates generiert
             </script>
         </div>
     </div>
 
     <div class="asset-table">
-        <h2>Asset-Liste</h2>
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Asset</th>
-                        <th>Seriennummer</th>
-                        <th>Status</th>
-                        <th>Erfasst am</th>
-                        <th>Soll-Menge</th>
-                        <th>Gezählt</th>
-                        <th>Differenz</th>
-                        <th>Aktueller Standort</th>
-                        <th>Zustand</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for asset in asset_list %}
-                    <tr>
-                        <td>{{ asset.item.asset.name }}</td>
-                        <td>{{ asset.item.asset.serial_number or '-' }}</td>
-                        <td>
-                            {% if asset.dyn_status == 'found' %}
-                                <span class="badge bg-success">Gefunden</span>
-                            {% elif asset.dyn_status == 'missing' %}
-                                <span class="badge bg-danger">Fehlend</span>
-                            {% elif asset.dyn_status == 'damaged' %}
-                                <span class="badge bg-warning text-dark">Beschädigt</span>
-                            {% else %}
-                                <span class="badge bg-secondary">Offen</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ asset.item.counted_at.strftime('%d.%m.%Y %H:%M') if asset.item.counted_at else '-' }}</td>
-                        <td>{{ asset.expected }}</td>
-                        <td>{{ asset.counted }}</td>
-                        <td>{{ asset.diff }}</td>
-                        <td>{{ asset.item.actual_location or '-' }}</td>
-                        <td>{{ asset.item.condition or '-' }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <h2>Asset-Übersicht</h2>
+        <div class="mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="showDetailedView" checked>
+                <label class="form-check-label" for="showDetailedView">Detaillierte Ansicht</label>
+            </div>
         </div>
-    </div>
-
-    <!-- Gruppierte Übersicht nach Asset-Art und Artikelnummer -->
-    <div class="asset-table">
-        <h2>Übersicht nach Asset-Art und Artikelnummer</h2>
         <div class="table-responsive">
-            <table class="table">
+            <table class="table table-striped table-hover" id="assetTable">
                 <thead>
                     <tr>
+                        <th></th> <!-- Für Expand/Collapse Icons -->
                         <th>Asset</th>
                         <th>Artikelnummer</th>
                         <th>Status</th>
                         <th>Soll-Menge</th>
                         <th>Gezählt</th>
                         <th>Differenz</th>
+                        <th>Standorte</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for asset in asset_type_list %}
-                    <tr>
-                        <td>{{ asset.name }}</td>
-                        <td>{{ asset.article_number }}</td>
+                    {% for asset_group in asset_type_list %}
+                    <!-- Gruppierte Zeile -->
+                    <tr class="group-row" data-name="{{ asset_group.name }}" data-article="{{ asset_group.article_number }}">
                         <td>
-                            {% if asset.dyn_status == 'found' %}
+                            <button class="btn btn-sm btn-outline-primary toggle-details">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </td>
+                        <td><strong>{{ asset_group.name }}</strong></td>
+                        <td>{{ asset_group.article_number }}</td>
+                        <td>
+                            {% if asset_group.dyn_status == 'found' %}
                                 <span class="badge bg-success">Gefunden</span>
-                            {% elif asset.dyn_status == 'missing' %}
+                            {% elif asset_group.dyn_status == 'missing' %}
                                 <span class="badge bg-danger">Fehlend</span>
-                            {% elif asset.dyn_status == 'damaged' %}
+                            {% elif asset_group.dyn_status == 'damaged' %}
                                 <span class="badge bg-warning text-dark">Beschädigt</span>
                             {% else %}
                                 <span class="badge bg-secondary">Offen</span>
                             {% endif %}
                         </td>
-                        <td>{{ asset.expected }}</td>
-                        <td>{{ asset.counted }}</td>
-                        <td>{{ asset.diff }}</td>
+                        <td><strong>{{ asset_group.expected }}</strong></td>
+                        <td><strong>{{ asset_group.counted }}</strong></td>
+                        <td>
+                            <strong class="{% if asset_group.diff < 0 %}text-danger{% elif asset_group.diff > 0 %}text-success{% endif %}">
+                                {{ asset_group.diff }}
+                            </strong>
+                        </td>
+                        <td>
+                            <!-- Standorte werden hier dynamisch eingefügt -->
+                        </td>
+                    </tr>
+                    <!-- Details Zeilen (anfangs versteckt) -->
+                    <tr class="details-row" style="display: none;" data-parent-name="{{ asset_group.name }}" data-parent-article="{{ asset_group.article_number }}">
+                        <td colspan="8" class="p-0">
+                            <div class="details-container p-3">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Seriennummer</th>
+                                            <th>Status</th>
+                                            <th>Erfasst am</th>
+                                            <th>Standort</th>
+                                            <th>Zustand</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="details-items">
+                                        <!-- Details werden per JavaScript eingefügt -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -319,69 +223,89 @@
         </div>
     </div>
 
+    <!-- Asset-Daten für die Gruppierungsfunktion -->
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Gemeinsame Chart-Optionen
-        const commonOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 15,
-                        usePointStyle: true,
-                        font: { size: 12 }
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                    titleColor: '#2c3e50',
-                    bodyColor: '#2c3e50',
-                    borderColor: '#e2e8f0',
-                    borderWidth: 1,
-                    padding: 12,
-                    displayColors: true,
-                    callbacks: {
-                        label: function(context) {
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const value = context.raw;
-                            const percentage = ((value / total) * 100).toFixed(1);
-                            return `${context.label}: ${value} (${percentage}%)`;
-                        }
-                    }
-                }
-            }
-        };
+    // Asset-Daten für die Gruppierungsfunktion
+    /* eslint-disable */
+    window.assetList = {{ asset_list|tojson|safe }};
+    
+    // Notwendig für Template-Integration mit JavaScript
+    // @ts-nocheck
+    // Diese Daten werden durch Jinja-Templatevariablen eingefügt
+    var inventoryData = {
+        gefunden: {{ gefunden|default(0) }},
+        fehlend: {{ fehlend|default(0) }},
+        beschaedigt: {{ beschaedigt|default(0) }},
+        gesamt: {{ gesamt|default(0) }}
+    };
 
-        // Status Chart
-        const statusConfig = {
+    // Chart-Daten aus dem Backend
+    var chartData = {
+        timeline: {
+            labels: {{ timeline_labels|tojson|safe }},
+            data: {{ timeline_data|tojson|safe }}
+        },
+        category: {
+            labels: {{ category_labels|tojson|safe }},
+            counts: {{ category_counts|tojson|safe }}
+        },
+        location: {
+            labels: {{ location_labels|default([])|tojson|safe }},
+            counts: {{ location_counts|default([])|tojson|safe }}
+        }
+    };
+    /* eslint-enable */
+    /* eslint-enable */
+
+    // Warte bis das DOM vollständig geladen ist
+    document.addEventListener('DOMContentLoaded', function() {
+        // Einheitlicher Chart-Initialisierungscode
+        initializeCharts();
+    });
+    
+    /**
+     * Initialisiert alle Chart.js-Grafiken mit den Daten aus dem Backend
+     */
+    function initializeCharts() {
+        // ---- Status Chart ----
+        initializeStatusChart();
+        
+        // ---- Timeline Chart ----
+        initializeTimelineChart();
+        
+        // ---- Kategorie Chart ----
+        initializeCategoryChart();
+        
+        // ---- Standort Chart ----
+        initializeLocationChart();
+    }
+    
+    /**
+     * Initialisiert das Status-Kreisdiagramm
+     */
+    function initializeStatusChart() {
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+        
+        // eslint-disable-next-line no-new
+        new Chart(statusCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Gefunden', 'Fehlend', 'Beschädigt', 'Ausstehend'],
+                labels: ['Gefunden', 'Fehlend', 'Beschädigt'],
                 datasets: [{
-                    data: [
-                        {{ session.items|selectattr('status', 'equalto', 'found')|list|length }},
-                        {{ session.items|selectattr('status', 'equalto', 'missing')|list|length }},
-                        {{ session.items|selectattr('status', 'equalto', 'damaged')|list|length }},
-                        {{ session.items|selectattr('status', 'equalto', 'pending')|list|length }}
-                    ],
-                    backgroundColor: ['#48c774', '#f14668', '#ffdd57', '#ff9900'],
-                    borderWidth: 2,
-                    borderColor: '#fff'
+                    data: [inventoryData.gefunden, inventoryData.fehlend, inventoryData.beschaedigt],
+                    backgroundColor: ['#48c774', '#ff3860', '#ffdd57'],
+                    borderWidth: 1
                 }]
             },
-            options: commonOptions
-        };
-        new Chart(document.getElementById('statusChart').getContext('2d'), statusConfig);
+            options: {
                 responsive: true,
                 plugins: {
                     legend: {
-                        position: 'bottom'
+                        position: 'right'
                     },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label(context) {
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const value = context.raw;
                                 const percentage = ((value / total) * 100).toFixed(1);
@@ -392,174 +316,109 @@
                 }
             }
         });
-
-        // Timeline Chart (neu)
+    }
+    
+    /**
+     * Initialisiert das Zeitverlaufs-Liniendiagramm 
+     */
+    function initializeTimelineChart() {
         const timelineCtx = document.getElementById('timelineChart').getContext('2d');
-        const timelineData = {
-            {% set dates = {} %}
-            {% for item in session.items if item.counted_at %}
-                {% set date = item.counted_at.strftime('%Y-%m-%d') %}
-                {% if date not in dates %}
-                    {% set _ = dates.update({date: {'found': 0, 'missing': 0, 'damaged': 0, 'pending': 0}}) %}
-                {% endif %}
-                {% set _ = dates[date].update({item.status: dates[date][item.status] + 1}) %}
-            {% endfor %}
-        };
+        
+        // eslint-disable-next-line no-new
         new Chart(timelineCtx, {
             type: 'line',
             data: {
-                labels: Object.keys(timelineData).sort(),
+                labels: chartData.timeline.labels,
                 datasets: [{
-                    label: 'Gefunden',
-                    data: Object.keys(timelineData).sort().map(date => timelineData[date].found),
-                    borderColor: '#48c774',
-                    fill: false
-                }, {
-                    label: 'Fehlend',
-                    data: Object.keys(timelineData).sort().map(date => timelineData[date].missing),
-                    borderColor: '#f14668',
-                    fill: false
-                }, {
-                    label: 'Beschädigt',
-                    data: Object.keys(timelineData).sort().map(date => timelineData[date].damaged),
-                    borderColor: '#ffdd57',
-                    fill: false
-                }, {
-                    label: 'Ausstehend',
-                    data: Object.keys(timelineData).sort().map(date => timelineData[date].pending),
-                    borderColor: '#ff9900',
-                    fill: false
+                    label: 'Gezählte Assets',
+                    data: chartData.timeline.data,
+                    borderColor: '#3273dc',
+                    backgroundColor: 'rgba(50,115,220,0.1)',
+                    tension: 0.2,
+                    fill: true,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
                 }]
             },
             options: {
                 responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
                 plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Datum' } },
+                    y: { title: { display: true, text: 'Anzahl' }, beginAtZero: true }
                 }
             }
         });
-
-        // Location Chart (neu)
-        const locationCtx = document.getElementById('locationChart').getContext('2d');
-        const locationData = {
-            {% set locations = {} %}
-            {% for item in session.items if item.actual_location %}
-                {% if item.actual_location not in locations %}
-                    {% set _ = locations.update({item.actual_location: {'found': 0, 'missing': 0, 'damaged': 0, 'pending': 0}}) %}
-                {% endif %}
-                {% set _ = locations[item.actual_location].update({item.status: locations[item.actual_location][item.status] + 1}) %}
-            {% endfor %}
-        };
-        new Chart(locationCtx, {
+    }
+    
+    /**
+     * Initialisiert das Kategorien-Balkendiagramm
+     */
+    function initializeCategoryChart() {
+        const catCtx = document.getElementById('categoryChart').getContext('2d');
+        
+        // eslint-disable-next-line no-new
+        new Chart(catCtx, {
             type: 'bar',
             data: {
-                labels: Object.keys(locationData),
+                labels: chartData.category.labels,
                 datasets: [{
-                    label: 'Gefunden',
-                    data: Object.values(locationData).map(loc => loc.found),
-                    backgroundColor: '#48c774'
-                }, {
-                    label: 'Fehlend',
-                    data: Object.values(locationData).map(loc => loc.missing),
-                    backgroundColor: '#f14668'
-                }, {
-                    label: 'Beschädigt',
-                    data: Object.values(locationData).map(loc => loc.damaged),
-                    backgroundColor: '#ffdd57'
-                }, {
-                    label: 'Ausstehend',
-                    data: Object.values(locationData).map(loc => loc.pending),
-                    backgroundColor: '#ff9900'
+                    label: 'Anzahl',
+                    data: chartData.category.counts,
+                    backgroundColor: '#48c774',
+                    borderColor: '#3273dc',
+                    borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
-                scales: {
-                    x: {
-                        stacked: true
-                    },
-                    y: {
-                        stacked: true,
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
                 plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Kategorie' } },
+                    y: { title: { display: true, text: 'Anzahl' }, beginAtZero: true }
                 }
             }
         });
-
-        // Category Chart (neu)
-        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-        const categoryData = {
-            {% set categories = {} %}
-            {% for item in session.items %}
-                {% set category = item.asset.category %}
-                {% if category not in categories %}
-                    {% set _ = categories.update({category: {'found': 0, 'missing': 0, 'damaged': 0, 'pending': 0}}) %}
-                {% endif %}
-                {% set _ = categories[category].update({item.status: categories[category][item.status] + 1}) %}
-            {% endfor %}
-        };
-        new Chart(categoryCtx, {
-            type: 'radar',
+    }
+    
+    /**
+     * Initialisiert das Standort-Balkendiagramm
+     */
+    function initializeLocationChart() {
+        const locCtx = document.getElementById('locationChart').getContext('2d');
+        
+        // eslint-disable-next-line no-new
+        new Chart(locCtx, {
+            type: 'bar',
             data: {
-                labels: Object.keys(categoryData),
+                labels: chartData.location.labels,
                 datasets: [{
-                    label: 'Gefunden',
-                    data: Object.values(categoryData).map(cat => cat.found),
-                    borderColor: '#48c774',
-                    backgroundColor: 'rgba(72, 199, 116, 0.2)'
-                }, {
-                    label: 'Fehlend',
-                    data: Object.values(categoryData).map(cat => cat.missing),
-                    borderColor: '#f14668',
-                    backgroundColor: 'rgba(241, 70, 104, 0.2)'
-                }, {
-                    label: 'Beschädigt',
-                    data: Object.values(categoryData).map(cat => cat.damaged),
-                    borderColor: '#ffdd57',
-                    backgroundColor: 'rgba(255, 221, 87, 0.2)'
-                }, {
-                    label: 'Ausstehend',
-                    data: Object.values(categoryData).map(cat => cat.pending),
-                    borderColor: '#ff9900',
-                    backgroundColor: 'rgba(255, 153, 0, 0.2)'
+                    label: 'Assets',
+                    data: chartData.location.counts,
+                    backgroundColor: '#3273dc',
+                    borderColor: '#205BBD',
+                    borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
                 plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
+                    legend: { display: false }
                 },
                 scales: {
-                    r: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
+                    x: { title: { display: true, text: 'Standort' } },
+                    y: { title: { display: true, text: 'Anzahl' }, beginAtZero: true }
                 }
             }
         });
-    });
+    }
     </script>
+    
+    <!-- Asset-Liste JavaScript einbinden -->
+    <script src="{{ url_for('static', filename='js/report_detail_asset.js') }}"></script>
 </div>
 {% endblock %}

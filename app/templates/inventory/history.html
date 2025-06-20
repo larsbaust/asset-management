@@ -36,7 +36,7 @@
                         {% for session in sessions %}
                         <tr>
                             <td>{{ session.name }}</td>
-                            <td>{{ session.location }}</td>
+                            <td>{{ session.location_obj.name if session.location_obj else 'Global' }}</td>
                             <td>{{ session.start_date.strftime('%d.%m.%Y') }}</td>
                             <td>{{ session.end_date.strftime('%d.%m.%Y') }}</td>
                             <td>
