@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file, current_app, json
+import random
 from dotenv import load_dotenv
 load_dotenv()
 from .models import Asset, db, Loan, Document, CostEntry, InventorySession, InventoryItem, InventoryTeam, OrderComment, AssetLog
@@ -64,9 +65,14 @@ def inventory_scan(session_id, asset_id):
 def multi_loan():
     form = MultiLoanForm()
     if request.method == 'GET':
-        asset_ids = request.args.get('asset_ids', '')
-        asset_ids = [int(id) for id in asset_ids.split(',')]
-        assets = Asset.query.filter(Asset.id.in_(asset_ids)).all()
+        # Beide Parameter-Namen unterstützen für Kompatibilität
+        asset_ids = request.args.get('asset_ids', '') or request.args.get('ids', '')
+        if asset_ids:
+            # Leere Strings herausfiltern und zu Integers konvertieren
+            asset_ids = [int(id.strip()) for id in asset_ids.split(',') if id.strip()]
+            assets = Asset.query.filter(Asset.id.in_(asset_ids)).all()
+        else:
+            assets = []
         return render_template('multi_loan.html', form=form, assets=assets)
 
     if form.validate_on_submit():
@@ -233,8 +239,22 @@ def multi_loan():
 
 @main.route('/locations')
 def locations():
-    from .models import Location
-    locations = Location.query.order_by(Location.name).all()
+    from .models import Location, Asset
+    from sqlalchemy import func
+    
+    # Alle Standorte mit Asset-Anzahl laden
+    locations_with_counts = db.session.query(
+        Location,
+        func.count(Asset.id).label('asset_count')
+    ).outerjoin(Asset, Location.id == Asset.location_id).group_by(Location.id).order_by(Location.name).all()
+    
+    # Locations-Objekte mit asset_count Attribut erweitern
+    locations = []
+    for location, asset_count in locations_with_counts:
+        # Asset-Anzahl als Attribut hinzufügen
+        location.asset_count = asset_count
+        locations.append(location)
+    
     return render_template('locations.html', locations=locations)
 
 @main.route('/locations/add', methods=['GET', 'POST'])
@@ -407,12 +427,94 @@ def edit_location(id):
             os.makedirs(image_folder, exist_ok=True)
             image_path = os.path.join(image_folder, filename)
             form.image.data.save(image_path)
-            location.image_url = f'static/location_images/{filename}'
+            # Set image_url for location profile image
+            location.image_url = f'/static/location_images/{filename}'
         form.populate_obj(location)
         db.session.commit()
         flash('Standort erfolgreich aktualisiert.', 'success')
-        return redirect(url_for('main.location_detail', id=location.id))
-    return render_template('location_form.html', form=form, edit=True, location=location)
+        return redirect('/md3/locations')
+    
+    # If form validation fails, flash errors and redirect to MD3 UX
+    for field, errors in form.errors.items():
+        for error in errors:
+            flash(f'Fehler im Feld {field}: {error}', 'danger')
+    
+    return redirect('/md3/locations')
+
+@main.route('/locations/<int:id>/fetch-google-data', methods=['POST'])
+def fetch_google_data(id):
+    """Fetch Google Places data for a location"""
+    from .models import Location, db
+    import requests
+    import json
+    
+    location = Location.query.get_or_404(id)
+    
+    try:
+        # Get request data
+        data = request.get_json()
+        search_query = data.get('search_query', '')
+        
+        # TODO: Replace with your actual Google Places API key
+        # For now, return mock data to demonstrate the functionality
+        google_api_key = 'YOUR_GOOGLE_PLACES_API_KEY_HERE'
+        
+        if google_api_key == 'YOUR_GOOGLE_PLACES_API_KEY_HERE':
+            # Return mock data for demonstration
+            mock_data = {
+                'success': True,
+                'rating': 4.3,
+                'user_ratings_total': 156,
+                'url': f'https://maps.google.com/?q={search_query.replace(" ", "+")}',
+                'place_id': 'mock_place_id_' + str(id),
+                'geometry': {
+                    'location': {
+                        'lat': 52.5200 + (id * 0.001),  # Mock coordinates
+                        'lng': 13.4050 + (id * 0.001)
+                    }
+                },
+                'message': 'Mock-Daten (Google Places API noch nicht konfiguriert)'
+            }
+            return jsonify(mock_data)
+        
+        # Real Google Places API implementation
+        places_url = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
+        params = {
+            'query': search_query,
+            'key': google_api_key,
+            'fields': 'place_id,name,rating,user_ratings_total,geometry,url'
+        }
+        
+        response = requests.get(places_url, params=params)
+        places_data = response.json()
+        
+        if places_data.get('status') == 'OK' and places_data.get('results'):
+            # Get the first result
+            place = places_data['results'][0]
+            
+            # Extract relevant data
+            google_data = {
+                'success': True,
+                'rating': place.get('rating'),
+                'user_ratings_total': place.get('user_ratings_total'),
+                'place_id': place.get('place_id'),
+                'geometry': place.get('geometry'),
+                'url': f"https://maps.google.com/maps/place/?q=place_id:{place.get('place_id')}"
+            }
+            
+            return jsonify(google_data)
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Standort nicht gefunden: {places_data.get("status", "Unbekannter Fehler")}'
+            })
+            
+    except Exception as e:
+        print(f"Error fetching Google Places data: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Fehler beim Abrufen der Google Places Daten'
+        })
 
 @main.route('/locations/<int:id>/delete', methods=['POST', 'GET'])
 @login_required
@@ -605,6 +707,7 @@ def index():
     )
 
 @main.route('/dashboard')
+@main.route('/md3/dashboard')
 @login_required
 def dashboard():
     # Hole die letzten 5 Assets des Benutzers
@@ -817,22 +920,66 @@ def dashboard():
     # Fallback: assignment_data, falls oben nicht definiert
     if 'assignment_data' not in locals():
         assignment_data = []
-    return render_template('dashboard.html',
-        recent_assets=recent_assets,
-        chart_data=chart_data,
-        active_count=active,
-        on_loan_count=on_loan,
-        inactive_count=inactive,
-        months=months,
-        values=values,
-        category_data=category_data,
-        assignment_data=assignment_data,
-        cost_type_labels=cost_type_labels,
-        cost_amounts=cost_amounts,
-        locations=locations,
-        manufacturer_data=manufacturer_data,
-        location_delivery_status=location_delivery_status
-    )
+    
+    # Prüfen, welches Dashboard angezeigt werden soll
+    if request.path.startswith('/md3/'):
+        # Konvertiere Standortdaten für die Google Maps-Karte im MD3-Dashboard
+        locations_json = json.dumps([
+            {
+                'name': loc['name'], 
+                'latitude': loc['latitude'], 
+                'longitude': loc['longitude'], 
+                'asset_count': Asset.query.filter_by(location_id=location_obj.id).count()
+            } for loc, location_obj in zip(locations, location_objs) if loc['latitude'] and loc['longitude']
+        ])
+        
+        # Chart-Daten für das MD3-Dashboard formatieren
+        md3_chart_data = {
+            'cost_distribution': {
+                'labels': cost_type_labels,
+                'data': cost_amounts
+            },
+            'value_development': {
+                'labels': months,
+                'data': values
+            },
+            'department_distribution': {
+                'labels': [cat['category'] for cat in category_data if cat['count'] > 0],
+                'data': [cat['count'] for cat in category_data if cat['count'] > 0]
+            },
+            'monthly_usage': {
+                'labels': ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun'],
+                'data': [random.randint(20, 100) for _ in range(6)]
+            }
+        }
+        
+        # MD3-Dashboard-Template rendern
+        return render_template('md3/layouts/dashboard.html',
+            active_count=active,
+            on_loan_count=on_loan,
+            inactive_count=inactive,
+            latest_assets=recent_assets,
+            chart_data=md3_chart_data,
+            locations_json=locations_json
+        )
+    else:
+        # Standard-Dashboard rendern
+        return render_template('dashboard.html',
+            recent_assets=recent_assets,
+            chart_data=chart_data,
+            active_count=active,
+            on_loan_count=on_loan,
+            inactive_count=inactive,
+            months=months,
+            values=values,
+            category_data=category_data,
+            assignment_data=assignment_data,
+            cost_type_labels=cost_type_labels,
+            cost_amounts=cost_amounts,
+            locations=locations,
+            manufacturer_data=manufacturer_data,
+            location_delivery_status=location_delivery_status
+        )
 
 # Route für die Massenarchivierung von Assets
 @main.route('/bulk_archive', methods=['POST'])
@@ -2311,24 +2458,19 @@ def complete_inventory(id):
     """Schließt eine Inventur ab"""
     session = InventorySession.query.get_or_404(id)
     
-    # Prüfe pro Asset nur das Item mit der höchsten gezählten Menge
-    from sqlalchemy import func, and_
-    subq = db.session.query(
-        InventoryItem.asset_id,
-        func.max(InventoryItem.counted_quantity).label('max_counted')
-    ).filter(
-        InventoryItem.session_id == id
-    ).group_by(InventoryItem.asset_id).subquery()
-
-    uncounted_items = db.session.query(InventoryItem).join(
-        subq,
-        and_(
-            InventoryItem.asset_id == subq.c.asset_id,
-            InventoryItem.counted_quantity == subq.c.max_counted
+    # Prüfe auf ungezählte Items: Nur sichtbare (nicht verwaiste) Items berücksichtigen
+    # 0 ist gültig (fehlend), None bedeutet nicht gezählt
+    from sqlalchemy import and_
+    uncounted_items = (
+        db.session.query(InventoryItem)
+        .join(Asset, InventoryItem.asset_id == Asset.id, isouter=True)
+        .filter(
+            InventoryItem.session_id == id,
+            InventoryItem.counted_quantity.is_(None),
+            Asset.id.isnot(None)
         )
-    ).filter(
-        InventoryItem.counted_quantity == None
-    ).count()
+        .count()
+    )
     if uncounted_items > 0:
         flash(f'Es gibt noch {uncounted_items} ungezählte Assets in dieser Inventur.', 'warning')
         return redirect(url_for('main.inventory_planning_detail', id=id))
@@ -2359,9 +2501,16 @@ def complete_inventory(id):
         if item.actual_location and item.expected_location:
             item.location_correct = (item.actual_location == item.expected_location)
 
-    # Setze Status auf completed
+    # Setze Status auf completed und Abschluss-Metadaten
     session.status = 'completed'
     session.end_date = datetime.utcnow()
+    if hasattr(session, 'completed_at'):
+        session.completed_at = datetime.utcnow()
+    if hasattr(session, 'completed_by'):
+        try:
+            session.completed_by = current_user.username if current_user.is_authenticated else 'System'
+        except Exception:
+            session.completed_by = 'System'
     db.session.commit()
     
     flash('Inventur wurde erfolgreich abgeschlossen!', 'success')
@@ -2413,7 +2562,6 @@ def inventory_planning_add_items(id):
 from sqlalchemy.orm import joinedload
 
 @main.route('/inventory/reports')
-
 def inventory_reports():
     """Zeigt eine Übersicht aller abgeschlossenen Inventuren mit Berichten"""
     completed_sessions = (
@@ -2430,6 +2578,9 @@ def inventory_reports():
         type_groups = {}
         damaged = 0
         for item in session.items:
+            # Überspringe verwaiste Items ohne verknüpftes Asset
+            if not item.asset:
+                continue
             key = (item.asset.name, item.asset.article_number or "-")
             if key not in type_groups:
                 type_groups[key] = {"expected": 0, "counted": 0, "damaged": 0}
@@ -2832,6 +2983,50 @@ def inventory_history():
     sessions = InventorySession.query.filter_by(status='completed').order_by(InventorySession.end_date.desc()).all()
     return render_template('inventory/history.html', sessions=sessions)
 
+@main.route('/md3/inventory/history')
+def md3_inventory_history():
+    """MD3 Inventur-Historie mit abgeschlossenen, archivierten und abgebrochenen Inventuren"""
+    sessions = InventorySession.query.filter(
+        InventorySession.status.in_(['completed', 'cancelled', 'archived'])
+    ).order_by(InventorySession.end_date.desc()).all()
+    
+    # Calculate summary statistics for each session
+    for session in sessions:
+        items = InventoryItem.query.filter_by(session_id=session.id).all()
+        session.total_assets = len(items)
+        session.found_count = sum(1 for item in items if item.counted_quantity and item.counted_quantity > 0 and item.condition != 'damaged')
+        session.missing_count = sum(1 for item in items if not item.counted_quantity or item.counted_quantity == 0)
+        session.damaged_count = sum(1 for item in items if item.condition == 'damaged')
+    
+    return render_template('md3/inventory/history.html', sessions=sessions)
+
+@main.route('/inventory/sessions/<int:id>/archive', methods=['POST'])
+def archive_inventory_session(id):
+    """Archiviert eine Inventur-Session"""
+    session = InventorySession.query.get_or_404(id)
+    
+    if session.status not in ['completed', 'cancelled']:
+        return jsonify({'success': False, 'message': 'Nur abgeschlossene oder abgebrochene Inventuren können archiviert werden.'})
+    
+    session.status = 'archived'
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Inventur wurde archiviert.'})
+
+@main.route('/inventory/sessions/<int:id>/delete', methods=['DELETE'])
+def delete_inventory_session(id):
+    """Löscht eine Inventur-Session dauerhaft"""
+    session = InventorySession.query.get_or_404(id)
+    
+    # Delete all related inventory items first
+    InventoryItem.query.filter_by(session_id=session.id).delete()
+    
+    # Delete the session
+    db.session.delete(session)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Inventur wurde dauerhaft gelöscht.'})
+
 @main.route('/inventory/location/<int:location_id>/plan', methods=['GET', 'POST'])
 def inventory_location_plan(location_id):
     """Inventurplanung für einen bestimmten Standort"""
@@ -2896,3 +3091,128 @@ def inventory_location_history(location_id):
     ).order_by(InventorySession.end_date.desc()).all()
     
     return render_template('inventory/location_history.html', location=location, sessions=sessions)
+
+@main.route('/preview/md3')
+def md3_preview():
+    """Vorschau der Material Design 3 Navigation"""
+    return render_template('material_preview.html')
+
+@main.route('/api/dashboard/cost-distribution', methods=['GET'])
+def api_dashboard_cost_distribution():
+    # Diese Daten werden aus der dashboard-Funktion wiederverwendet
+    from sqlalchemy import func, extract
+    from datetime import datetime
+    from .models import CostEntry
+    
+    # Kostenarten und ihre Summen aufsummieren (nach cost_type gruppiert)
+    cost_type_data = db.session.query(
+        CostEntry.cost_type, 
+        func.sum(CostEntry.amount).label('total_cost')
+    ).group_by(CostEntry.cost_type).all()
+    
+    # Daten für Chart formatieren
+    cost_type_labels = []
+    cost_amounts = []
+    
+    for cost_type, total_cost in cost_type_data:
+        if cost_type and total_cost:  # Nur gültige Daten hinzufügen
+            cost_type_labels.append(cost_type)
+            cost_amounts.append(float(total_cost))  # Decimal zu float für JSON
+    
+    # Chart-Daten zurückgeben
+    return jsonify({
+        'cost_distribution': {
+            'labels': cost_type_labels,
+            'data': cost_amounts
+        }
+    })
+
+@main.route('/api/dashboard/locations', methods=['GET'])
+def api_dashboard_locations():
+    """API-Endpunkt für Standortdaten für die Google Maps-Karte im Dashboard"""
+    from .models import Location
+    
+    # Alle Standorte mit Koordinaten abfragen
+    locations = Location.query.filter(
+        Location.latitude.isnot(None),
+        Location.longitude.isnot(None)
+    ).all()
+    
+    # Standorte formatieren
+    location_data = []
+    for location in locations:
+        # Assets am Standort zählen
+        asset_count = len(location.assets) if hasattr(location, 'assets') else 0
+        
+        # Standort-Objekt erstellen
+        loc_data = {
+            'id': location.id,
+            'name': location.name,
+            'latitude': float(location.latitude) if location.latitude else None,
+            'longitude': float(location.longitude) if location.longitude else None,
+            'address': f"{location.street}, {location.postal_code} {location.city}",
+            'asset_count': asset_count
+        }
+        location_data.append(loc_data)
+    
+    # Debugging-Info ausgeben
+    print(f"API: {len(location_data)} Standorte für die Karte gefunden")
+    
+    # JSON-Antwort senden
+    return jsonify({
+        'locations': location_data
+    })
+
+@main.route('/md3/locations/import', methods=['GET', 'POST'])
+@login_required
+def md3_location_import():
+    """MD3 Standorte CSV-Import Seite"""
+    if request.method == 'POST':
+        # Import-Logik aus der bestehenden Route übernehmen
+        from app.location.location_utils import import_locations_from_csv
+        
+        # Prüfen ob Datei vorhanden ist
+        if 'csv_file' not in request.files:
+            flash('Keine Datei ausgewählt', 'danger')
+            return redirect(request.url)
+        
+        file = request.files['csv_file']
+        
+        # Prüfen ob Dateiname vorhanden
+        if file.filename == '':
+            flash('Keine Datei ausgewählt', 'danger')
+            return redirect(request.url)
+            
+        # Prüfen ob es sich um eine CSV handelt
+        if file and file.filename.endswith('.csv'):
+            delimiter = request.form.get('delimiter', ',')
+            
+            try:
+                # Import durchführen
+                result = import_locations_from_csv(file, delimiter)
+                
+                # Feedback an Benutzer
+                if result['imported'] > 0:
+                    flash(f"{result['imported']} Standorte erfolgreich importiert", 'success')
+                
+                if result['skipped'] > 0:
+                    flash(f"{result['skipped']} Standorte übersprungen", 'warning')
+                    
+                if result['errors']:
+                    for error in result['errors'][:5]:  # Nur die ersten 5 Fehler anzeigen
+                        flash(error, 'danger')
+                        
+                    if len(result['errors']) > 5:
+                        flash(f"... und {len(result['errors']) - 5} weitere Fehler", 'danger')
+                
+                return redirect(url_for('md3_locations'))
+                
+            except Exception as e:
+                flash(f'Fehler beim Import: {str(e)}', 'danger')
+                return redirect(request.url)
+        else:
+            flash('Bitte wählen Sie eine gültige CSV-Datei aus', 'danger')
+            return redirect(request.url)
+    
+    # GET-Request: Zeige Import-Seite
+    return render_template('md3/layouts/location_import.html')

@@ -1,0 +1,2151 @@
+{% extends "base.html" %}
+
+{% block head %}
+
+<!-- Google Maps Styling -->
+<style>
+  .md3-map-info-window {
+    font-family: var(--md-sys-typescale-body-medium-font-family);
+    color: var(--md-sys-color-on-surface);
+    max-width: 300px;
+    padding: 8px 0;
+  }
+  .md3-map-info-title {
+    margin: 0 0 8px 0; 
+    color: var(--md-sys-color-primary); 
+    font-family: var(--md-sys-typescale-title-medium-font-family);
+    font-weight: 500;
+  }
+  .md3-map-info-address {
+    margin: 0; 
+    color: var(--md-sys-color-on-surface-variant);
+  }
+  .md3-map-info-count {
+    margin-top: 8px;
+  }
+  .md3-map-info-count span {
+    color: var(--md-sys-color-primary);
+    font-weight: 500;
+  }
+
+  /* Google Maps Container Styling */
+  #location-map {
+    height: 340px;
+    min-height: 340px;
+    width: 100%;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  
+  /* Loading Indikator */
+  .map-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    font-family: var(--md-sys-typescale-body-medium-font-family);
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  /* MD3 Styled Map Controls */
+  .gm-style .gm-style-iw-c {
+    padding: 12px !important;
+    box-shadow: var(--md-sys-elevation-3) !important;
+    border-radius: 16px !important;
+  }
+</style>
+{{ super() }}
+{% endblock %}
+
+{% block content %}
+<!-- MD3 Navigation einbinden -->
+{% include 'md3-nav.html' %}
+
+<!-- Dashboard Container -->
+<div class="md-dashboard-container">
+  <div class="md-dashboard-grid">
+    
+    <!-- Standorte auf der Karte -->
+    <div class="md-dashboard-grid-item md-dashboard-grid-wide">
+      <!-- Style für die Karte, um unerwünschte Labels zu verstecken -->
+      <style>
+        /* Spezifische CSS-Regel für den Karten-Header */
+        #map-card .md-card-header span {
+          display: none !important; /* Versteckt alle spans im Header */
+        }
+        
+        /* Falls es sich um ein anderes Element handelt */
+        #map-card .md-card-header *:not(.md-card-title) {
+          display: none !important; /* Versteckt alle Elemente außer dem Titel */
+        }
+      </style>
+      
+      {% set card_content %}
+        <!-- Karten-Container mit expliziten CSS-Regeln -->
+        <div id="location-map" style="height: 340px; width: 100%; border-radius: var(--md-sys-shape-corner-medium); position: relative; overflow: hidden; display: block;"></div>
+        <!-- Fallback falls Karte nicht geladen werden kann -->
+        <div id="map-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; display: none;">
+          <div style="color: var(--md-sys-color-primary); font-family: var(--md-sys-typescale-body-medium-font-family);">Karte wird geladen...</div>
+        </div>
+      {% endset %}
+      
+      {% set title = 'Standorte auf der Karte' %}
+      {% set elevation = 1 %}
+      <div id="map-card">
+        {% include 'md3/components/card.html' %}
+      </div>
+      
+      <!-- Google Maps Custom Styling -->
+      <style>
+        /* Aggressiveres CSS zum Ausblenden des "active"-Labels */
+        /* Zielt auf alle Elemente in der oberen rechten Ecke */
+        #map-card .md-card-header:after,
+        #map-card .md-card-header [class*="tag"],
+        #map-card .md-card-header [class*="button"],
+        #map-card .md-card-header > *:not(.md-card-title),
+        #location-map [class*="control"] span,
+        #location-map [class*="control"] div,
+        #location-map .gm-style [class*="layer"] span,
+        #location-map .gm-style [class*="layer"] div,
+        #location-map .gm-style-mtc,
+        #location-map .gm-style-mtc *,
+        #location-map [class*="satellite"],
+        #location-map [class*="label"],
+        #location-map [class*="active"],
+        .gm-style div[style*="position: absolute; left: 0px; top: 0px;"] > div > div:nth-child(5),
+        .gm-style-cc {
+          display: none !important;
+          opacity: 0 !important;
+          visibility: hidden !important;
+        }
+      </style>
+      
+      <!-- JavaScript um das "active"-Label zu entfernen -->
+      <script>
+        // Ausführung mehrmals mit zunehmender Verzögerung, um dynamisch eingefügte Elemente zu erfassen
+        function removeActiveLabels() {
+          console.log('Suche und entferne alle möglichen "active"-Labels...');
+          
+          // Aggressive DOM-Traversierung um nach allem zu suchen, was "active" enthalten könnte
+          function scanAndRemove() {
+            // 1. Suche überall im Dokument
+            document.querySelectorAll('*').forEach(function(el) {
+              // Wenn der Text "active" enthält und das Element sichtbar ist
+              if (el.textContent && 
+                 el.textContent.trim().toLowerCase() === 'active' &&
+                 getComputedStyle(el).display !== 'none') {
+                console.log('! "active"-Label gefunden:', el);
+                el.style.display = 'none';
+                // Gib auch die vollständige Element-Hierarchie für Debugging aus
+                let path = [];
+                let current = el;
+                while (current) {
+                  let desc = current.tagName.toLowerCase();
+                  if (current.id) desc += '#' + current.id;
+                  if (current.className) desc += '.' + current.className.replace(/ /g, '.');
+                  path.unshift(desc);
+                  current = current.parentElement;
+                }
+                console.log('Element-Pfad:', path.join(' > '));
+              }
+            });
+            
+            // 2. Spezifisch nach Google Maps-Elementen suchen
+            const mapContainer = document.getElementById('location-map');
+            if (mapContainer) {
+              // Alle Layer und Controls in Google Maps durchsuchen
+              const mapElements = mapContainer.querySelectorAll('[class*="layer"], [class*="control"], .gm-style-mtc, .gm-style *');
+              mapElements.forEach(function(el) {
+                if (el.textContent && el.textContent.trim().toLowerCase() === 'active') {
+                  console.log('! Google Maps "active" Element gefunden:', el);
+                  el.style.display = 'none';
+                  el.style.opacity = '0';
+                  el.style.visibility = 'hidden';
+                }
+              });
+              
+              // 3. Brute-Force: Alle Elemente mit bestimmter Position (typisch für Map-Controls)
+              const possibleControls = document.querySelectorAll('.gm-style div[style*="position: absolute"]');
+              possibleControls.forEach(function(el) {
+                // Wenn es klein ist und oben rechts (typisch für Karten-Controls)
+                const rect = el.getBoundingClientRect();
+                const mapRect = mapContainer.getBoundingClientRect();
+                if (rect.width < 100 && rect.height < 30 && 
+                    rect.right > mapRect.right - 100 && rect.top < mapRect.top + 100) {
+                  console.log('! Potentielles Map Control gefunden und wird ausgeblendet:', el);
+                  el.style.display = 'none';
+                }
+              });
+            }
+          }
+          
+          // Mehrmals ausführen mit steigender Verzögerung
+          scanAndRemove();
+          setTimeout(scanAndRemove, 500);
+          setTimeout(scanAndRemove, 1000);
+          setTimeout(scanAndRemove, 2000);
+          setTimeout(scanAndRemove, 5000);
+          
+          // Bei Scroll oder Resize erneut prüfen (falls dynamisch eingefügt)
+          window.addEventListener('scroll', scanAndRemove, {passive: true});
+          window.addEventListener('resize', scanAndRemove, {passive: true});
+        }
+        
+        // Nach DOM-Laden ausführen
+        document.addEventListener('DOMContentLoaded', removeActiveLabels);
+        
+        // Auch beim Laden der Google Maps ausführen
+        window.addEventListener('load', removeActiveLabels);
+      </script>
+      
+      <!-- Versteckte Locations-Daten, vom Backend gefüllt -->
+      <script type="application/json" id="locations-data">
+        {{ locations_json|safe if locations_json else '[]' }}
+      </script>
+      
+      <!-- Tracking-Daten für Lieferungen, vom Backend gefüllt -->
+      <script type="application/json" id="tracking-data">
+        {{ tracking_json|safe if tracking_json else '{"locations":[], "counts":{"in_transit":0, "delivered":0, "pending":0, "total":0}}' }}
+      </script>
+    </div>
+    
+    <!-- Status der Assets -->
+    {% if has_permission(current_user, 'view_chart_asset_status') %}
+      <div class="md-dashboard-grid-item">
+        {% set card_content %}
+          <!-- Asset Status -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <h5 class="mb-3">Asset Status</h5>
+        </div>
+        <div class="col-12">
+          <div class="md3-stat-cards-container">
+            <div class="md3-stat-card-horizontal">
+              {% set value = '140' %}
+              {% set badge_text = 'Aktiv' %}
+              {% set badge_type = 'success' %}
+              {% set id = 'count-active' %}
+              {% set animation_duration = 1500 %}
+              {% set icon = 'check_circle' %}
+              {% include 'md3/components/stat-card.html' %}
+            </div>
+            <div class="md3-stat-card-horizontal">
+              {% set value = '0' %}
+              {% set badge_text = 'Ausgeliehen' %}
+              {% set badge_type = 'secondary' %}
+              {% set id = 'count-borrowed' %}
+              {% set animation_duration = 1500 %}
+              {% set icon = 'sync' %}
+              {% include 'md3/components/stat-card.html' %}
+            </div>
+            <div class="md3-stat-card-horizontal">
+              {% set value = '0' %}
+              {% set badge_text = 'Inaktiv' %}
+              {% set badge_type = 'neutral' %}
+              {% set id = 'count-inactive' %}
+              {% set animation_duration = 1500 %}
+              {% set icon = 'block' %}
+              {% include 'md3/components/stat-card.html' %}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <style>
+        /* Horizontales Layout für Asset Status Cards */
+        .md3-stat-cards-container {
+          display: flex;
+          flex-direction: row;
+          justify-content: center;
+          align-items: center;
+          gap: 40px;
+          margin: 0 auto 20px auto;
+          max-width: 600px;
+          text-align: center;
+        }
+        
+        .md3-stat-card-horizontal {
+          flex: 1;
+          display: flex;
+          justify-content: center;
+          padding: 10px;
+          text-align: center;
+        }
+        
+        /* Zentrieren der Zahlen und Labels innerhalb der Stat Cards */
+        .md3-stat-card {
+          margin: 0 auto;
+        }
+        
+        @media (max-width: 768px) {
+          .md3-stat-cards-container {
+            flex-direction: column;
+            gap: 15px;
+          }
+          
+          .md3-stat-card-horizontal {
+            width: 100%;
+          }
+        }
+      </style>
+      
+      <style>
+        /* Asset Status Card-Styling */
+        .md3-stat-card-wrapper {
+          margin: 0 auto;
+          max-width: 190px;
+        }
+        
+        /* Farben für die Stat Icons */
+        .md-stat-icon-success .material-symbols-outlined {
+          color: var(--md-sys-color-tertiary);
+        }
+        
+        .md-stat-icon-secondary .material-symbols-outlined {
+          color: var(--md-sys-color-secondary);
+        }
+        
+        .md-stat-icon-primary .material-symbols-outlined {
+          color: var(--md-sys-color-primary);
+        }
+        
+        .md-stat-icon-neutral .material-symbols-outlined {
+          color: var(--md-sys-color-outline);
+        }
+        
+        .md-stat-icon-warning .material-symbols-outlined {
+          color: var(--md-sys-color-error-container);
+        }
+        
+        .md-stat-icon-error .material-symbols-outlined {
+          color: var(--md-sys-color-error);
+        }
+      </style>
+          </div>
+        {% endset %}
+        
+        {% set title = 'Asset Status' %}
+        {% set elevation = 1 %}
+        {% include 'md3/components/card.html' %}
+      </div>
+    {% endif %}
+
+    <!-- Kostenverteilung (MD3 Style) -->
+    {% if has_permission(current_user, 'view_chart_cost_distribution') %}
+      <div class="md-dashboard-grid-item" style="position: relative; z-index: 1; overflow: visible;">
+        <!-- Hier wird die chart-card.html Komponente verwendet -->
+        {% set title = 'Kostenverteilung' %}
+        {% set canvas_id = 'costChart' %}
+        {% set height = '300px' %}
+        {% set circle_chart = true %}
+        {% include 'md3/components/chart-card.html' %}
+        
+        <!-- Hidden data fallback -->
+        <script type="application/json" id="cost-chart-fallback-data">
+          {"cost_distribution": {"labels": ["Anschaffung", "Wartung", "Lizenzen", "Reparatur", "Betriebskosten", "Schulung"], "data": [45, 25, 15, 10, 8, 12]}}
+        </script>
+      </div>
+    {% endif %}
+
+    <!-- Wertentwicklung (MD3 Style) -->
+    <style>
+  /* Direkte CSS-Überschreibung für die Chart-Füllung */
+  canvas#valueChart {
+    --chart-fill-color: rgba(232, 222, 248, 0.3);
+  }
+  /* Spezifischer Selektor für die Chart.js Füllung */
+  .chartjs-fill-area {
+    fill: rgba(232, 222, 248, 0.3) !important;
+  }
+  
+  /* MD3 Loading Indicator Styling */
+  .md3-loading-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--md-sys-color-surface);
+    z-index: 5;
+    border-radius: var(--md-sys-shape-corner-medium);
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+  }
+  
+  .md3-loading-container.hidden {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    display: none !important;
+  }
+  
+  .md3-loading-text {
+    margin-top: 16px;
+    font-family: var(--md-sys-typescale-body-medium-font-family-name);
+    font-size: var(--md-sys-typescale-body-medium-font-size);
+    color: var(--md-sys-color-on-surface-variant);
+  }
+  
+  /* MD3 Spinner Styling */
+  .md3-spinner {
+    position: relative;
+    width: 48px;
+    height: 48px;
+  }
+  
+  .md3-spinner-circle {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 4px solid transparent;
+    border-top-color: var(--md-sys-color-primary);
+    animation: md3-spinner-rotate 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  
+  .md3-spinner-circle-2 {
+    border-top-color: var(--md-sys-color-tertiary);
+    animation-delay: 0.3s;
+  }
+  
+  .md3-spinner-circle-3 {
+    border-top-color: var(--md-sys-color-secondary);
+    animation-delay: 0.6s;
+  }
+  
+  .md3-spinner-circle-4 {
+    border-top-color: var(--md-sys-color-error);
+    animation-delay: 0.9s;
+  }
+  
+  @keyframes md3-spinner-rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>
+    <div id="value-chart-container" class="md-dashboard-grid-item md-dashboard-grid-wide" style="position: relative; z-index: 1; overflow: visible;">
+      
+      <!-- Hier wird die chart-card.html Komponente verwendet -->
+      {% set title = 'Wertentwicklung' %}
+      {% set canvas_id = 'valueChart' %}
+      {% set height = '300px' %}
+      {% set circle_chart = false %}
+      {% include 'md3/components/chart-card.html' %}
+      
+      <!-- MD3 Circular Progress Loader als Overlay -->
+      <div id="chart-loading-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.92); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000;">
+        <!-- MD3-konformer Circular Progress Indicator (Custom Implementation) -->
+        <div class="md3-circular-progress">
+          <div class="md3-circular-progress-spinner">
+            <div class="md3-circular-progress-circle"></div>
+          </div>
+        </div>
+        <div style="margin-top: 16px; font-family: 'Roboto', sans-serif; color: var(--md-sys-color-on-surface-variant);">Daten werden geladen...</div>
+      </div>
+      
+      <!-- MD3 Circular Progress Styling (Custom Implementation) -->
+      <style>
+        /* Container Styles */
+        .md3-circular-progress {
+          display: inline-flex;
+          position: relative;
+          width: 64px;
+          height: 64px;
+        }
+        
+        /* Spinner Container */
+        .md3-circular-progress-spinner {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+        }
+        
+        /* Spinner Circle */
+        .md3-circular-progress-circle {
+          box-sizing: border-box;
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          border: 4px solid var(--md-sys-color-surface-variant);
+          border-radius: 50%;
+        }
+        
+        /* Spinner Circle Animation */
+        .md3-circular-progress-circle:before {
+          content: '';
+          box-sizing: border-box;
+          position: absolute;
+          top: -4px;
+          left: -4px;
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          border: 4px solid transparent;
+          border-top-color: var(--md-sys-color-primary);
+          animation: md3-circular-progress-spin 1s linear infinite;
+        }
+        
+        @keyframes md3-circular-progress-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
+        
+
+      </style>
+      
+      <script>
+        // MD3 Circular Progress Loader Handling
+        document.addEventListener('DOMContentLoaded', function() {
+          // Keine komplexe Animation mehr nötig, da der MD3 Circular Progress
+          // die Animation bereits enthält
+          
+          // Blende das Overlay aus, wenn die Chart-Daten geladen sind
+          window.addEventListener('valueChartLoaded', function() {
+            const overlay = document.getElementById('chart-loading-overlay');
+            if (overlay) {
+              overlay.style.opacity = '0';
+              overlay.style.transition = 'opacity 500ms ease';
+              setTimeout(() => {
+                overlay.style.display = 'none';
+              }, 500);
+            }
+          });
+          
+          // Fallback: Blende Overlay nach 10 Sekunden aus, falls das Event nicht feuert
+          setTimeout(() => {
+            const overlay = document.getElementById('chart-loading-overlay');
+            if (overlay && overlay.style.display !== 'none') {
+              overlay.style.opacity = '0';
+              overlay.style.transition = 'opacity 500ms ease';
+              setTimeout(() => {
+                overlay.style.display = 'none';
+              }, 500);
+            }
+          }, 10000);
+        });
+      </script>
+      
+      <!-- Test-Button zum manuellen Ausblenden -->
+      <button onclick="document.getElementById('chart-loading-overlay').style.display='none';" style="position: absolute; top: 8px; right: 8px; z-index: 1001; background: #A394E0; color: white; border: none; padding: 4px 8px; border-radius: 4px;">Loading ausblenden</button>
+      
+      <!-- Zusätzliches Script zum automatischen Ausblenden des Loaders -->
+      <script>
+        // Sofort nach dem Laden der Seite ausführen
+        document.addEventListener('DOMContentLoaded', function() {
+          console.log('DOM geladen, initialisiere Loading-Overlay-Handler...');
+          
+          // Nach Ladung der Seite und Chart-Initialiserung versuchen, den Loader auszublenden
+          setTimeout(function() {
+            console.log('Zeitverzögerter Check für Loading-Overlay...');
+            const loadingOverlay = document.getElementById('chart-loading-overlay');
+            if (loadingOverlay) {
+              console.log('Loading-Overlay gefunden, wird ausgeblendet...');
+              loadingOverlay.style.display = 'none';
+            } else {
+              console.error('Loading-Overlay nicht gefunden!');
+            }
+          }, 2000); // Längere Wartezeit für sicheres Rendering
+        });
+      </script>
+      
+      <!-- Hidden data fallback -->
+      <script type="application/json" id="value-chart-fallback-data">
+        {"value_development": {"labels": ["Jan", "Feb", "März", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"], "data": [120000, 118000, 125000, 132000, 130000, 135000, 142000, 148000, 152000, 149000, 155000, 160000]}}
+      </script>
+    </div>
+        
+<!-- Chart Initialization Script (extern) -->
+<script src="{{ url_for('static', filename='js/chart.js') }}" defer></script>
+<script src="{{ url_for('static', filename='md3/components/dashboard-charts.js') }}" defer></script>
+
+<!-- Chart-Fix für Wertentwicklungs-Chart -->
+<script src="{{ url_for('static', filename='md3/components/chart-fix.js') }}"></script>
+
+<!-- Ende der Chart-Komponente -->
+      </div>
+
+    <!-- Wertentwicklung Chart wurde entfernt, um Duplikate zu vermeiden. Bereits vorhanden in "Wertentwicklung (MD3 Style)" oben -->
+
+    <!-- Abteilungsverteilung -->
+    {% if has_permission(current_user, 'view_chart_department_distribution') %}
+      <div class="md-dashboard-grid-item">
+        {% set title = 'Abteilungsverteilung' %}
+        {% set canvas_id = 'deptChart' %}
+        {% set height = '300px' %}
+        {% set full_width = true %}
+        {% set circle_chart = true %}
+        {% include 'md3/components/chart-card.html' %}
+      </div>
+    {% endif %}
+
+    <!-- Auslastung nach Monaten -->
+    {% if has_permission(current_user, 'view_chart_monthly_usage') %}
+      <div class="md-dashboard-grid-item md-dashboard-grid-wide">
+        {% set title = 'Auslastung nach Monaten' %}
+        {% set canvas_id = 'usageChart' %}
+        {% set height = '300px' %}
+        {% set full_width = true %}
+        {% set circle_chart = false %}
+        {% include 'md3/components/chart-card.html' %}
+      </div>
+    {% endif %}
+
+
+    
+    <!-- Assets nach Kategorie und Zuordnung -->
+    <div class="md-dashboard-grid-item md-dashboard-grid-wide">
+      {% set title = 'Assets nach Kategorie und Zuordnung' %}
+      {% set canvas_id = 'categoryAssignmentChart' %}
+      {% set height = '300px' %}
+      {% set full_width = true %}
+      {% set circle_chart = false %}
+      {% include 'md3/components/chart-card.html' %}
+    </div>
+    
+    <!-- Assets nach Hersteller -->
+    <div class="md-dashboard-grid-item">
+      {% set title = 'Assets nach Hersteller' %}
+      {% set canvas_id = 'manufacturerChart' %}
+      {% set height = '400px' %}
+      {% set full_width = true %}
+      {% set circle_chart = false %}
+      {% include 'md3/components/chart-card.html' %}
+    </div>
+    
+    <!-- Standorte mit laufender Lieferung -->
+    <div class="md-dashboard-grid-item">
+      {% set title = 'Standorte mit laufender Lieferung' %}
+      {% set canvas_id = 'deliveryChart' %}
+      {% set height = '300px' %}
+      {% set full_width = true %}
+      {% set circle_chart = true %}
+      {% include 'md3/components/chart-card.html' %}
+      
+      <!-- Zusätzliche Statistiken für Lieferungen -->
+      <div class="md3-delivery-stats">
+        <div class="md3-delivery-stat-item">
+          <span class="md3-delivery-count" id="deliveries-in-transit">0</span>
+          <span class="md3-delivery-label">In Transport</span>
+        </div>
+        <div class="md3-delivery-stat-item">
+          <span class="md3-delivery-count" id="deliveries-delivered">0</span>
+          <span class="md3-delivery-label">Geliefert</span>
+        </div>
+        <div class="md3-delivery-stat-item">
+          <span class="md3-delivery-count" id="deliveries-pending">0</span>
+          <span class="md3-delivery-label">Ausstehend</span>
+        </div>
+      </div>
+      
+      <style>
+        .md3-delivery-stats {
+          display: flex;
+          justify-content: space-around;
+          margin-top: 1rem;
+          padding: 1rem;
+        }
+        .md3-delivery-stat-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .md3-delivery-count {
+          font-family: var(--md-sys-typescale-headline-medium-font-family);
+          font-size: var(--md-sys-typescale-headline-medium-font-size);
+          font-weight: var(--md-sys-typescale-headline-medium-font-weight);
+          color: var(--md-sys-color-primary);
+        }
+        .md3-delivery-label {
+          font-family: var(--md-sys-typescale-body-medium-font-family);
+          font-size: var(--md-sys-typescale-body-medium-font-size);
+          color: var(--md-sys-color-on-surface-variant);
+          margin-top: 0.25rem;
+        }
+      </style>
+    </div>
+
+    <!-- Letzte Assets -->
+    <div class="md-dashboard-grid-item md-dashboard-grid-wide">
+      {% set card_content %}
+        {% set table_content %}
+          {% for asset in latest_assets %}
+          <tr class="md3-asset-row">
+            <td class="md3-asset-id">{{ asset.asset_id }}</td>
+            <td class="md3-asset-name">{{ asset.name }}</td>
+            <td class="md3-asset-category">
+              {% set category_text = asset.category|replace('<Category Lizenz>', 'Lizenz')|replace('<Category', '')|replace('>', '') %}
+              <span class="md3-category-chip">
+                <span class="md3-category-icon material-symbols-outlined">
+                  {% if 'Lizenz' in category_text %}
+                    key
+                  {% elif 'Server' in category_text %}
+                    dns
+                  {% elif 'Hardware' in category_text %}
+                    memory
+                  {% elif 'Software' in category_text %}
+                    apps
+                  {% elif 'Netzwerk' in category_text %}
+                    router
+                  {% else %}
+                    category
+                  {% endif %}
+                </span>
+                <span class="md3-category-text">{{ category_text }}</span>
+              </span>
+            </td>
+            <td class="md3-asset-status">
+              <div class="md3-status-indicator {% if asset.status|lower == 'aktiv' %}md3-status-active{% else %}md3-status-inactive{% endif %}">
+                <span class="md3-status-icon material-symbols-outlined">
+                  {% if asset.status|lower == 'aktiv' %}check_circle{% else %}cancel{% endif %}
+                </span>
+                <span class="md3-status-text">{{ 'Aktiv' if asset.status|lower == 'aktiv' else 'Inaktiv' }}</span>
+              </div>
+            </td>
+            <td class="md3-asset-date">{{ asset.updated_at.strftime('%d.%m.%Y') }}</td>
+          </tr>
+          {% endfor %}
+        {% endset %}
+        
+        {% set headers = ['Asset-ID', 'Name', 'Kategorie', 'Status', 'Letztes Update'] %}
+        {% set responsive = true %}
+        {% set hover = true %}
+        {% set zebra = true %}
+        {% include 'md3/components/table.html' %}
+        
+        <style>
+          /* MD3-Styling für Asset-Tabelle */
+          .md3-asset-row {
+            transition: background-color 0.2s ease;
+          }
+          
+          .md3-asset-id {
+            font-family: var(--md-sys-typescale-label-medium-font-family);
+            font-size: var(--md-sys-typescale-label-medium-font-size);
+            color: var(--md-sys-color-on-surface-variant);
+            width: 80px;
+          }
+          
+          .md3-asset-name {
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface);
+          }
+          
+          .md3-category-chip {
+            display: inline-flex;
+            align-items: center;
+            background-color: var(--md-sys-color-surface-container-highest);
+            border-radius: 12px;
+            padding: 2px 8px;
+            border: 1px solid var(--md-sys-color-outline);
+            box-shadow: var(--md-sys-elevation-level0);
+          }
+          
+          .md3-category-icon {
+            font-size: 14px;
+            margin-right: 4px;
+            color: var(--md-sys-color-primary);
+            font-variation-settings: 'FILL' 0, 'wght' 300;
+          }
+          
+          .md3-category-text {
+            font-family: var(--md-sys-typescale-label-small-font-family);
+            font-size: var(--md-sys-typescale-label-small-font-size);
+            font-weight: 400;
+            color: var(--md-sys-color-on-surface);
+            letter-spacing: 0.1px;
+          }
+          
+          .md3-asset-status {
+            width: 100px;
+            text-align: center;
+          }
+          
+          /* MD3 Status-Indikator Styling */
+          .md3-status-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background-color: var(--md-sys-color-surface-container-highest);
+            min-width: 60px;
+            justify-content: center;
+            border: 1px solid var(--md-sys-color-outline);
+            box-shadow: var(--md-sys-elevation-level0);
+            transition: all 0.2s ease;
+          }
+          
+          .md3-status-active {
+            background-color: var(--md-sys-color-primary-container);
+            border-color: var(--md-sys-color-outline);
+          }
+          
+          .md3-status-inactive {
+            background-color: var(--md-sys-color-surface-container);
+            border-color: var(--md-sys-color-outline);
+          }
+          
+          .md3-status-icon {
+            font-size: 13px;
+            margin-right: 3px;
+            font-variation-settings: 'FILL' 0, 'wght' 300;
+          }
+          
+          .md3-status-active .md3-status-icon {
+            color: var(--md-sys-color-primary);
+          }
+          
+          .md3-status-inactive .md3-status-icon {
+            color: var(--md-sys-color-error);
+          }
+          
+          .md3-status-text {
+            font-family: var(--md-sys-typescale-label-small-font-family);
+            font-size: var(--md-sys-typescale-label-small-font-size);
+            font-weight: 400;
+            letter-spacing: 0.1px;
+          }
+          
+          .md3-status-active .md3-status-text {
+            color: var(--md-sys-color-on-primary-container);
+          }
+          
+          .md3-status-inactive .md3-status-text {
+            color: var(--md-sys-color-on-surface-variant);
+          }
+          
+          .md3-asset-date {
+            font-family: var(--md-sys-typescale-body-small-font-family);
+            font-size: var(--md-sys-typescale-body-small-font-size);
+            color: var(--md-sys-color-on-surface-variant);
+            width: 110px;
+            text-align: right;
+          }
+          
+          /* Überschreibungen für MD-Table in diesem Kontext */
+          .md-table th {
+            font-family: var(--md-sys-typescale-label-large-font-family);
+            font-size: var(--md-sys-typescale-label-large-font-size);
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface-variant);
+            text-transform: uppercase;
+            letter-spacing: 0.1px;
+            padding-top: 16px;
+            padding-bottom: 16px;
+          }
+        </style>
+      {% endset %}
+      
+      {% set title = 'Letzte Assets' %}
+      {% set padding = false %}
+      {% set elevation = 1 %}
+      {% include 'md3/components/card.html' %}
+    </div>
+  </div>
+</div>
+
+<!-- Chartdaten vom Server -->
+<script id="chart-data" type="application/json">
+{% if chart_data is defined %}
+{{ chart_data | tojson }}
+{% else %}
+{
+    "cost_distribution": {
+        "labels": ["Notebooks", "Desktop PCs", "Tablets", "Telefone", "Sonstiges"],
+        "data": [45, 25, 15, 10, 5]
+    },
+    "asset_status": {
+        "labels": ["Aktiv", "Inaktiv", "In Reparatur"],
+        "data": [140, 35, 10]
+    },
+    "assignment_data": {
+        "labels": ["Mitarbeiter", "Abteilungen", "Ohne Zuordnung"],
+        "data": [110, 45, 30]
+    }
+}
+{% endif %}
+</script>
+
+<script id="locations-data" type="application/json">{{ locations_json|safe }}</script>
+
+<style>
+  /* MD3 Dashboard Styles */
+  .md-dashboard-container {
+    padding: var(--md-sys-spacing-4);
+    max-width: 1600px;
+    margin: 80px auto 0; /* Berücksichtigt die Höhe der Navigation */
+    background-color: var(--md-sys-color-surface-1);
+    min-height: calc(100vh - 80px);
+  }
+  
+  .md-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: var(--md-sys-spacing-4);
+    margin-bottom: var(--md-sys-spacing-4);
+  }
+  
+  .md-dashboard-grid-wide {
+    grid-column: 1 / -1;
+  }
+  
+  .md-stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    gap: var(--md-sys-spacing-3);
+  }
+  
+  /* MD3 Chart Styling */
+  .md-chart-container {
+    padding: var(--md-sys-spacing-3);
+    background-color: var(--md-sys-color-surface-container);
+    border-radius: var(--md-sys-shape-corner-medium);
+    height: 100%;
+    position: relative; /* Stellt sicher, dass die Container keinen Z-Index-Kontext erstellen */
+    z-index: 1; /* Basis Z-Index */
+  }
+  
+  /* Stelle sicher, dass Canvas über dem Container liegt */
+  canvas.chartjs-render-monitor {
+    position: relative;
+    z-index: 2; /* Höher als Container */
+  }
+  
+  .md-chart-title {
+    font-family: var(--md-sys-typescale-title-medium-font-family-name);
+    font-weight: var(--md-sys-typescale-title-medium-font-weight);
+    font-size: var(--md-sys-typescale-title-medium-font-size);
+    line-height: var(--md-sys-typescale-title-medium-line-height);
+    color: var(--md-sys-color-on-surface);
+    margin-bottom: var(--md-sys-spacing-2);
+    padding-left: var(--md-sys-spacing-2);
+    position: relative;
+    z-index: 3; /* Über Canvas und Container */
+  }
+  
+  /* Responsive Anpassungen */
+  @media (max-width: 768px) {
+    .md-dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .md-stat-row {
+      flex-direction: column;
+    }
+  }
+</style>
+
+<!-- Standortdaten für Google Maps -->
+<script id="locations-data" type="application/json" style="display: none;">
+  {{ locations_json|safe }}
+</script>
+
+<!-- Debug-Funktion für AJAX-Monitoring -->
+<script>
+  // Original-Methoden speichern
+  const originalFetch = window.fetch;
+  const originalOpen = XMLHttpRequest.prototype.open;
+  
+  // Fetch überschreiben
+  window.fetch = function() {
+    console.log('Debug - Fetch-Aufruf:', arguments[0]);
+    return originalFetch.apply(this, arguments);
+  };
+  
+  // XMLHttpRequest.open überschreiben
+  XMLHttpRequest.prototype.open = function() {
+    console.log('Debug - XHR-Aufruf:', arguments[1], arguments[0]);
+    return originalOpen.apply(this, arguments);
+  };
+</script>
+
+<!-- Google Maps API direkt laden (kein dynamisches Laden via JavaScript) -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDU0B8Yh8TdEzx3DiXOv1Zxjmcc83oIlgk&libraries=places" async defer></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM geladen, initialisiere Maps wenn API bereit ist...');
+    initializeGoogleMapsWhenLoaded();
+  });
+</script>
+
+<!-- Chart.js Initialisierung -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Chart-Daten laden
+  const chartData = JSON.parse(document.getElementById('chart-data').textContent);
+  
+  // Globale Funktion zum Ausblenden des Loading Indicators
+  function hideLoadingIndicator() {
+    console.log('hideLoadingIndicator wurde aufgerufen');
+    const loadingEl = document.getElementById('value-chart-loading');
+    if (loadingEl) {
+      console.log('Loading Indicator gefunden, entferne ihn');
+      // Direkte Manipulation
+      loadingEl.style.display = 'none';
+      loadingEl.style.opacity = '0';
+      loadingEl.style.visibility = 'hidden';
+      // Falls möglich, Element entfernen
+      if (loadingEl.parentNode) {
+        try {
+          loadingEl.parentNode.removeChild(loadingEl);
+          console.log('Element wurde entfernt');
+        } catch (e) {
+          console.error('Fehler beim Entfernen:', e);
+        }
+      }
+    } else {
+      console.error('Loading Indicator nicht gefunden');
+    }
+  }
+  
+  // Beim Laden der Seite alle Loading Indikatoren ausblenden nach einer Verzögerung
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(hideLoadingIndicator, 3000); // Nach 3 Sekunden auf jeden Fall ausblenden
+  });
+  
+  // Sanfte Farbpalette für Charts (weniger grell)
+  const md3Colors = {
+    // Primärfarben - sanfter/pastelliger
+    primary: '#A394E0',        // Gedämpftes Lila statt intensives Primär
+    onPrimary: '#FFFFFF',      
+    primaryContainer: 'rgba(163, 148, 224, 0.3)', // Transparentes Lila für Füllungen
+    onPrimaryContainer: '#382E6B',
+    
+    // Sekundärfarben - sanfter
+    secondary: '#9DB2CE',      // Sanftes Blau
+    onSecondary: '#FFFFFF',
+    secondaryContainer: 'rgba(157, 178, 206, 0.3)', // Transparentes Blau für Füllungen
+    onSecondaryContainer: '#334863',
+    
+    // Tertiärfarben - sanfter
+    tertiary: '#B5C9A1',       // Sanftes Grün
+    onTertiary: '#FFFFFF',
+    tertiaryContainer: 'rgba(181, 201, 161, 0.3)', // Transparentes Grün für Füllungen
+    onTertiaryContainer: '#465C36',
+    
+    // Zusätzliche sanfte Farben für Charts
+    accent1: '#D8C3A5',        // Sanftes Beige
+    accent2: '#E2A9A1',        // Sanftes Koralle
+    accent3: '#D1BECF',        // Sanftes Lavendel
+    accent4: '#A1C6E2',        // Sanftes Himmelblau
+    accent5: '#C3DDD6',        // Sanftes Mintgrün
+    
+    // Oberflächen und Kontrastfarben - angepasst
+    surface: '#F9F7FD',
+    onSurface: '#4A4A4A',      // Gedämpftes Schwarz für Text
+    surfaceContainer: '#F2F0F7',
+    outline: '#CFCBD2',        // Sanfter Umriss
+    error: '#D6A9A6'           // Sanftes Rot statt grelles Error-Rot
+  };
+  
+  // MD3 Typografie für Charts
+  const md3Typography = {
+    titleMedium: {
+      family: 'var(--md-sys-typescale-title-medium-font-family-name)',
+      size: 'var(--md-sys-typescale-title-medium-font-size)',
+      weight: 'var(--md-sys-typescale-title-medium-font-weight)',
+      lineHeight: 'var(--md-sys-typescale-title-medium-line-height)'
+    },
+    labelMedium: {
+      family: 'var(--md-sys-typescale-label-medium-font-family-name)',
+      size: 'var(--md-sys-typescale-label-medium-font-size)',
+      weight: 'var(--md-sys-typescale-label-medium-font-weight)',
+      lineHeight: 'var(--md-sys-typescale-label-medium-line-height)'
+    },
+    bodySmall: {
+      family: 'var(--md-sys-typescale-body-small-font-family-name)',
+      size: 'var(--md-sys-typescale-body-small-font-size)',
+      weight: 'var(--md-sys-typescale-body-small-font-weight)',
+      lineHeight: 'var(--md-sys-typescale-body-small-line-height)'
+    }
+  };
+  
+  // Helper-Funktion, um Charts zu initialisieren
+  // Wichtig: Diese Funktion wird mit setTimeout aufgerufen, um sicherzustellen,
+  // Hilfsfunktion für Chart-Initialisierung nachdem
+  // das DOM vollständig geladen ist
+  function initChart(canvasId, chartConfig) {
+    setTimeout(function() {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) {
+        console.error(`Canvas "${canvasId}" nicht gefunden!`);
+        return;
+      }
+      
+      // Chart mit übergebener Konfiguration initialisieren
+      new Chart(canvas, chartConfig);
+      console.log(`Chart für ${canvasId} erfolgreich erstellt`);
+    }, 100);
+  }
+  
+  // Wertentwicklung (Line Chart) - Fallback oder API-Daten verwenden
+  const initValueDevelopmentChart = () => {
+    console.log('Initialisiere Wertentwicklung Chart...');
+    
+    // Loading Indicator anzeigen
+    const loadingIndicator = document.getElementById('value-chart-loading');
+    if (loadingIndicator) {
+      loadingIndicator.classList.remove('hidden');
+    }
+    
+    // Überprüfe, ob das Canvas existiert
+    const valueCanvas = document.getElementById('valueChart');
+    if (!valueCanvas) {
+      console.error('FEHLER: Wertentwicklung Canvas #valueChart nicht gefunden!');
+      // Versuche, alle Canvas-Elemente zu finden, um zu debuggen
+      const allCanvasElements = document.querySelectorAll('canvas');
+      console.log(`Gefundene Canvas-Elemente: ${allCanvasElements.length}`);
+      allCanvasElements.forEach((canvas, index) => {
+        console.log(`Canvas ${index}: id=${canvas.id}, width=${canvas.width}, height=${canvas.height}`);
+      });
+      
+      // Loading Indicator ausblenden bei Fehler
+      if (loadingIndicator) {
+        loadingIndicator.classList.add('hidden');
+      }
+      return;
+    }
+    
+    console.log('Wertentwicklung Canvas gefunden:', valueCanvas);
+    
+    // Element bereit machen
+    const container = document.getElementById('value-chart-container');
+    if (container) {
+      container.style.minHeight = '300px';
+    }
+    
+    // Versuche zuerst, Daten vom Backend zu laden
+    console.log('Lade Wertentwicklungs-Daten vom Backend...');
+    fetch('/api/dashboard/value-development')
+      .then(response => {
+        console.log('API Response Status:', response.status);
+        if (!response.ok) {
+          throw new Error(`Netzwerkantwort war nicht ok: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Value development data loaded:', data);
+        if (!data.value_development) {
+          throw new Error('API-Antwort enthält keine value_development Daten');
+        }
+        createValueChart(valueCanvas, data.value_development);
+      })
+      .catch(error => {
+        console.warn('API-Fehler, verwende Fallback-Daten für Wertentwicklung:', error);
+        // Fallback: Daten aus dem versteckten JSON-Element laden
+        const fallbackElement = document.getElementById('value-chart-fallback-data');
+        if (!fallbackElement) {
+          console.error('Fallback-Element #value-chart-fallback-data nicht gefunden!');
+          
+          // Loading Indicator ausblenden bei Fehler
+          if (loadingIndicator) {
+            loadingIndicator.classList.add('hidden');
+          }
+          return;
+        }
+        
+        try {
+          console.log('Parse Fallback-Daten:', fallbackElement.textContent.substring(0, 50) + '...');
+          const fallbackData = JSON.parse(fallbackElement.textContent);
+          if (!fallbackData.value_development) {
+            console.error('Fallback-Daten enthalten keine value_development Daten!');
+            
+            // Loading Indicator ausblenden bei Fehler
+            if (loadingIndicator) {
+              loadingIndicator.classList.add('hidden');
+            }
+            return;
+          }
+          createValueChart(valueCanvas, fallbackData.value_development);
+        } catch (e) {
+          console.error('Fehler beim Parsen der Fallback-Daten:', e);
+          
+          // Loading Indicator ausblenden bei Fehler
+          if (loadingIndicator) {
+            loadingIndicator.classList.add('hidden');
+          }
+        }
+      });
+  };
+  
+  // Eigentliche Chart-Erstellung für Wertentwicklung
+  const createValueChart = (canvas, chartData) => {
+    if (!canvas || !chartData) return;
+    
+    console.log('createValueChart aufgerufen, Chart wird erstellt...');
+    
+    // Chart erstellen
+    const chart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: chartData.labels,
+        datasets: [{
+          label: 'Gesamtwert',
+          data: chartData.data,
+          borderColor: md3Colors.primary,
+          borderWidth: 2,
+          backgroundColor: md3Colors.primaryContainer,
+          pointBackgroundColor: md3Colors.primary,
+          pointBorderColor: md3Colors.onPrimary,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.3,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              font: {
+                family: md3Typography.bodySmall.family,
+                size: parseInt(md3Typography.bodySmall.size)
+              },
+              padding: 16,
+              usePointStyle: true,
+              pointStyle: 'rectRounded'
+            }
+          },
+          tooltip: {
+            titleFont: {
+              family: md3Typography.labelMedium.family,
+              size: parseInt(md3Typography.labelMedium.size)
+            },
+            bodyFont: {
+              family: md3Typography.bodySmall.family,
+              size: parseInt(md3Typography.bodySmall.size)
+            },
+            padding: 12,
+            cornerRadius: 8
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: md3Colors.outline + '40', // 25% Transparenz
+              tickLength: 0
+            },
+            ticks: {
+              font: {
+                family: md3Typography.bodySmall.family,
+                size: parseInt(md3Typography.bodySmall.size)
+              },
+              padding: 8
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              font: {
+                family: md3Typography.bodySmall.family,
+                size: parseInt(md3Typography.bodySmall.size)
+              },
+              padding: 8
+            }
+          }
+        }
+      }
+    });
+  }
+  
+  // Abteilungsverteilung (Doughnut Chart)
+  if (document.getElementById('deptChart') && chartData.department_distribution) {
+    new Chart(document.getElementById('deptChart'), {
+      type: 'doughnut',
+      data: {
+        labels: chartData.department_distribution.labels,
+        datasets: [{
+          data: chartData.department_distribution.data,
+          backgroundColor: [
+            md3Colors.tertiary,
+            md3Colors.primary,
+            md3Colors.secondary,
+            md3Colors.accent1,
+            md3Colors.accent2,
+            md3Colors.accent3
+          ],
+          borderColor: [
+            '#FFFFFF',
+            '#FFFFFF',
+            '#FFFFFF',
+            '#FFFFFF',
+            '#FFFFFF',
+            '#FFFFFF'
+          ],
+          borderWidth: 1,
+          borderRadius: 4 // Abgerundete Ecken für Segmente
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '70%', // MD3-Stil für Donut-Charts
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              font: {
+                family: md3Typography.bodySmall.family,
+                size: parseInt(md3Typography.bodySmall.size)
+              },
+              padding: 16,
+              usePointStyle: true,
+              pointStyle: 'circle'
+            }
+          },
+          tooltip: {
+            titleFont: {
+              family: md3Typography.labelMedium.family,
+              size: parseInt(md3Typography.labelMedium.size)
+            },
+            bodyFont: {
+              family: md3Typography.bodySmall.family,
+              size: parseInt(md3Typography.bodySmall.size)
+            },
+            padding: 12,
+            cornerRadius: 8
+          }
+        }
+      }
+    });
+  }
+  
+  // Auslastung nach Monaten (Bar Chart)
+  if (document.getElementById('usageChart') && chartData.monthly_usage) {
+    new Chart(document.getElementById('usageChart'), {
+      type: 'bar',
+      data: {
+        labels: chartData.monthly_usage.labels,
+        datasets: [{
+          label: 'Auslastung',
+          data: chartData.monthly_usage.data,
+          backgroundColor: md3Colors.primaryContainer,
+          borderColor: md3Colors.primary,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'bottom',
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+  
+  // Assets nach Kategorie und Zuordnung (Grouped Bar Chart)
+  // Chart-Initialisierung wurde in die dashboard-charts.js Datei verschoben
+  // Das erhöht die Wartbarkeit und stellt sicher, dass die MD3-Farben korrekt verwendet werden
+  
+  // Funktion zur Erstellung der Hersteller-Chart
+  function createManufacturerChart(canvas, data) {
+    // Daten verarbeiten
+    const manufacturers = data.map(item => item.manufacturer || 'Unbekannt');
+    const assetCounts = data.map(item => item.count || 0);
+    
+    // Nur die Top 8 Hersteller anzeigen, falls mehr vorhanden sind
+    let displayManufacturers = [...manufacturers];
+    let displayCounts = [...assetCounts];
+    
+    if (manufacturers.length > 8) {
+      const sortedIndices = assetCounts.map((count, index) => ({ count, index }))
+        .sort((a, b) => b.count - a.count)
+        .map(item => item.index);
+      
+      const topManufacturers = [];
+      const topCounts = [];
+      let otherCount = 0;
+      
+      sortedIndices.forEach((index, i) => {
+        if (i < 7) {
+          topManufacturers.push(manufacturers[index]);
+          topCounts.push(assetCounts[index]);
+        } else {
+          otherCount += assetCounts[index];
+        }
+      });
+      
+      if (otherCount > 0) {
+        topManufacturers.push('Andere');
+        topCounts.push(otherCount);
+      }
+      
+      displayManufacturers = topManufacturers;
+      displayCounts = topCounts;
+    }
+    
+    // MD3 Farbpalette (sanft)
+    const backgroundColors = [
+      'rgba(163, 148, 224, 0.5)',  // Sanftes Lila (primary)
+      'rgba(157, 178, 206, 0.5)',  // Sanftes Blau (secondary)
+      'rgba(181, 201, 161, 0.5)',  // Sanftes Grün (tertiary)
+      'rgba(216, 195, 165, 0.5)',  // Sanftes Beige (accent1)
+      'rgba(226, 169, 161, 0.5)',  // Sanftes Koralle (accent2)
+      'rgba(209, 190, 207, 0.5)',  // Sanftes Lavendel (accent3)
+      'rgba(161, 198, 226, 0.5)',  // Sanftes Himmelblau (accent4)
+      'rgba(195, 221, 214, 0.5)'   // Sanftes Mintgrün (accent5)
+    ];
+    
+    const borderColors = backgroundColors.map(color => color.replace('0.5', '0.8'));
+    
+    // Chart erstellen
+    return new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: displayManufacturers,
+        datasets: [{
+          label: 'Anzahl Assets',
+          data: displayCounts,
+          backgroundColor: backgroundColors,
+          borderColor: borderColors,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        indexAxis: 'y',  // Horizontal bar chart
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false  // Legende ausblenden
+          },
+          tooltip: {
+            callbacks: {
+              title: function(tooltipItems) {
+                return tooltipItems[0].label;
+              },
+              label: function(context) {
+                return `Anzahl: ${context.raw}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)'
+            }
+          },
+          y: {
+            grid: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+  }
+  
+  // Assets nach Hersteller (Horizontal Bar Chart)
+  if (document.getElementById('manufacturerChart')) {
+    // DEBUG: Chart-Daten in der Konsole anzeigen
+    console.log('Chart Data Object:', chartData);
+    
+    try {
+      // Prüfe, ob Herstellerdaten vorhanden sind
+      const manufacturerData = chartData?.manufacturer_data || [];
+      console.log('Manufacturer Data:', manufacturerData);
+      
+      // Wenn keine Daten vorhanden sind oder ein leeres Array, verwende Test-Daten
+      if (!manufacturerData || !Array.isArray(manufacturerData) || manufacturerData.length === 0) {
+        console.log('Keine gültigen Herstellerdaten gefunden, verwende Test-Daten');
+        // Test-Daten verwenden
+        const testData = [
+          {manufacturer: 'Dell', count: 42},
+          {manufacturer: 'HP', count: 38},
+          {manufacturer: 'Apple', count: 25},
+          {manufacturer: 'Lenovo', count: 19},
+          {manufacturer: 'Samsung', count: 15}
+        ];
+        
+        // Chart mit Test-Daten anzeigen
+        createManufacturerChart(document.getElementById('manufacturerChart'), testData);
+      } else {
+        // Chart mit realen Daten anzeigen
+        console.log('Verwende echte Herstellerdaten:', manufacturerData);
+        createManufacturerChart(document.getElementById('manufacturerChart'), manufacturerData);
+      }
+    } catch (error) {
+      console.error('Fehler bei der Verarbeitung der Herstellerdaten:', error);
+      // Im Fehlerfall auch Test-Daten verwenden
+      const testData = [
+        {manufacturer: 'Dell', count: 42},
+        {manufacturer: 'HP', count: 38},
+        {manufacturer: 'Apple', count: 25},
+        {manufacturer: 'Lenovo', count: 19},
+        {manufacturer: 'Samsung', count: 15}
+      ];
+      createManufacturerChart(document.getElementById('manufacturerChart'), testData);
+    }
+  }
+  
+  // Funktion zum Hinzufügen von Standort-Markern
+  function addLocationMarkers(map, infoWindow, bounds, locations) {
+    // Prüfen ob Daten vorhanden sind
+    if (!locations || !Array.isArray(locations) || locations.length === 0) {
+      console.warn('Keine Standortdaten zum Anzeigen vorhanden');
+      return;
+    }
+    
+    console.log(`Füge ${locations.length} Standort-Marker zur Karte hinzu...`);
+    
+    // Bounds-Objekt für automatisches Zoomen
+    const mapBounds = bounds || new google.maps.LatLngBounds();
+    
+    // Marker für jeden Standort erstellen
+    locations.forEach(function(location) {
+      // Position aus den Daten extrahieren
+      const position = new google.maps.LatLng(
+        location.latitude || location.lat, 
+        location.longitude || location.lng
+      );
+      
+      // MD3-farbiger Marker
+      const marker = new google.maps.Marker({
+        position: position,
+        map: map,
+        title: location.name || 'Standort',
+        animation: google.maps.Animation.DROP
+      });
+      
+      // Zur Bounds hinzufügen
+      mapBounds.extend(position);
+      
+      // InfoWindow-Inhalt
+      const contentString = `
+        <div class="md3-map-info-window">
+          <h4 class="md3-map-info-title">${location.name || 'Standort'}</h4>
+          ${location.address ? `<p class="md3-map-info-address">${location.address}</p>` : ''}
+          <p class="md3-map-info-count">
+            <span>${location.asset_count || location.assets || 0}</span> Assets
+          </p>
+        </div>
+      `;
+      
+      // Click-Event für Marker
+      marker.addListener('click', function() {
+        infoWindow.setContent(contentString);
+        infoWindow.open(map, marker);
+      });
+    });
+    
+    // Karte auf alle Marker zoomen
+    if (locations.length > 0) {
+      map.fitBounds(mapBounds);
+      // Minimum-Zoom setzen
+      const listener = google.maps.event.addListener(map, 'idle', function() {
+        if (map.getZoom() > 7) map.setZoom(7);
+        google.maps.event.removeListener(listener);
+      });
+    }
+  }
+  
+  // Google Maps Initialisierungsfunktion (wird von der API aufgerufen)
+  function initMap() {
+    console.log('Google Maps API geladen, initialisiere Karte...');
+    
+    // Map-Container-Element
+    const mapElement = document.getElementById('location-map');
+    
+    // Prüfen, ob Container existiert
+    if (!mapElement) {
+      console.error('Map-Container nicht gefunden.');
+      return;
+    }
+    
+    // Bounds-Objekt für automatisches Zoomen
+    const bounds = new google.maps.LatLngBounds();
+    
+    // Karte initialisieren
+    try {
+      // Google Map mit MD3 Styling erstellen
+      const googleMap = new google.maps.Map(mapElement, {
+        center: { lat: 51.1657, lng: 10.4515 },  // Deutschland Mitte
+        zoom: 6,
+        // MD3-Styling für die Karte
+        styles: [
+          {
+            featureType: 'all',
+            elementType: 'geometry',
+            stylers: [{ color: '#f5f5f5' }]
+          },
+          {
+            featureType: 'water',
+            elementType: 'geometry',
+            stylers: [{ color: '#e9f0fb' }]
+          },
+          {
+            featureType: 'road',
+            elementType: 'geometry',
+            stylers: [{ color: '#ffffff' }]
+          }
+        ],
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
+        zoomControl: true
+      });
+      
+      console.log('Google Map wurde erstellt');
+      
+      // InfoWindow für Marker-Popups
+      const infoWindow = new google.maps.InfoWindow();
+      
+      // Standort-Daten von der API laden
+      try {
+        console.log('Lade Standortdaten von API...');
+        
+        // API-Aufruf für Standortdaten
+        fetch('/api/dashboard/locations')
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`API-Fehler: ${response.status} ${response.statusText}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            let locations = data.locations || [];
+            console.log('Standortdaten von API geladen:', locations.length, 'Standorte gefunden');
+            
+            // Wenn keine Daten vorhanden sind, Demo-Daten verwenden
+            if (!locations || locations.length === 0) {
+              console.log('Keine Standortdaten gefunden, verwende Demo-Daten');
+              locations = [
+                { name: "Hauptsitz Berlin", latitude: 52.52, longitude: 13.405, asset_count: 120 },
+                { name: "Niederlassung München", latitude: 48.137, longitude: 11.576, asset_count: 85 },
+                { name: "Niederlassung Hamburg", latitude: 53.551, longitude: 9.993, asset_count: 62 },
+                { name: "Niederlassung Köln", latitude: 50.937, longitude: 6.961, asset_count: 43 },
+                { name: "Niederlassung Frankfurt", latitude: 50.110, longitude: 8.682, asset_count: 37 }
+              ];
+            }
+            
+            addLocationMarkers(googleMap, infoWindow, bounds, locations);
+          })
+          .catch(error => {
+            console.error('Fehler beim Laden der Standortdaten:', error);
+            
+            // Bei Fehler Demo-Daten verwenden
+            console.log('Verwende Demo-Daten aufgrund eines Fehlers');
+            const demoLocations = [
+              { name: "Hauptsitz Berlin", latitude: 52.52, longitude: 13.405, asset_count: 120 },
+              { name: "Niederlassung München", latitude: 48.137, longitude: 11.576, asset_count: 85 },
+              { name: "Niederlassung Hamburg", latitude: 53.551, longitude: 9.993, asset_count: 62 },
+              { name: "Niederlassung Köln", latitude: 50.937, longitude: 6.961, asset_count: 43 },
+              { name: "Niederlassung Frankfurt", latitude: 50.110, longitude: 8.682, asset_count: 37 }
+            ];
+            
+            // Mit Demo-Daten die Marker hinzufügen
+            addLocationMarkers(googleMap, infoWindow, bounds, demoLocations);
+          });
+      } catch (error) {
+        console.error('Fehler bei der Kartendarstellung:', error);
+      }
+        
+      // Funktion zum Hinzufügen von Standort-Markern
+      function addLocationMarkers(map, infoWindow, bounds, locations) {
+        // Prüfen ob Daten vorhanden sind
+        if (!locations || !Array.isArray(locations) || locations.length === 0) {
+          console.warn('Keine Standortdaten zum Anzeigen vorhanden');
+          return;
+        }
+        
+        console.log(`Füge ${locations.length} Standort-Marker zur Karte hinzu...`);
+        
+        // Bounds-Objekt für automatisches Zoomen
+        const mapBounds = bounds || new google.maps.LatLngBounds();
+        
+        // Marker für jeden Standort erstellen
+        locations.forEach(function(location) {
+          // Position aus den Daten extrahieren
+          const position = new google.maps.LatLng(
+            location.latitude || location.lat, 
+            location.longitude || location.lng
+          );
+          
+          // MD3-farbiger Marker
+          const marker = new google.maps.Marker({
+            position: position,
+            map: map,
+            title: location.name || 'Standort',
+            animation: google.maps.Animation.DROP
+          });
+          
+          // Zur Bounds hinzufügen
+          mapBounds.extend(position);
+          
+          // InfoWindow-Inhalt
+          const contentString = `
+            <div class="md3-map-info-window">
+              <h4 class="md3-map-info-title">${location.name || 'Standort'}</h4>
+              ${location.address ? `<p class="md3-map-info-address">${location.address}</p>` : ''}
+              <p class="md3-map-info-count">
+                <span>${location.asset_count || location.assets || 0}</span> Assets
+              </p>
+            </div>
+          `;
+          
+          // Click-Event für Marker
+          marker.addListener('click', function() {
+            infoWindow.setContent(contentString);
+            infoWindow.open(map, marker);
+          });
+        });
+        
+        // Karte auf alle Marker zoomen
+        if (locations.length > 0) {
+          map.fitBounds(mapBounds);
+          // Minimum-Zoom setzen
+          const listener = google.maps.event.addListener(map, 'idle', function() {
+            if (map.getZoom() > 7) map.setZoom(7);
+            google.maps.event.removeListener(listener);
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Fehler bei der Initialisierung der Google Maps-Karte:', error);
+      mapElement.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--md-sys-color-error);">
+        <p>Fehler beim Laden der Karte</p>
+        <p>${error.message}</p>
+      </div>`;
+    }
+  }
+  
+  // Falls Google Maps API bereits geladen wurde, Karte manuell initialisieren
+  if (window.google && window.google.maps && !window.mapInitialized) {
+    console.log('Google Maps API bereits geladen, initialisiere Karte manuell...');
+    window.mapInitialized = true;
+    initMap();
+  }
+});
+
+// Chart-Daten direkt anzeigen
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM geladen, prüfe Chart-Element');
+    const canvas = document.getElementById('costChart');
+    if (canvas) {
+      console.log('Canvas gefunden:', canvas);
+    } else {
+      console.error('Canvas nicht gefunden!');
+    }
+  });
+</script>
+
+<!-- Google Maps Integration für Dashboard -->  
+<script>
+// Aktiviere den Loading-Indikator
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM geladen, initialisiere Map Loading-Anzeige');
+  const loadingIndicator = document.getElementById('map-loading');
+  if (loadingIndicator) {
+    loadingIndicator.style.display = 'block';
+  }
+  
+  // Google Maps nach kurzem Delay laden (für bessere DOM-Initialisierung)
+  setTimeout(loadGoogleMapsAPI, 300);
+});
+
+// Globale Variable für die Karte
+let googleMap = null;
+
+// Google Maps API laden
+function loadGoogleMapsAPI() {
+  console.log('Lade Google Maps API...');
+  const script = document.createElement('script');
+  script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyDU0B8Yh8TdEzx3DiXOv1Zxjmcc83oIlgk&libraries=places&callback=initializeGoogleMapsWhenLoaded';
+  script.async = true;
+  script.defer = true;
+  document.head.appendChild(script);
+}
+
+// Zähler für Google Maps API-Ladeversuche
+let mapsApiCheckCount = 0;
+const MAX_API_CHECK_ATTEMPTS = 20; // Maximal 10 Sekunden warten (20 * 500ms)
+
+function initializeGoogleMapsWhenLoaded() {
+  // Prüfen, ob die Google Maps API bereits geladen ist
+  if (window.google && window.google.maps) {
+    console.log('Google Maps API erfolgreich geladen!');
+    initMap();
+  } else {
+    mapsApiCheckCount++;
+    
+    // Nur bei bestimmten Intervallen loggen, um Spam zu reduzieren
+    if (mapsApiCheckCount === 1 || mapsApiCheckCount % 5 === 0) {
+      console.log(`Warte auf Google Maps API... (Versuch ${mapsApiCheckCount}/${MAX_API_CHECK_ATTEMPTS})`);
+    }
+    
+    // Nach MAX_API_CHECK_ATTEMPTS aufhören zu versuchen
+    if (mapsApiCheckCount >= MAX_API_CHECK_ATTEMPTS) {
+      console.error('Google Maps API konnte nicht geladen werden nach mehreren Versuchen');
+      const mapElement = document.getElementById('location-map');
+      if (mapElement) {
+        mapElement.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--md-sys-color-error);">Fehler beim Laden der Google Maps API nach mehreren Versuchen</div>';
+      }
+    } else {
+      setTimeout(initializeGoogleMapsWhenLoaded, 500);
+    }
+  }
+}
+
+// Maps initialisieren
+function initMap() {
+  console.log('Initialisiere Google Maps...');
+  
+  // Map-Container finden
+  const mapElement = document.getElementById('location-map');
+  if (!mapElement) {
+    console.error('Map-Element #location-map nicht gefunden!');
+    return;
+  }
+  
+  try {
+    // Map-Optionen
+    const mapOptions = {
+      center: { lat: 51.165, lng: 10.452 }, // Deutschland-Zentrum
+      zoom: 6,
+      mapTypeId: google.maps.MapTypeId.ROADMAP,
+      zoomControl: true,
+      mapTypeControl: false, // Keine Kartentypauswahl
+      scaleControl: false, // Kein Maßstab
+      streetViewControl: false, // Kein Street View
+      rotateControl: false, // Keine Rotationskontrolle
+      fullscreenControl: false, // Kein Vollbild-Button
+      panControl: false, // Keine Pan-Kontrolle
+      mapTypeControlOptions: {
+        mapTypeIds: [] // Keine Kartentypauswahl überhaupt zulassen
+      },
+      // Verstecke alle UI-Elemente
+      disableDefaultUI: true,
+      // Nur die benötigten Steuerelemente anzeigen
+      zoomControl: true,
+      // Deaktiviere alle zusätzlichen POIs und Labels
+      styles: [
+        {
+          featureType: "poi",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }]
+        },
+        {
+          featureType: "transit",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }]
+        },
+        {
+          featureType: "administrative",
+          elementType: "labels",
+          stylers: [{ visibility: "simplified" }]
+        },
+        {
+          featureType: "water",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }]
+        }
+      ]
+    };
+    
+    // Überprüfe, ob ein benutzerdefiniertes Overlay mit dem Text "active" existiert
+    // und entferne es nach der Karteninitialisierung
+    setTimeout(() => {
+      const mapContainer = document.getElementById('location-map');
+      if (mapContainer) {
+        // Suche nach allen span- und div-Elementen innerhalb der Karte
+        const elements = mapContainer.querySelectorAll('span, div');
+        elements.forEach(element => {
+          // Wenn der Text "active" enthält, Element ausblenden
+          if (element.textContent && element.textContent.toLowerCase().includes('active')) {
+            console.log('Active-Element gefunden und wird versteckt:', element);
+            element.style.display = 'none';
+          }
+        });
+      }
+    }, 1000);
+    
+    // Map erstellen
+    googleMap = new google.maps.Map(mapElement, mapOptions);
+    console.log('Google Map erstellt');
+    
+    // Nach erfolgreicher Initialisierung
+    if (googleMap) {
+      // Karte sichtbar machen
+      mapElement.style.visibility = 'visible';
+      mapElement.style.opacity = '1';
+      
+      // Loading-Icon ausblenden
+      const loadingIndicator = document.getElementById('map-loading');
+      if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+      }
+      
+      // Standort-Marker hinzufügen
+      addLocationMarkers();
+      
+      // Resize-Handler
+      window.addEventListener('resize', function() {
+        const center = googleMap.getCenter();
+        google.maps.event.trigger(googleMap, 'resize');
+        googleMap.setCenter(center);
+      });
+    }
+  } catch (error) {
+    console.error('Fehler bei der Initialisierung der Google Maps-Karte:', error);
+    mapElement.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--md-sys-color-error);">' +
+      '<p>Fehler beim Laden der Karte</p>' +
+      '<p>' + error.message + '</p></div>';
+  }
+}
+
+// Standort-Marker hinzufügen
+function addLocationMarkers() {
+  if (!googleMap || !window.google || !window.google.maps) {
+    console.error('Google Maps nicht initialisiert für Marker!');
+    return;
+  }
+  
+  // InfoWindow für Marker-Popups
+  const infoWindow = new google.maps.InfoWindow();
+  
+  try {
+    // Versuche, Daten aus dem DOM zu laden
+    const locationsElement = document.getElementById('locations-data');
+    let locations = [];
+    
+    if (locationsElement && locationsElement.textContent.trim()) {
+      locations = JSON.parse(locationsElement.textContent);
+      console.log('Standortdaten geladen:', locations.length, 'Standorte gefunden');
+      
+      // Boundings für automatisches Zoomen
+      const bounds = new google.maps.LatLngBounds();
+      
+      // Marker für jeden Standort hinzufügen
+      locations.forEach(location => {
+        if (location.latitude && location.longitude) {
+          // Position erstellen
+          const position = new google.maps.LatLng(location.latitude, location.longitude);
+          
+          // Berechne Marker-Größe basierend auf Asset-Anzahl (min 4, max 8)
+          const assetCount = location.asset_count || 1;
+          const scale = Math.max(4, Math.min(8, 4 + Math.log10(assetCount) * 2));
+          
+          // Erstelle elegantes SVG-Icon für MD3-Design
+          const svgIcon = {
+            url: `data:image/svg+xml;utf-8,${encodeURIComponent(`
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="8" fill="#6750A4" stroke="white" stroke-width="1.5" opacity="0.9" />
+              </svg>
+            `)}`,
+            scaledSize: new google.maps.Size(scale * 2.5, scale * 2.5),
+            anchor: new google.maps.Point(scale * 1.25, scale * 1.25),
+          };
+          
+          // Erweiterte Marker-Optionen
+          const markerOptions = {
+            position: position,
+            map: googleMap,
+            title: location.name || 'Standort',
+            icon: svgIcon,
+            animation: google.maps.Animation.DROP,
+            optimized: true,  // Performance-Verbesserung
+          };
+          
+          // Marker erstellen
+          const marker = new google.maps.Marker(markerOptions);
+          
+          // InfoWindow-Inhalt mit Standortinfos
+          const infoWindowContent = `
+            <div class="md3-map-info-window">
+              <h4 class="md3-map-info-title">${location.name || 'Standort'}</h4>
+              ${location.address ? `<p class="md3-map-info-address">${location.address}</p>` : ''}
+              ${location.asset_count ? 
+                `<p class="md3-map-info-count"><span>${location.asset_count}</span> Assets</p>` : 
+                ''}
+            </div>
+          `;
+          
+          // Click-Event für Marker hinzufügen
+          marker.addListener('click', () => {
+            infoWindow.setContent(infoWindowContent);
+            infoWindow.open(googleMap, marker); // Korrekte Referenz zur googleMap-Variable
+          });
+          
+          // Bounds erweitern
+          bounds.extend(position);
+        }
+      });
+      
+      // Karte auf alle Marker zoomen, wenn vorhanden
+      if (locations.length > 0) {
+        googleMap.fitBounds(bounds);
+        // Minimalen Zoom begrenzen, um nicht zu weit zu zoomen bei einzelnen Markern
+        const zoomListener = google.maps.event.addListener(googleMap, 'idle', () => {
+          if (googleMap.getZoom() > 16) googleMap.setZoom(16);
+          google.maps.event.removeListener(zoomListener);
+        });
+      }
+    } else {
+      console.log('Keine Standortdaten gefunden');
+    }
+  } catch (error) {
+    console.error('Fehler beim Laden der Standortdaten:', error);
+  }
+  
+  // Karte bei Größenänderung aktualisieren
+  window.addEventListener('resize', () => {
+    const center = googleMap.getCenter();
+    google.maps.event.trigger(googleMap, 'resize');
+    googleMap.setCenter(center);
+  });
+}
+// Ende der Google Maps Initialisierungslogik
+  
+  // Lieferungsstatistiken initialisieren
+  function initDeliveryChart() {
+    try {
+      // Tracking-Daten laden
+      const trackingDataElement = document.getElementById('tracking-data');
+      if (!trackingDataElement) {
+        console.error('Tracking-Daten-Element nicht gefunden');
+        return;
+      }
+      
+      const trackingData = JSON.parse(trackingDataElement.textContent);
+      if (!trackingData || !trackingData.counts) {
+        console.error('Ungültige Tracking-Daten', trackingData);
+        return;
+      }
+      
+      // Werte in Statistiken anzeigen
+      document.getElementById('deliveries-in-transit').textContent = trackingData.counts.in_transit || 0;
+      document.getElementById('deliveries-delivered').textContent = trackingData.counts.delivered || 0;
+      document.getElementById('deliveries-pending').textContent = trackingData.counts.pending || 0;
+      
+      // Chart initialisieren
+      const canvas = document.getElementById('deliveryChart');
+      if (!canvas) {
+        console.error('Canvas für Lieferungs-Chart nicht gefunden');
+        return;
+      }
+      
+      // MD3 Farben für die Chart definieren
+      const md3Colors = {
+        inTransit: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-tertiary').trim(),
+        delivered: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-primary').trim(),
+        pending: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-error').trim()
+      };
+      
+      // Daten für die Chart vorbereiten
+      const chartData = {
+        labels: ['In Transport', 'Geliefert', 'Ausstehend'],
+        datasets: [{
+          data: [
+            trackingData.counts.in_transit || 0,
+            trackingData.counts.delivered || 0,
+            trackingData.counts.pending || 0
+          ],
+          backgroundColor: [
+            md3Colors.inTransit || '#03DAC6',
+            md3Colors.delivered || '#6750A4',
+            md3Colors.pending || '#B3261E'
+          ],
+          borderWidth: 0,
+          hoverOffset: 4
+        }]
+      };
+      
+      // Chart-Konfiguration
+      const chartConfig = {
+        type: 'doughnut',
+        data: chartData,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                font: {
+                  family: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-typescale-body-medium-font-family').trim(),
+                  size: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--md-sys-typescale-body-medium-font-size')),
+                  weight: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-typescale-body-medium-font-weight').trim()
+                },
+                color: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-on-surface').trim()
+              }
+            },
+            tooltip: {
+              backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-surface-container').trim(),
+              titleColor: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-on-surface').trim(),
+              bodyColor: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-on-surface-variant').trim(),
+              titleFont: {
+                family: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-typescale-body-large-font-family').trim(),
+                size: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--md-sys-typescale-body-large-font-size')),
+                weight: 'bold'
+              },
+              bodyFont: {
+                family: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-typescale-body-medium-font-family').trim(),
+                size: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--md-sys-typescale-body-medium-font-size'))
+              },
+              padding: 12,
+              cornerRadius: 4,
+              boxPadding: 4
+            }
+          },
+          animation: {
+            duration: 1000,
+            easing: 'easeOutQuart'
+          }
+        }
+      };
+      
+      // Chart erstellen
+      new Chart(canvas, chartConfig);
+      
+      // Nachdem die Chart erstellt wurde, Loading Indicator ausblenden
+      console.log('Chart erstellt, verstecke Loading Indicator...');
+      
+      // Kurze Verzögerung hinzufügen, um sicherzustellen, dass die Chart vollständig gerendert ist
+      setTimeout(() => {
+        const loadingOverlay = document.getElementById('chart-loading-overlay');
+        if (loadingOverlay) {
+          loadingOverlay.style.display = 'none';
+          console.log('Loading Indicator erfolgreich ausgeblendet');
+        } else {
+          console.error('Loading Overlay nicht gefunden');
+        }
+      }, 300); // 300ms Verzögerung für sicheres Rendern
+      
+    } catch (error) {
+      console.error('Fehler beim Initialisieren der Lieferungs-Chart:', error);
+    }
+  }
+  
+  // Chart nach DOM-Laden initialisieren
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initDeliveryChart, 500); // Verzögerung, um sicherzustellen, dass Chart.js geladen ist
+  });
+</script>
+
+<!-- Material Web Components für MD3 Loading Indicator -->
+<script type="module" src="https://cdn.jsdelivr.net/npm/@material/web@latest/progress/circular-progress.js"></script>
+
+{% endblock %}

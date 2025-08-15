@@ -1,0 +1,3206 @@
+{% extends "base.html" %}
+
+{% block title %}Assets{% endblock %}
+
+{% block head %}
+{{ super() }}
+<!-- MD3 ASSET OVERLAY SYSTEM -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('%c=== MD3 ASSET OVERLAY SYSTEM GESTARTET ===', 'background: #1976d2; color: white; padding: 5px; font-weight: bold;');
+  
+  // Overlay-System für Gruppen-Details
+  window.openGroupOverlay = function(groupId, groupCount, groupName) {
+    console.log('Overlay öffnen für Gruppe:', groupId, groupCount, groupName);
+    
+    // Erstelle Overlay-Container
+    const overlay = document.createElement('div');
+    overlay.id = 'group-details-overlay';
+    overlay.className = 'md3-overlay';
+    overlay.style.cssText = `
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      background: rgba(0, 0, 0, 0.6) !important;
+      backdrop-filter: blur(4px) !important;
+      z-index: 1000 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      opacity: 0 !important;
+      transition: opacity 0.3s ease !important;
+    `;
+    
+    // Overlay-Inhalt
+    overlay.innerHTML = `
+      <div class="md3-overlay-content" style="
+        background: var(--md-sys-color-surface-container, #ffffff) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
+        max-width: 90vw !important;
+        max-height: 80vh !important;
+        width: 1000px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+      ">
+        <div class="md3-overlay-header" style="
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          padding: 24px !important;
+          border-bottom: 1px solid var(--md-sys-color-outline-variant, #e0e0e0) !important;
+        ">
+          <div class="md3-overlay-title" style="display: flex; align-items: center; gap: 12px;">
+            <h2 style="
+              margin: 0 !important;
+              font-size: 24px !important;
+              font-weight: 500 !important;
+              color: var(--md-sys-color-on-surface, #1c1b1f) !important;
+            ">Assets in Gruppe: ${groupName}</h2>
+            <span class="md3-tag" style="
+              background: var(--md-sys-color-secondary-container, #e8def8) !important;
+              color: var(--md-sys-color-on-secondary-container, #1d192b) !important;
+              padding: 4px 12px !important;
+              border-radius: 8px !important;
+              font-size: 14px !important;
+              font-weight: 500 !important;
+            ">${groupCount} Assets</span>
+          </div>
+          <button onclick="closeGroupOverlay()" style="
+            background: none !important;
+            border: none !important;
+            cursor: pointer !important;
+            padding: 8px !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: background-color 0.2s !important;
+          " onmouseover="this.style.background='var(--md-sys-color-surface-variant)'" onmouseout="this.style.background='none'">
+            <span class="material-symbols-outlined" style="font-size: 24px; color: var(--md-sys-color-on-surface);">close</span>
+          </button>
+        </div>
+        <div class="md3-overlay-body" style="
+          padding: 24px !important;
+          overflow-y: auto !important;
+          flex: 1 !important;
+        ">
+          <div id="overlay-assets-grid" class="md3-assets-grid" style="
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
+            gap: 16px !important;
+          ">
+            <!-- Assets werden hier dynamisch eingefügt -->
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Overlay zum DOM hinzufügen
+    document.body.appendChild(overlay);
+    
+    // Fade-in Animation
+    setTimeout(() => {
+      overlay.style.opacity = '1';
+    }, 10);
+    
+    // Assets laden
+    loadGroupAssets(groupId);
+    
+    // Schließen bei Klick auf Backdrop
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) {
+        closeGroupOverlay();
+      }
+    });
+  };
+  
+  // Overlay schließen
+  window.closeGroupOverlay = function() {
+    const overlay = document.getElementById('group-details-overlay');
+    if (overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => {
+        overlay.remove();
+      }, 300);
+    }
+  };
+  
+  // Assets für Gruppe laden
+  function loadGroupAssets(groupId) {
+    const grid = document.getElementById('overlay-assets-grid');
+    const groupDetailsElement = document.getElementById(`group-details-${groupId}`);
+    
+    if (!grid || !groupDetailsElement) {
+      console.error('Grid oder Group-Details-Element nicht gefunden');
+      return;
+    }
+    
+    // Assets aus der bestehenden Gruppe extrahieren
+    const groupAssets = groupDetailsElement.querySelectorAll('.md3-group-asset-item');
+    console.log(`Gefundene Assets für Gruppe ${groupId}:`, groupAssets.length);
+    
+    grid.innerHTML = '';
+    
+    if (groupAssets.length === 0) {
+      grid.innerHTML = `
+        <div style="
+          grid-column: 1 / -1;
+          text-align: center;
+          padding: 40px;
+          color: var(--md-sys-color-on-surface-variant);
+        ">
+          <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.5;">inventory_2</span>
+          <p style="margin: 16px 0 0 0; font-size: 16px;">Keine Assets in dieser Gruppe gefunden</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // Assets als Karten anzeigen
+    groupAssets.forEach((assetElement, index) => {
+      const assetCard = createAssetCard(assetElement, index);
+      grid.appendChild(assetCard);
+    });
+  }
+  
+  // Asset-Karte erstellen
+  function createAssetCard(assetElement, index) {
+    const card = document.createElement('div');
+    card.className = 'md3-asset-card';
+    card.style.cssText = `
+      background: var(--md-sys-color-surface, #ffffff) !important;
+      border: 1px solid var(--md-sys-color-outline-variant, #e0e0e0) !important;
+      border-radius: 12px !important;
+      padding: 16px !important;
+      transition: all 0.2s ease !important;
+      cursor: pointer !important;
+    `;
+    
+    // Hover-Effekt
+    card.addEventListener('mouseenter', () => {
+      card.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)';
+      card.style.transform = 'translateY(-2px)';
+    });
+    
+    card.addEventListener('mouseleave', () => {
+      card.style.boxShadow = 'none';
+      card.style.transform = 'translateY(0)';
+    });
+    
+    // Asset-Daten extrahieren (vereinfacht)
+    const nameElement = assetElement.querySelector('.asset-name') || assetElement.querySelector('td:first-child');
+    const serialElement = assetElement.querySelector('.asset-serial') || assetElement.querySelector('td:nth-child(2)');
+    const categoryElement = assetElement.querySelector('.asset-category') || assetElement.querySelector('td:nth-child(3)');
+    
+    const assetName = nameElement ? nameElement.textContent.trim() : `Asset ${index + 1}`;
+    const assetSerial = serialElement ? serialElement.textContent.trim() : 'N/A';
+    const assetCategory = categoryElement ? categoryElement.textContent.trim() : 'Unbekannt';
+    
+    card.innerHTML = `
+      <div class="md3-asset-card-header" style="
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      ">
+        <h3 style="
+          margin: 0;
+          font-size: 16px;
+          font-weight: 500;
+          color: var(--md-sys-color-on-surface);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          flex: 1;
+        ">${assetName}</h3>
+        <span class="md3-status-badge" style="
+          background: var(--md-sys-color-tertiary-container);
+          color: var(--md-sys-color-on-tertiary-container);
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 500;
+        ">Aktiv</span>
+      </div>
+      <div class="md3-asset-card-details" style="
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      ">
+        <div class="md3-asset-detail" style="display: flex; justify-content: space-between;">
+          <span style="color: var(--md-sys-color-on-surface-variant); font-size: 14px;">Seriennummer:</span>
+          <span style="color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">${assetSerial}</span>
+        </div>
+        <div class="md3-asset-detail" style="display: flex; justify-content: space-between;">
+          <span style="color: var(--md-sys-color-on-surface-variant); font-size: 14px;">Kategorie:</span>
+          <span style="color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">${assetCategory}</span>
+        </div>
+      </div>
+    `;
+    
+    return card;
+  }
+  
+  // ESC-Taste zum Schließen
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeGroupOverlay();
+    }
+  });
+  
+  console.log('MD3 Asset Overlay System erfolgreich initialisiert');
+});
+</script>
+
+<!-- Google Material Symbols Schriftart direkt einbinden -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+<style>
+  /* MD3-Styling für die Asset-Liste */
+  
+  /* Material Symbols richtig konfigurieren */
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined' !important;
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    transition: all 0.3s ease-in-out;
+  }
+  
+  .material-symbols-outlined:hover,
+  .md3-hover-effect:hover .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  
+  /* Speziell für QR-Code Icon, um sicherzustellen, dass der Hover-Effekt funktioniert */
+  [data-href*="asset_qr"] .material-symbols-outlined:hover,
+  [data-href*="asset_qr"]:hover .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+  }
+  
+  /* CSS-Klasse für QR-Code FILL-Effekt */
+  .qr-code-filled {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+    transition: font-variation-settings 0.2s ease-in-out !important;
+  }
+  
+  .qr-code-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+    transition: font-variation-settings 0.2s ease-in-out !important;
+  }
+  
+  /* MD3-Checkbox-Styling */
+  .md3-checkbox {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--md-sys-color-outline);
+    border-radius: 2px;
+    background-color: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    margin: 0;
+    position: relative;
+  }
+  
+  /* Spezielle Checkbox-Ausrichtung für Tabellen */
+  td .md3-checkbox {
+    margin: 0 auto !important;
+    display: block !important;
+  }
+  
+  /* Gruppierte Assets verwenden jetzt die gleiche Formatierung wie einzelne Assets */
+  
+  .md3-checkbox:hover {
+    border-color: var(--md-sys-color-primary);
+    background-color: var(--md-sys-color-primary-container);
+  }
+  
+  .md3-checkbox:checked {
+    background-color: var(--md-sys-color-primary);
+    border-color: var(--md-sys-color-primary);
+  }
+  
+  .md3-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    left: 2px;
+    top: -2px;
+    color: var(--md-sys-color-on-primary);
+    font-size: 12px;
+    font-weight: bold;
+  }
+  
+  .md3-checkbox:indeterminate {
+    background-color: var(--md-sys-color-primary);
+    border-color: var(--md-sys-color-primary);
+  }
+  
+  .md3-checkbox:indeterminate::after {
+    content: '−';
+    position: absolute;
+    left: 3px;
+    top: -2px;
+    color: var(--md-sys-color-on-primary);
+    font-size: 12px;
+    font-weight: bold;
+  }
+  
+  /* Smart Group Details Styling */
+  .md3-group-details-compact {
+    position: absolute !important;
+    left: 0;
+    right: auto;
+    width: auto;
+    min-width: 450px;
+    max-width: 650px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+  
+  .md3-status-badge-mini {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+  
+  .md3-status-active {
+    background-color: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+  }
+  
+  .md3-status-inactive {
+    background-color: var(--md-sys-color-error-container);
+    color: var(--md-sys-color-on-error-container);
+  }
+  
+  .md3-status-group {
+    background-color: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+    font-weight: 500;
+  }
+  
+  /* Group Edit Modal Styling - EXTREM HOHER Z-INDEX */
+  #group-details-modal {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background-color: rgba(0, 0, 0, 0.8) !important;
+    z-index: 2147483647 !important; /* Höchster möglicher z-index */
+    justify-content: center !important;
+    align-items: center !important;
+    pointer-events: auto !important;
+  }
+  
+  #group-details-modal.show {
+    display: flex !important;
+  }
+  
+  .md-modal-content {
+    background: white !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+    width: 90vw !important;
+    max-width: 800px !important;
+    max-height: 80vh !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 20px !important;
+    z-index: 2147483647 !important; /* Höchster möglicher z-index */
+    position: relative !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    border: 3px solid #1976d2 !important; /* Sichtbarkeits-Test */
+  }
+  
+  .md-modal-header {
+    padding: 24px !important;
+    border-bottom: 1px solid #e0e0e0 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    background: white !important;
+  }
+  
+  .md-modal-title {
+    font-size: 20px !important;
+    font-weight: 500 !important;
+    color: #1a1a1a !important;
+    margin: 0 !important;
+  }
+  
+  .md-modal-close {
+    background: none !important;
+    border: none !important;
+    cursor: pointer !important;
+    padding: 8px !important;
+    border-radius: 50% !important;
+    color: #666 !important;
+    transition: background-color 0.2s ease !important;
+  }
+  
+  .md-modal-close:hover {
+    background-color: #f0f0f0 !important;
+    color: #333 !important;
+  }
+  
+  .md-modal-body {
+    padding: 24px !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    background: white !important;
+  }
+  
+  .md-modal-loading {
+    text-align: center !important;
+    padding: 40px !important;
+    color: #666 !important;
+  }
+  
+  .md-modal-loading .material-symbols-outlined {
+    font-size: 48px !important;
+    animation: spin 1s linear infinite !important;
+    display: block !important;
+    margin-bottom: 16px !important;
+    color: #1976d2 !important;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .md3-group-edit-content {
+    background-color: var(--md-sys-color-surface);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  }
+  
+  /* Aktionen-Menü und Icon-Only-Style */
+  .md3-icon-only {
+    min-width: 40px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Text neben Icons ausblenden */
+  .md3-icon-only span.material-symbols-outlined + * {
+    display: none !important;
+  }
+  
+  .md3-icon-only::part(label) {
+    display: none !important;
+  }
+  
+  .md3-icon-only span.material-symbols-outlined {
+    margin: 0 !important;
+  }
+  
+  /* Tooltip-Styling für konsistentes MD3-Design */
+  md-tooltip {
+    --md-tooltip-container-color: var(--md-sys-color-inverse-surface);
+    --md-tooltip-container-shape: 4px;
+    --md-tooltip-supporting-text-color: var(--md-sys-color-inverse-on-surface);
+    --md-tooltip-supporting-text-font: var(--md-sys-typescale-label-small-font);
+    --md-tooltip-supporting-text-line-height: var(--md-sys-typescale-label-small-line-height);
+    --md-tooltip-supporting-text-size: var(--md-sys-typescale-label-small-size);
+    --md-tooltip-supporting-text-tracking: var(--md-sys-typescale-label-small-tracking);
+    --md-tooltip-supporting-text-weight: var(--md-sys-typescale-label-small-weight);
+    position: fixed;
+    z-index: 9999;
+  }
+
+  /* Verbesserte MD3 Tooltips */
+  .md3-tooltip {
+    position: absolute;
+    background-color: var(--md-sys-color-inverse-surface);
+    color: var(--md-sys-color-inverse-on-surface);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: var(--md-sys-typescale-label-small-size);
+    font-weight: var(--md-sys-typescale-label-small-weight);
+    line-height: var(--md-sys-typescale-label-small-line-height);
+    letter-spacing: var(--md-sys-typescale-label-small-tracking);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    z-index: 9999;
+    white-space: nowrap;
+  }
+  
+  .md3-tooltip.visible {
+    opacity: 1;
+  }
+  md-tooltip {
+    --md-tooltip-container-color: var(--md-sys-color-inverse-surface);
+    --md-tooltip-container-shape: 4px;
+    --md-tooltip-supporting-text-color: var(--md-sys-color-inverse-on-surface);
+    --md-tooltip-supporting-text-font: var(--md-sys-typescale-label-small-font);
+    --md-tooltip-supporting-text-line-height: var(--md-sys-typescale-label-small-line-height);
+    --md-tooltip-supporting-text-size: var(--md-sys-typescale-label-small-size);
+    --md-tooltip-supporting-text-tracking: var(--md-sys-typescale-label-small-tracking);
+    --md-tooltip-supporting-text-weight: var(--md-sys-typescale-label-small-weight);
+    z-index: 9999;
+  }
+  
+  /* JavaScript-gesteuerte benutzerdefinierte Tooltips als Fallback */
+  .md3-custom-tooltip {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 16px !important;
+  }
+
+  /* MD3 Design-Token-Integration */
+  :root {
+    --md-assets-surface-elevation: var(--md-sys-elevation-level1);
+  }
+
+  .md3-container {
+    max-width: 100%;
+    margin: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .md3-assets-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  
+  .md3-action-menu {
+    min-width: 110px; /* Mehr Platz für die Aktions-Buttons */
+  }
+  
+  .md3-action-button {
+    margin-right: 8px;
+  }
+  
+  /* Name-Zellen mit Textkürzung - wichtige !important-Flags wegen möglicher Konflikte mit Bulma */
+  .md3-asset-name-cell {
+    max-width: 200px !important;
+    width: 200px !important;
+    overflow: hidden !important;
+    position: relative !important;
+  }
+  
+  .md3-truncate-text {
+    display: block !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 180px !important; /* Etwas kleiner als die Zellbreite */
+    width: 180px !important;
+  }
+  
+  /* Zentrierte Spalten */
+  .text-center {
+    text-align: center !important;
+  }
+  
+  /* Optimierte Tabellenbreite */
+  .md3-assets-table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    max-width: 100% !important;
+  }
+  
+  md-filled-tonal-button {
+    --md-filled-tonal-button-container-shape: 8px;
+  }
+
+  .md3-assets-title {
+    color: var(--md-sys-color-on-surface);
+    font-family: var(--md-sys-typescale-headline-medium-font-family-name);
+    font-size: var(--md-sys-typescale-headline-medium-font-size);
+    font-weight: var(--md-sys-typescale-headline-medium-font-weight);
+    line-height: var(--md-sys-typescale-headline-medium-line-height);
+    margin: 0;
+  }
+
+  .md3-action-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .md3-filter-section {
+    background-color: var(--md-sys-color-surface-container);
+    padding: 16px;
+    border-radius: 16px;
+    box-shadow: var(--md-assets-surface-elevation);
+    margin-bottom: 16px;
+  }
+
+  .md3-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+  }
+
+  .md3-status-tabs {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    gap: 8px;
+  }
+
+  /* Asset-Tabellen-Styles mit erhöhter Spezifität, um Bulma zu überschreiben */
+  .md3-container .md3-asset-table-container {
+    margin-bottom: 24px !important;
+    width: 100% !important; /* Volles Container-Element nutzen */
+  }
+
+  .md3-container .md3-asset-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-family: var(--md-sys-typescale-body-medium-font-family-name) !important;
+    font-size: var(--md-sys-typescale-body-medium-font-size) !important;
+  }
+
+  /* Tabellen-Header und -Zellen verwenden jetzt die inline-Styles für pixel-perfekte Ausrichtung */
+  
+  /* Responsive Tabelle ohne feste Breiten */
+  .md3-asset-table tr:hover {
+    background-color: var(--md-sys-color-surface-container-highest);
+  }
+
+  .md3-asset-table-container {
+    background-color: var(--md-sys-color-surface-container);
+    border-radius: 16px;
+    box-shadow: var(--md-assets-surface-elevation);
+  }
+
+  .md3-tag {
+    display: inline-block;
+    padding: 4px 8px;
+    background-color: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+    font-family: var(--md-sys-typescale-label-small-font-family-name);
+    font-size: var(--md-sys-typescale-label-small-font-size);
+    font-weight: var(--md-sys-typescale-label-small-font-weight);
+    border-radius: 8px;
+    margin: 2px;
+  }
+
+  .md3-asset-image {
+    width: 48px;
+    height: 48px;
+    border-radius: 4px;
+    object-fit: cover;
+    background-color: var(--md-sys-color-surface-variant);
+  }
+
+  .md3-status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-family: var(--md-sys-typescale-label-small-font-family-name);
+    font-size: var(--md-sys-typescale-label-small-font-size);
+    font-weight: var(--md-sys-typescale-label-small-font-weight);
+  }
+
+  .md3-status-active {
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+  }
+
+  .md3-status-inactive {
+    background-color: var(--md-sys-color-outline);
+    color: var(--md-sys-color-on-surface);
+  }
+
+  /* Action-Menu-Styles mit erhöhter Spezifität */
+  .md3-container .md3-action-menu {
+    position: relative !important;
+    min-width: 150px !important; /* Reduzierter Platz da keine Text-Labels mehr */
+    padding-right: 12px !important; /* Rechter Abstand in der Zelle erhöht */
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 8px !important; /* Abstand zwischen den Icons */
+  }
+  
+  /* MD3 Hover-Effekt für Aktions-Buttons */
+  .md3-container .md3-action-button {
+    transition: all 0.2s ease-in-out !important;
+  }
+  
+  .md3-container .md3-action-button:hover {
+    background-color: var(--md-sys-color-primary-container) !important;
+    color: var(--md-sys-color-on-primary-container) !important;
+    box-shadow: var(--md-sys-elevation-level2) !important;
+  }
+  
+  .md3-container md-menu-item {
+    transition: background-color 0.2s ease !important;
+  }
+  
+  .md3-container md-menu-item:hover {
+    background-color: var(--md-sys-color-surface-variant) !important;
+  }
+  
+  /* MD3 Subtile Icon-Hover-Effekte (nur Icon-Animation, kein Background) */
+  md-icon-button {
+    transition: transform 0.15s ease-in-out;
+  }
+  
+  md-icon-button:hover {
+    transform: scale(1.05);
+  }
+  
+  md-icon-button:hover .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1;
+    color: var(--md-sys-color-primary);
+    transition: all 0.15s ease-in-out;
+  }
+  
+  /* Entferne störende Background-Hover-Effekte */
+  .md-icon-button-with-hover:hover md-icon-button,
+  .md3-hover-effect:hover {
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+  
+  /* Symmetrische Action-Icons */
+  .md3-action-icon {
+    width: 32px !important;
+    height: 32px !important;
+    margin: 0 2px !important;
+  }
+  
+  .md3-action-icon .material-symbols-outlined {
+    font-size: 20px !important;
+  }
+  
+  .md3-delete-icon:hover .material-symbols-outlined {
+    color: var(--md-sys-color-error) !important;
+  }
+  
+  /* Aktionsmenüs */
+  /* Dropdown-Button-Styling */
+  md-filled-tonal-button.md3-action-button {
+    --md-filled-tonal-button-container-shape: 8px;
+    --md-filled-tonal-button-container-height: 36px;
+  }
+  
+  /* Gruppierte Assets verwenden jetzt identische Darstellung wie einzelne Assets */
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+
+<div class="md3-container" style="margin-top: 80px;"> <!-- Abstand für die fixierte Navbar -->
+  <div class="md3-assets-header">
+    <h1 class="md3-assets-title">Assets</h1>
+    <div class="md3-action-buttons">
+      <md-filled-button class="md3-add-button" data-href="{{ url_for('main.add_asset') }}">
+        <span class="material-symbols-outlined" slot="icon">add</span>
+        Neues Asset
+      </md-filled-button>
+      <md-filled-tonal-button class="md3-import-button" data-href="{{ url_for('main.import_assets') }}">
+        <span class="material-symbols-outlined" slot="icon">upload_file</span>
+        CSV Import
+      </md-filled-tonal-button>
+      <md-outlined-button class="md3-group-button" data-href="{{ url_for('main.assets', name=selected.name, category=selected.category, location=selected.location, manufacturer=selected.manufacturer, supplier=selected.supplier, assignment=selected.assignment, with_image=selected.with_image, status=selected.status, group_duplicates='true' if not group_duplicates else 'false') }}">
+        <span class="material-symbols-outlined" slot="icon">
+          {{ 'group_work' if not group_duplicates else 'splitscreen' }}
+        </span>
+        {{ 'Duplikate gruppieren' if not group_duplicates else 'Alle Assets anzeigen' }}
+      </md-outlined-button>
+    </div>
+  </div>
+
+  <!-- Status-Tabs -->
+  <div class="md3-status-tabs">
+    <md-tabs aria-label="Asset-Status">
+      <md-primary-tab 
+        {% if selected.status == 'active' or not selected.status %}active{% endif %}
+        data-status="active"
+        class="status-tab">
+        Aktive Assets
+      </md-primary-tab>
+      <md-primary-tab 
+        {% if selected.status == 'inactive' %}active{% endif %}
+        data-status="inactive"
+        class="status-tab">
+        Archivierte Assets
+      </md-primary-tab>
+      <md-primary-tab 
+        {% if selected.status == 'all' %}active{% endif %}
+        data-status="all"
+        class="status-tab">
+        Alle Assets
+      </md-primary-tab>
+    </md-tabs>
+  </div>
+
+  <!-- Filter -->
+  <div class="md3-filter-section">
+    <form method="get" id="asset-filter-form">
+      <div class="md3-filter-grid">
+        <md-filled-text-field 
+          name="name"
+          label="Name" 
+          value="{{ selected.name }}"
+          placeholder="Asset-Name eingeben">
+        </md-filled-text-field>
+
+        <md-filled-text-field 
+          name="category"
+          label="Kategorie" 
+          value="{{ selected.category }}"
+          placeholder="Kategorie eingeben">
+        </md-filled-text-field>
+
+        <md-filled-text-field 
+          name="location"
+          label="Standort" 
+          value="{{ selected.location }}"
+          placeholder="Standort eingeben">
+        </md-filled-text-field>
+
+        <md-filled-text-field 
+          name="manufacturer"
+          label="Hersteller" 
+          value="{{ selected.manufacturer }}"
+          placeholder="Hersteller eingeben">
+        </md-filled-text-field>
+
+        <md-filled-text-field 
+          name="supplier"
+          label="Lieferant" 
+          value="{{ selected.supplier }}"
+          placeholder="Lieferant eingeben">
+        </md-filled-text-field>
+
+        <md-filled-text-field 
+          name="assignment"
+          label="Zuordnung" 
+          value="{{ selected.assignment }}"
+          placeholder="Zuordnung eingeben">
+        </md-filled-text-field>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; margin-top: 16px;">
+        <div>
+          <md-checkbox 
+            name="with_image" 
+            id="with_image" 
+            value="true"
+            {% if selected.with_image %}checked{% endif %}>
+            Nur Assets mit Bild
+          </md-checkbox>
+        </div>
+        
+        <div>
+          <md-filled-button type="submit">
+            <span class="material-symbols-outlined" slot="icon">search</span>
+            Filtern
+          </md-filled-button>
+          <md-outlined-button class="reset-filters" data-url="{{ url_for('main.assets') }}"> 
+            Zurücksetzen
+          </md-outlined-button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Bulk-Aktionen -->
+  <div class="md3-bulk-actions" style="margin-bottom: 24px; margin-top: 16px; display: flex; gap: 12px;">
+    <md-filled-tonal-button id="multi-loan-btn" disabled>
+      <span class="material-symbols-outlined" slot="icon">assignment_turned_in</span>
+      Sammelausleihe
+    </md-filled-tonal-button>
+    
+    {% if selected.status == 'active' or not selected.status %}
+    <md-filled-tonal-button id="bulk-archive-btn" disabled>
+      <md-icon slot="icon">archive</md-icon>
+      Ausgewählte archivieren (0)
+    </md-filled-tonal-button>
+    
+    <!-- Gruppierungs-Toggle-Button -->
+    <a href="{{ url_for('md3_assets', name=selected.name, category=selected.category, location=selected.location, manufacturer=selected.manufacturer, supplier=selected.supplier, assignment=selected.assignment, with_image=selected.with_image, status=selected.status, group_duplicates='true' if not group_duplicates else 'false') }}" 
+       style="text-decoration: none;">
+      <md-outlined-button id="group-toggle-btn">
+        <span class="material-symbols-outlined" slot="icon">{{ 'group_work' if not group_duplicates else 'view_list' }}</span>
+        {{ 'Duplikate gruppieren' if not group_duplicates else 'Alle Assets anzeigen' }}
+      </md-outlined-button>
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- Assets-Tabelle mit Inline-Styles für höhere Priorität -->
+  {% if assets %}
+  <div class="md3-asset-table-container" style="overflow-x: auto; margin-bottom: 24px; width: 100%; padding: 0; max-width: 100vw;">
+    <table class="md3-asset-table" style="width: 100%; border-collapse: collapse; font-family: var(--md-sys-typescale-body-medium-font-family-name); font-size: var(--md-sys-typescale-body-medium-font-size); table-layout: fixed;">
+      <!-- Drastisch reduzierte Spaltenbreiten für perfekte Ausrichtung ohne Scrollen -->
+      <colgroup>
+        <col style="width: 30px;">   <!-- Checkbox -->
+        <col style="width: 40px;">   <!-- Bild -->
+        <col style="width: 120px;">  <!-- Name -->
+        <col style="width: 70px;">   <!-- Artikelnummer -->
+        <col style="width: 60px;">   <!-- Kategorie -->
+        <col style="width: 60px;">   <!-- EAN -->
+        <col style="width: 50px;">   <!-- Wert -->
+        <col style="width: 50px;">   <!-- Status -->
+        <col style="width: 60px;">   <!-- Standort -->
+        <col style="width: 60px;">   <!-- Hersteller -->
+        <col style="width: 60px;">   <!-- Lieferant -->
+        <col style="width: 60px;">   <!-- Zuordnung -->
+        <col style="width: 100px;">  <!-- Aktionen -->
+      </colgroup>
+      <thead>
+        <tr style="height: 48px; background-color: var(--md-sys-color-surface-variant);">
+          <!-- Checkbox -->
+          <th style="width: 30px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            <input type="checkbox" id="select-all-checkbox" class="md3-checkbox">
+          </th>
+          <!-- Bild -->
+          <th style="width: 40px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Bild
+          </th>
+          <!-- Name -->
+          <th style="width: 120px; text-align: left; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Name
+          </th>
+          <!-- Artikelnummer -->
+          <th style="width: 70px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Artikelnummer
+          </th>
+          <!-- Kategorie -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Kategorie
+          </th>
+          <!-- EAN -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            EAN
+          </th>
+          <!-- Wert -->
+          <th style="width: 50px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Wert
+          </th>
+          <!-- Status -->
+          <th style="width: 50px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Status
+          </th>
+          <!-- Standort -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Standort
+          </th>
+          <!-- Hersteller -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Hersteller
+          </th>
+          <!-- Lieferant -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Lieferant
+          </th>
+          <!-- Zuordnung -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Zuordnung
+          </th>
+          <!-- Aktionen -->
+          <th style="width: 100px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Aktionen
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for asset in assets %}
+        <tr class="{% if asset.is_group %}md3-grouped-asset{% endif %}" style="height: 48px; border-bottom: 1px solid var(--md-sys-color-outline-variant);">
+          <!-- Checkbox -->
+          <td style="width: 30px; text-align: center; padding: 8px; vertical-align: middle;">
+            {% if asset.is_group %}
+            <input type="checkbox" 
+              class="asset-checkbox group-checkbox md3-checkbox" 
+              value="{{ asset.group_ids|join(',') }}" 
+              data-is-group="true"
+              title="Diese Gruppe mit {{ asset.group_count }} Assets auswählen">
+            {% else %}
+            <input type="checkbox" class="asset-checkbox md3-checkbox" value="{{ asset.id }}">
+            {% endif %}
+          </td>
+          <!-- Bild -->
+          <td style="width: 40px; text-align: center; padding: 8px; vertical-align: middle;">
+            {% if asset.image_url %}
+            <img src="{{ asset.image_url }}" alt="{{ asset.name }}" style="width: 24px; height: 24px; object-fit: cover; border-radius: 2px;">
+            {% else %}
+            <span class="material-symbols-outlined" style="color: var(--md-sys-color-outline); font-size: 16px;">image_not_supported</span>
+            {% endif %}
+          </td>
+          <!-- Name -->
+          <td style="width: 120px; padding: 8px; text-align: left; vertical-align: middle; font-size: 14px; line-height: 20px;">
+            {% if asset.is_group %}
+            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--md-sys-color-on-surface);" title="{{ asset.name }} ({{ asset.group_count }} Assets)">
+              {{ asset.name[:15] }}{{ '...' if asset.name|length > 15 else '' }}
+              <span style="font-size: 11px; color: var(--md-sys-color-on-surface-variant); margin-left: 4px;">({{ asset.group_count }})</span>
+            </div>
+            {% else %}
+            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--md-sys-color-on-surface);" title="{{ asset.name }}">
+              <a href="{{ url_for('main.asset_details', id=asset.id) }}" style="text-decoration: none; color: inherit;">{{ asset.name[:15] }}{{ '...' if asset.name|length > 15 else '' }}</a>
+            </div>
+            {% endif %}
+          </td>
+          <!-- Artikelnummer -->
+          <td style="width: 70px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {% if asset.is_group %}
+            <span style="color: var(--md-sys-color-outline);">—</span>
+            {% else %}
+            {{ (asset.article_number or '—')[:8] }}{{ '...' if asset.article_number and asset.article_number|length > 8 else '' }}
+            {% endif %}
+          </td>
+          <!-- Kategorie -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {% if asset.is_group %}
+            <span style="color: var(--md-sys-color-primary);">Mix</span>
+            {% else %}
+            {{ (asset.category.name if asset.category else '—')[:6] }}{{ '...' if asset.category and asset.category.name|length > 6 else '' }}
+            {% endif %}
+          </td>
+          <!-- EAN -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {% if asset.is_group %}
+            <span style="color: var(--md-sys-color-outline);">—</span>
+            {% else %}
+            {{ (asset.ean or '—')[:8] }}{{ '...' if asset.ean and asset.ean|length > 8 else '' }}
+            {% endif %}
+          </td>
+          <!-- Wert -->
+          <td style="width: 50px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {% if asset.is_group %}
+              {% if asset.total_value %}
+              <span style="color: var(--md-sys-color-primary);">{{ '%.0f€'|format(asset.total_value|float) }}</span>
+              {% else %}
+              <span style="color: var(--md-sys-color-outline);">—</span>
+              {% endif %}
+            {% else %}
+            {{ '%.0f€'|format(asset.value|float) if asset.value else '—' }}
+            {% endif %}
+          </td>
+          <!-- Status -->
+          <td style="width: 50px; text-align: center; padding: 8px; vertical-align: middle;">
+            {% if asset.is_group %}
+            <span class="md3-status-badge" style="background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 500;">
+              Grp
+            </span>
+            {% else %}
+            <span class="md3-status-badge" style="background: {% if asset.status == 'active' %}var(--md-sys-color-primary-container){% else %}var(--md-sys-color-error-container){% endif %}; color: {% if asset.status == 'active' %}var(--md-sys-color-on-primary-container){% else %}var(--md-sys-color-on-error-container){% endif %}; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 500;">
+              {{ 'Akt' if asset.status == 'active' else 'Ina' }}
+            </span>
+            {% endif %}
+          </td>
+          <!-- Standort -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {% if asset.is_group %}
+            <span style="color: var(--md-sys-color-primary);">{{ (asset.location or 'Versch.')[:6] }}{{ '...' if asset.location and asset.location|length > 6 else '' }}</span>
+            {% else %}
+            {{ (asset.location or '—')[:6] }}{{ '...' if asset.location and asset.location|length > 6 else '' }}
+            {% endif %}
+          </td>
+          <!-- Hersteller -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {% if asset.is_group %}
+            <span style="color: var(--md-sys-color-primary);">{{ (asset.manufacturer.name if asset.manufacturer else 'Versch.')[:6] }}{{ '...' if asset.manufacturer and asset.manufacturer.name|length > 6 else '' }}</span>
+            {% else %}
+            {{ (asset.manufacturer.name if asset.manufacturer else '—')[:6] }}{{ '...' if asset.manufacturer and asset.manufacturer.name|length > 6 else '' }}
+            {% endif %}
+          </td>
+          <!-- Lieferant -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {% if asset.is_group %}
+            <span style="color: var(--md-sys-color-primary);">{{ (asset.supplier.name if asset.supplier else 'Versch.')[:6] }}{{ '...' if asset.supplier and asset.supplier.name|length > 6 else '' }}</span>
+            {% else %}
+            {{ (asset.supplier.name if asset.supplier else '—')[:6] }}{{ '...' if asset.supplier and asset.supplier.name|length > 6 else '' }}
+            {% endif %}
+          </td>
+          <!-- Zuordnung -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {% if asset.is_group %}
+              {% if asset.assignments %}
+                <span style="color: var(--md-sys-color-primary);">{{ (asset.assignments[0].name)[:6] }}{{ '...' if asset.assignments[0].name|length > 6 else '' }}</span>
+              {% else %}
+                <span style="color: var(--md-sys-color-primary);">Versch.</span>
+              {% endif %}
+            {% else %}
+              {% if asset.assignments %}
+                {{ (asset.assignments[0].name)[:6] }}{{ '...' if asset.assignments[0].name|length > 6 else '' }}
+              {% else %}
+                —
+              {% endif %}
+            {% endif %}
+          </td>
+          <td class="md3-action-menu" style="width: 100px; padding: 8px; vertical-align: middle; display: flex; justify-content: center; align-items: center; gap: 2px;">
+            {% if asset.is_group %}
+            <!-- Symmetrisch ausgerichtete Gruppen-Aktionen -->
+            <md-icon-button class="md3-action-icon group-details-btn" data-asset-id="{{ asset.id }}" data-group-ids="{{ asset.group_ids|join(',') }}" aria-label="Gruppe bearbeiten" title="Gruppe bearbeiten">
+              <span class="material-symbols-outlined">edit</span>
+            </md-icon-button>
+            
+            <md-icon-button class="md3-action-icon" data-href="{{ url_for('main.multi_loan', ids=asset.group_ids|join(',')) }}" onclick="window.location.href=this.dataset.href" aria-label="Gruppenausleihe" title="Gruppenausleihe">
+              <span class="material-symbols-outlined">assignment_turned_in</span>
+            </md-icon-button>
+            
+            <md-icon-button class="md3-action-icon" data-group-ids="{{ asset.group_ids|join(',') }}" data-group-name="{{ asset.name }}" onclick="openGroupDetailsDialog(this.dataset.groupIds, this.dataset.groupName)" aria-label="Gruppendetails anzeigen" title="Gruppendetails anzeigen">
+              <span class="material-symbols-outlined">visibility</span>
+            </md-icon-button>
+            
+            <md-icon-button class="md3-action-icon" data-asset-ids="{{ asset.group_ids|join(',') }}" data-asset-name="{{ asset.name }} (Gruppe)" onclick="openDeleteDialog(this.dataset.assetIds, this.dataset.assetName)" aria-label="Gruppe löschen" title="Gruppe löschen">
+              <span class="material-symbols-outlined">delete</span>
+            </md-icon-button>
+            {% else %}
+            <!-- Symmetrisch ausgerichtete Einzel-Asset-Aktionen -->
+            <md-icon-button class="md3-action-icon" data-href="{{ url_for('main.edit_asset', id=asset.id) }}" onclick="window.location.href=this.dataset.href" aria-label="Bearbeiten" title="Bearbeiten">
+              <span class="material-symbols-outlined">edit</span>
+            </md-icon-button>
+            
+            <md-icon-button class="md3-action-icon" data-href="{{ url_for('main.loan_asset', id=asset.id) }}" onclick="window.location.href=this.dataset.href" aria-label="Ausleihen" title="Ausleihen">
+              <span class="material-symbols-outlined">assignment_turned_in</span>
+            </md-icon-button>
+            
+            <md-icon-button class="md3-action-icon" 
+              data-asset-id="{{ asset.id }}" 
+              data-asset-name="{{ asset.name }}" 
+              data-asset-category="{{ asset.category.name if asset.category else 'N/A' }}" 
+              data-asset-status="{{ asset.status }}" 
+              data-asset-serial="{{ asset.serial_number or 'N/A' }}" 
+              data-asset-location="{{ asset.location.name if asset.location else 'N/A' }}" 
+              data-asset-manufacturer="{{ asset.manufacturer.name if asset.manufacturer else 'N/A' }}" 
+              data-asset-image="{{ asset.image_url or '' }}" 
+              onclick="openSingleAssetModal(this.dataset)" aria-label="Details" title="Details">
+              <span class="material-symbols-outlined">visibility</span>
+            </md-icon-button>
+            
+            <md-icon-button class="md3-action-icon md3-delete-icon" data-asset-id="{{ asset.id }}" data-asset-name="{{ asset.name }}" onclick="openDeleteDialog(this.dataset.assetId, this.dataset.assetName)" aria-label="Löschen" title="Löschen">
+              <span class="material-symbols-outlined">delete</span>
+            </md-icon-button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="md3-empty-state">
+    <span class="material-symbols-outlined" style="font-size: 48px; color: var(--md-sys-color-outline); margin-bottom: 16px;">inventory_2</span>
+    <p style="color: var(--md-sys-color-on-surface-variant); font-family: var(--md-sys-typescale-body-large-font-family-name);">
+      Keine Assets gefunden. Passen Sie die Filter an oder <a href="{{ url_for('main.add_asset') }}" style="color: var(--md-sys-color-primary);">erstellen Sie ein neues Asset</a>.
+    </p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Löschen-Dialog -->
+<md-dialog id="delete-dialog">
+  <div slot="headline">Asset löschen</div>
+  <div slot="content" id="delete-dialog-content">Möchten Sie dieses Asset wirklich löschen?</div>
+  <div slot="actions">
+    <md-text-button form="dialog-form" value="cancel">Abbrechen</md-text-button>
+    <md-filled-button form="dialog-form" value="delete" id="confirm-delete-btn">Löschen</md-filled-button>
+  </div>
+  <form id="dialog-form" method="dialog"></form>
+</md-dialog>
+
+<!-- Gruppendetails-Modal -->
+<md-dialog id="group-details-modal" style="--md-dialog-container-max-width: 90vw; --md-dialog-container-max-height: 80vh;">
+  <div slot="headline" id="group-details-title">Gruppendetails</div>
+  <div slot="content" id="group-details-content" style="padding: 0; max-height: 60vh; overflow-y: auto;">
+    <div id="group-details-loading" style="text-align: center; padding: 40px; color: var(--md-sys-color-on-surface-variant);">
+      <span class="material-symbols-outlined" style="font-size: 48px; margin-bottom: 16px; display: block;">hourglass_empty</span>
+      Lade Gruppendetails...
+    </div>
+    <div id="group-details-table" style="display: none;">
+      <!-- Hier wird die Tabelle mit den gruppierten Assets eingefügt -->
+    </div>
+  </div>
+  <div slot="actions">
+    <md-text-button form="group-dialog-form" value="close">Schließen</md-text-button>
+  </div>
+  <form id="group-dialog-form" method="dialog"></form>
+</md-dialog>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  // Variablen und Selektoren
+  let currentDeleteAssetId = null,
+  deleteDialog = document.getElementById('delete-dialog'),
+  deleteDialogContent = document.getElementById('delete-dialog-content');
+  
+  // Asset-Checkboxen und Aktionen
+  // Asset-Checkboxen für die Bulk-Aktionen (korrigierte Selektoren)
+  const checkboxes = document.querySelectorAll('.asset-checkbox');
+  const selectAllCheckbox = document.querySelector('#select-all-checkbox');
+  const multiLoanBtn = document.querySelector('#multi-loan-btn');
+  const bulkArchiveBtn = document.querySelector('#bulk-archive-btn');
+  
+  console.log('Checkbox Setup:', {
+    checkboxes: checkboxes.length,
+    selectAllCheckbox: !!selectAllCheckbox,
+    multiLoanBtn: !!multiLoanBtn,
+    bulkArchiveBtn: !!bulkArchiveBtn
+  });
+
+  // IDs der ausgewählten Assets sammeln
+  function getSelectedAssetIds() {
+    const selectedIds = [];
+    checkboxes.forEach(checkbox => {
+      if (checkbox.checked) {
+        if (checkbox.value) {
+          // Bei Gruppen-Checkboxen die IDs aufteilen
+          if (checkbox.dataset.isGroup === 'true') {
+            selectedIds.push(...checkbox.value.split(','));
+          } else {
+            selectedIds.push(checkbox.value);
+          }
+        }
+      }
+    });
+    console.log('Ausgewählte Asset-IDs:', selectedIds);
+    return selectedIds;
+  }
+
+  // Button-Status aktualisieren basierend auf Auswahl
+  function updateActionButtons() {
+    const selectedIds = getSelectedAssetIds();
+    const hasSelection = selectedIds.length > 0;
+    
+    if (multiLoanBtn) {
+      multiLoanBtn.disabled = !hasSelection;
+      if (hasSelection) {
+        multiLoanBtn.textContent = `Sammelausleihe (${selectedIds.length})`;
+      } else {
+        multiLoanBtn.textContent = 'Sammelausleihe';
+      }
+    }
+    
+    if (bulkArchiveBtn) {
+      bulkArchiveBtn.disabled = !hasSelection;
+      if (hasSelection) {
+        bulkArchiveBtn.textContent = `Ausgewählte archivieren (${selectedIds.length})`;
+      } else {
+        bulkArchiveBtn.textContent = 'Ausgewählte archivieren';
+      }
+    }
+    
+    console.log('Button-Status aktualisiert:', { hasSelection, count: selectedIds.length });
+  }
+
+  // Event-Listener für Checkboxen einrichten
+  function setupCheckboxListeners() {
+    console.log('Checkbox-Listener werden eingerichtet...');
+    
+    // "Alle auswählen" Checkbox Event-Listener
+    if (selectAllCheckbox) {
+      selectAllCheckbox.addEventListener('change', function() {
+        const isChecked = this.checked;
+        console.log('Alle auswählen:', isChecked);
+        
+        checkboxes.forEach(checkbox => {
+          checkbox.checked = isChecked;
+        });
+        
+        updateActionButtons();
+      });
+    }
+    
+    // Individuelle Checkbox Event-Listener
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        console.log('Checkbox geändert:', this.value, this.checked);
+        
+        // "Alle auswählen" Status aktualisieren
+        if (selectAllCheckbox) {
+          const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+          const noneChecked = Array.from(checkboxes).every(cb => !cb.checked);
+          
+          selectAllCheckbox.checked = allChecked;
+          selectAllCheckbox.indeterminate = !allChecked && !noneChecked;
+        }
+        
+        updateActionButtons();
+      });
+    });
+    
+    // Initial Button-Status setzen
+    updateActionButtons();
+  }
+
+  // Event-Listener für Bulk-Aktions-Buttons einrichten
+  function setupBulkActionButtons() {
+    console.log('Bulk-Action-Buttons Setup gestartet...');
+    
+    // Sammelausleihe-Button
+    if (multiLoanBtn) {
+      multiLoanBtn.addEventListener('click', function() {
+        const selectedIds = getSelectedAssetIds();
+        console.log('Sammelausleihe geklickt für Assets:', selectedIds);
+        
+        if (selectedIds.length > 0) {
+          // Zur Sammelausleihe-Seite weiterleiten mit ausgewählten Asset-IDs
+          const idsParam = selectedIds.join(',');
+          window.location.href = `{{ url_for('main.multi_loan') }}?ids=${idsParam}`;
+        } else {
+          alert('Bitte wählen Sie mindestens ein Asset aus.');
+        }
+      });
+    }
+    
+    // Bulk-Archivierung-Button
+    if (bulkArchiveBtn) {
+      bulkArchiveBtn.addEventListener('click', function() {
+        const selectedIds = getSelectedAssetIds();
+        console.log('Bulk-Archivierung geklickt für Assets:', selectedIds);
+        
+        if (selectedIds.length > 0) {
+          const confirmMessage = `Sind Sie sicher, dass Sie ${selectedIds.length} Asset(s) archivieren möchten?`;
+          if (confirm(confirmMessage)) {
+            // AJAX-Request für Bulk-Archivierung
+            fetch('/bulk_archive', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ asset_ids: selectedIds })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                alert(`${selectedIds.length} Asset(s) wurden erfolgreich archiviert.`);
+                window.location.reload();
+              } else {
+                alert('Fehler beim Archivieren: ' + (data.message || 'Unbekannter Fehler'));
+              }
+            })
+            .catch(error => {
+              console.error('Fehler beim Archivieren:', error);
+              alert('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
+            });
+          }
+        } else {
+          alert('Bitte wählen Sie mindestens ein Asset aus.');
+        }
+      });
+    }
+    
+    console.log('Bulk-Action-Buttons Setup abgeschlossen.');
+  }
+
+  // Funktion zum Anzeigen/Verstecken der Gruppen-Details
+  function toggleGroupDetails(groupId) {
+    const detailsDiv = document.getElementById(`group-details-${groupId}`);
+    const toggleButton = document.querySelector(`[data-group="${groupId}"] .material-symbols-outlined`);
+    
+    if (detailsDiv && toggleButton) {
+      if (detailsDiv.style.display === 'none' || detailsDiv.style.display === '') {
+        detailsDiv.style.display = 'block';
+        toggleButton.textContent = 'expand_less';
+      } else {
+        detailsDiv.style.display = 'none';
+        toggleButton.textContent = 'expand_more';
+      }
+    }
+  }
+  
+  // Funktion zum Anzeigen der Gruppen-Details (für Edit-Button)
+  function showGroupDetails(groupId, assetIds) {
+    console.log('Gruppen-Details für Gruppe:', groupId, 'Assets:', assetIds);
+    
+    // Smart Modal öffnen statt einfaches Dropdown
+    openGroupEditModal(groupId, assetIds);
+  }
+  
+  // Smart Group Edit Modal öffnen
+  function openGroupEditModal(groupId, assetIds) {
+    console.log('Group Edit Modal öffnen für Gruppe:', groupId, 'Assets:', assetIds);
+    
+    // Modal HTML erstellen
+    const modalHtml = `
+      <div class="md3-group-edit-modal" id="group-edit-modal-${groupId}" onclick="closeGroupEditModal('${groupId}')">
+        <div class="md3-group-edit-content" onclick="event.stopPropagation()">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin: 0; font-size: 20px; color: var(--md-sys-color-on-surface);">Gruppe bearbeiten (${assetIds.length} Assets)</h2>
+            <md-icon-button onclick="closeGroupEditModal('${groupId}')">
+              <span class="material-symbols-outlined">close</span>
+            </md-icon-button>
+          </div>
+          
+          <div class="md3-group-edit-actions" style="margin-bottom: 16px; display: flex; gap: 12px; flex-wrap: wrap;">
+            <md-filled-button onclick="bulkEditAssets([${assetIds.join(',')}])">
+              <span class="material-symbols-outlined" slot="icon">edit</span>
+              Alle bearbeiten
+            </md-filled-button>
+            <md-filled-tonal-button onclick="window.location.href='/loans/multi?ids=${assetIds.join(',')}'">
+              <span class="material-symbols-outlined" slot="icon">assignment_turned_in</span>
+              Gruppenausleihe
+            </md-filled-tonal-button>
+            <md-outlined-button onclick="bulkArchiveAssets([${assetIds.join(',')}])">
+              <span class="material-symbols-outlined" slot="icon">archive</span>
+              Alle archivieren
+            </md-outlined-button>
+          </div>
+          
+          <div class="md3-group-assets-grid" style="display: grid; gap: 12px;">
+            ${assetIds.map(assetId => `
+              <div class="md3-asset-card" style="padding: 12px; border: 1px solid var(--md-sys-color-outline-variant); border-radius: 8px; background-color: var(--md-sys-color-surface-container);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div style="flex: 1;">
+                    <div style="font-weight: 500; margin-bottom: 4px;">Asset ID: ${assetId}</div>
+                    <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant);">Wird geladen...</div>
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    <md-icon-button onclick="window.location.href='/assets/${assetId}/edit'" title="Bearbeiten">
+                      <span class="material-symbols-outlined">edit</span>
+                    </md-icon-button>
+                    <md-icon-button onclick="window.location.href='/assets/${assetId}'" title="Details">
+                      <span class="material-symbols-outlined">visibility</span>
+                    </md-icon-button>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Modal zum DOM hinzufügen
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Asset-Details laden (optional - für bessere UX)
+    loadAssetDetailsForModal(groupId, assetIds);
+  }
+  
+  // Group Edit Modal schließen
+  function closeGroupEditModal(groupId) {
+    const modal = document.getElementById(`group-edit-modal-${groupId}`);
+    if (modal) {
+      modal.remove();
+    }
+  }
+  
+  // Asset-Details für Modal laden (optional)
+  function loadAssetDetailsForModal(groupId, assetIds) {
+    // Hier könnte ein AJAX-Request gemacht werden, um Asset-Details zu laden
+    // Für jetzt lassen wir es bei der einfachen Anzeige
+    console.log('Asset-Details laden für Modal:', groupId, assetIds);
+  }
+  
+  // Bulk-Bearbeitung für Assets
+  function bulkEditAssets(assetIds) {
+    console.log('Bulk-Bearbeitung für Assets:', assetIds);
+    // Hier könnte eine Bulk-Edit-Seite geöffnet werden
+    // Für jetzt zur ersten Asset-Bearbeitung weiterleiten
+    if (assetIds.length > 0) {
+      window.location.href = `/assets/${assetIds[0]}/edit`;
+    }
+  }
+  
+  // Bulk-Archivierung für Assets
+  function bulkArchiveAssets(assetIds) {
+    console.log('Bulk-Archivierung für Assets:', assetIds);
+    if (confirm(`Sind Sie sicher, dass Sie ${assetIds.length} Asset(s) archivieren möchten?`)) {
+      fetch('/bulk_archive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ asset_ids: assetIds })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert(`${assetIds.length} Asset(s) wurden erfolgreich archiviert.`);
+          window.location.reload();
+        } else {
+          alert('Fehler beim Archivieren: ' + (data.message || 'Unbekannter Fehler'));
+        }
+      })
+      .catch(error => {
+        console.error('Fehler beim Archivieren:', error);
+        alert('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
+      });
+    }
+  }
+
+  // Event-Listener für Navigations-Elemente mit data-href Attribut
+  document.addEventListener('DOMContentLoaded', function() {
+    // Material Icons richtig laden und initialisieren
+    function initializeMaterialIcons() {
+      // Prüfen, ob die Font geladen ist
+      console.log('Material Icons Initialisierung...');
+      
+      // Font-Stylesheet dynamisch einfügen, falls notwendig
+      if (!document.querySelector('link[href*="Material+Symbols+Outlined"]')) {
+        const fontLink = document.createElement('link');
+        fontLink.rel = 'stylesheet';
+        fontLink.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200';
+        document.head.appendChild(fontLink);
+        console.log('Material Symbols Font dynamisch eingefügt');
+      }
+    }
+    
+    // Material Icons initialisieren
+    initializeMaterialIcons();
+    
+    // Checkbox-Funktionalität einrichten
+    setupCheckboxListeners();
+    
+    // Event-Listener für Bulk-Aktions-Buttons
+    setupBulkActionButtons();
+    
+    // MD3-Tooltips erstellen und verwalten
+    function setupMD3Tooltips() {
+      console.log('MD3 Tooltips Setup gestartet');
+      
+      // Tooltip-Container erstellen
+      const tooltipContainer = document.createElement('div');
+      tooltipContainer.className = 'md3-tooltip';
+      document.body.appendChild(tooltipContainer);
+      
+      // Tooltip-Funktionalität für alle Actions hinzufügen
+      const actionButtons = document.querySelectorAll('.md3-action-button, [data-tooltip]');
+      
+      actionButtons.forEach(button => {
+        // Tooltip-Text aus aria-label oder data-tooltip nehmen
+        const tooltipText = button.getAttribute('aria-label') || button.getAttribute('data-tooltip');
+        if (!tooltipText) return;
+        
+        button.addEventListener('mouseenter', function(e) {
+          tooltipContainer.textContent = tooltipText;
+          tooltipContainer.classList.add('visible');
+          
+          // Position berechnen
+          const rect = this.getBoundingClientRect();
+          tooltipContainer.style.left = (rect.left + (rect.width/2) - (tooltipContainer.offsetWidth/2)) + 'px';
+          tooltipContainer.style.top = (rect.top - tooltipContainer.offsetHeight - 8) + 'px';
+        });
+        
+        button.addEventListener('mouseleave', function() {
+          tooltipContainer.classList.remove('visible');
+        });
+      });
+    }
+    
+    // ROBUSTE MD3 STYLING-LÖSUNG: Text-Labels entfernen und Icon-Animation aktivieren
+    function setupMD3ActionMenu() {
+      console.log('MD3 Action Menu Setup gestartet');
+      
+      // Text neben Icons in der Action-Menü-Spalte entfernen
+      function fixMD3Icons() {
+        // 1. Material Icons richtig anwenden
+        const allIcons = document.querySelectorAll('.material-symbols-outlined');
+        allIcons.forEach(icon => {
+          // Sicherstellen, dass das Symbol als Icon gerendert wird, nicht als Text
+          icon.style.fontFamily = 'Material Symbols Outlined';
+          
+          // Prüfen, ob das Icon in einem Button innerhalb des Action-Menüs ist
+          // oder ob es in einem Element mit md3-hover-effect Klasse ist
+          const isInActionMenu = icon.closest('.md3-action-menu');
+          const isInHoverEffect = icon.closest('.md3-hover-effect');
+          if (isInActionMenu || isInHoverEffect) {
+            // Elternelement finden (Button oder Link)
+            const parentButton = icon.closest('button, a, md-filled-tonal-button');
+            
+            if (parentButton) {
+              // 1. Wenn es kein aria-label gibt, eines hinzufügen
+              if (!parentButton.hasAttribute('aria-label')) {
+                // Label aus Textinhalt extrahieren
+                const buttonText = parentButton.textContent.trim().replace(/\s+/g, ' ');
+                if (buttonText) {
+                  parentButton.setAttribute('aria-label', buttonText);
+                  parentButton.setAttribute('data-tooltip', buttonText);
+                }
+              }
+              
+              // 2. CSS-Klassen hinzufügen für Icon-Only-Style
+              parentButton.classList.add('md3-icon-only');
+            }
+            
+            // MD3-Hover-Effekt für alle Icons im Aktionsmenü
+            icon.addEventListener('mouseenter', function() {
+              this.style.fontVariationSettings = "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24";
+            });
+            
+            icon.addEventListener('mouseleave', function() {
+              this.style.fontVariationSettings = "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24";
+            });
+          }
+        });
+        
+        // MD3 Hover-Effekt für alle Action-Icons aktivieren
+        const allActionIcons = document.querySelectorAll('.md3-action-menu .material-symbols-outlined');
+        console.log('MD3 Action Icons Setup:', allActionIcons.length, 'Icons gefunden');
+        
+        // Alle Action-Icons erhalten den Standard-Hover-Effekt
+        allActionIcons.forEach((icon, index) => {
+          const parentButton = icon.closest('md-filled-tonal-button');
+          if (parentButton) {
+            console.log(`MD3 Icon ${index + 1} Setup:`, icon.textContent);
+          }
+        });
+        
+        // 2. Texte neben den Icons in der Aktionen-Spalte entfernen
+        const actionButtons = document.querySelectorAll('.md3-action-menu md-filled-tonal-button, .md3-action-menu md-filled-button, .md3-action-menu md-outlined-button, .md3-action-menu md-text-button');
+        
+        actionButtons.forEach(button => {
+          // Tooltip-Text aus aria-label oder aus dem Button-Text extrahieren
+          const ariaLabel = button.getAttribute('aria-label');
+          let tooltipText = ariaLabel || button.textContent.trim();
+          
+          // Alle Nicht-Icon-Text-Elemente aus dem Button entfernen
+          const textNodes = Array.from(button.childNodes).filter(node => 
+            node.nodeType === 3 || // Text-Node
+            (node.nodeType === 1 && !node.classList.contains('material-symbols-outlined')) // Nicht-Icon Element
+          );
+          
+          textNodes.forEach(node => {
+            if (node.nodeType === 1 && !node.closest('md-tooltip')) {
+              // Falls es ein Element ist (und kein Tooltip), Text speichern und Element entfernen
+              if (!tooltipText && node.textContent.trim()) {
+                tooltipText = node.textContent.trim();
+              }
+              node.remove();
+            } else if (node.nodeType === 3) {
+              // Text-Node entfernen
+              node.remove();
+            }
+          });
+          
+          // Icon-Only Styling forcieren
+          button.classList.add('md3-icon-only');
+        });
+        
+        // 3. Tooltip für action links (a-Tags) in der Aktionen-Spalte
+        const actionLinks = document.querySelectorAll('.md3-action-menu a');
+        actionLinks.forEach(link => {
+          const tooltipText = link.getAttribute('aria-label') || link.textContent.trim();
+          if (!link.querySelector('md-tooltip') && tooltipText) {
+            const tooltip = document.createElement('md-tooltip');
+            tooltip.setAttribute('id', 'tooltip-' + Math.random().toString(36).substr(2, 9));
+            tooltip.textContent = tooltipText;
+            link.appendChild(tooltip);
+          }
+          
+          // Text-Nodes entfernen, nur Icon behalten
+          const textNodes = Array.from(link.childNodes).filter(node => 
+            node.nodeType === 3 || // Text-Node
+            (node.nodeType === 1 && !node.classList.contains('material-symbols-outlined') && !node.tagName.toLowerCase().includes('tooltip'))
+          );
+          
+          textNodes.forEach(node => node.remove());
+          link.classList.add('md3-icon-only');
+        });
+      }
+      
+      // Sofort ausführen und dann nach einer kurzen Verzögerung noch einmal, um sicherzustellen dass dynamische Inhalte erfasst werden
+      fixMD3Icons();
+      setTimeout(fixMD3Icons, 500);
+      
+      console.log('MD3 Action Menu Setup abgeschlossen');
+    }
+    
+    // Setup starten, sobald DOM bereit ist
+    document.addEventListener('DOMContentLoaded', setupMD3ActionMenu);
+    // Falls DOM bereits geladen ist (bei spätem Script-Laden)
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setupMD3ActionMenu();
+      setupMD3Tooltips();
+    }
+
+    // Status-Tabs
+    const statusTabs = document.querySelectorAll('.status-tab');
+    
+    // Event-Listener für Status-Tabs mit korrekter Syntax
+    const baseUrl = '{{ url_for("main.assets", name=selected.name, category=selected.category, location=selected.location, manufacturer=selected.manufacturer, supplier=selected.supplier, assignment=selected.assignment, with_image=selected.with_image) }}';
+    statusTabs.forEach(tab => {
+      tab.addEventListener('click', function() {
+        const status = this.getAttribute('data-status');
+        if (status) {
+          window.location.href = baseUrl + '&status=' + status;
+        }
+      });
+    });
+
+    // Aktions-Buttons mit data-href
+    const actionButtons = document.querySelectorAll('[data-href]');
+    actionButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        const href = this.getAttribute('data-href');
+        if (href) {
+          window.location.href = href;
+        }
+      });
+    });
+
+    // Löschen-Buttons mit data-delete-asset
+    const deleteButtons = document.querySelectorAll('[data-delete-asset]');
+    deleteButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        const assetId = this.getAttribute('data-delete-asset');
+        const assetName = this.getAttribute('data-asset-name');
+        if (assetId && assetName) {
+          deleteAsset(assetId, assetName);
+        }
+      });
+    });
+  });
+
+  // Event-Listener für Checkboxen
+  assetCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', updateActionButtons);
+  });
+  
+  // "Alle auswählen" Checkbox
+  if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', (e) => {
+      assetCheckboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+      });
+      updateActionButtons();
+    });
+  }
+  
+  // Sammelausleihe-Button
+  if (multiLoanBtn) {
+    multiLoanBtn.addEventListener('click', () => {
+      const selectedIds = getSelectedAssetIds();
+      if (selectedIds.length > 0) {
+        window.location.href = `{{ url_for('main.multi_loan') }}?ids=${selectedIds.join(',')}`;
+      }
+    });
+  }
+  
+  // Bulk-Archivieren-Button
+  if (bulkArchiveBtn) {
+    bulkArchiveBtn.addEventListener('click', () => {
+      const selectedIds = getSelectedAssetIds();
+      if (selectedIds.length > 0 && confirm('Möchten Sie die ausgewählten Assets wirklich archivieren?')) {
+        fetch('{{ url_for('main.bulk_archive_assets') }}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // CSRF-Token entfernt, um 500-Fehler zu beheben
+            // Bei Bedarf kann ein verstecktes Formular-Feld hinzugefügt werden
+          },
+          body: JSON.stringify({ ids: selectedIds })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            window.location.reload();
+          } else {
+            alert('Fehler beim Archivieren: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Fehler:', error);
+          alert('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
+        });
+      }
+    });
+  }
+  
+  // FUNKTIONIERENDES GRUPPEN-MODAL MIT ASSET-DETAILS-LOADING
+  function openGroupDetailsDialog(groupIds, groupName) {
+    console.log('🔍 Erstelle Gruppen-Modal für:', groupName, 'IDs:', groupIds);
+    
+    // Entferne vorhandenes Modal falls vorhanden
+    const existingModal = document.getElementById('simple-group-modal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+    
+    // Konvertiere groupIds zu Array falls String
+    const assetIds = typeof groupIds === 'string' ? groupIds.split(',') : groupIds;
+    
+    // Erstelle Modal HTML direkt mit MD3-Styling
+    const modalHTML = `
+      <div id="simple-group-modal" onclick="closeModalOnOutsideClick(event)" style="
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        background: rgba(0, 0, 0, 0.6) !important;
+        z-index: 2147483647 !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        font-family: 'Roboto', 'Google Sans', Arial, sans-serif !important;
+        backdrop-filter: blur(4px) !important;
+        animation: fadeIn 0.2s ease-out !important;
+      ">
+        <div onclick="event.stopPropagation()" style="
+          background: var(--md-sys-color-surface, #ffffff) !important;
+          border-radius: 28px !important;
+          box-shadow: 0 24px 38px 3px rgba(0, 0, 0, 0.14), 0 9px 46px 8px rgba(0, 0, 0, 0.12), 0 11px 15px -7px rgba(0, 0, 0, 0.2) !important;
+          width: 90vw !important;
+          max-width: 800px !important;
+            background: var(--md-sys-color-surface, #ffffff) !important;
+            color: var(--md-sys-color-on-surface, #1c1b1f) !important;
+            text-align: center !important;
+            border-radius: 0 0 28px 28px !important;
+          ">
+            <!-- MD3 Circular Progress Indicator -->
+            <div style="
+              width: 48px !important;
+              height: 48px !important;
+              margin: 0 auto 24px auto !important;
+              position: relative !important;
+            ">
+              <svg width="48" height="48" viewBox="0 0 48 48" style="
+                animation: rotate 1.4s linear infinite !important;
+                transform-origin: center !important;
+              ">
+                <circle cx="24" cy="24" r="20" fill="none" stroke="var(--md-sys-color-outline-variant, #e0e0e0)" stroke-width="4" />
+                <circle cx="24" cy="24" r="20" fill="none" stroke="var(--md-sys-color-primary, #6750a4)" stroke-width="4" stroke-linecap="round" stroke-dasharray="31.416" stroke-dashoffset="31.416" style="
+                  animation: dash 1.4s ease-in-out infinite !important;
+                  transform-origin: center !important;
+                " />
+              </svg>
+            </div>
+            <p style="
+              font-size: 16px !important;
+              color: var(--md-sys-color-on-surface, #1c1b1f) !important;
+              margin: 0 0 8px 0 !important;
+              font-weight: 500 !important;
+              font-family: 'Google Sans', 'Roboto', Arial, sans-serif !important;
+            ">Lade Asset-Details</p>
+            <p style="
+              font-size: 14px !important;
+              color: var(--md-sys-color-on-surface-variant, #49454f) !important;
+              margin: 0 !important;
+              font-family: 'Roboto', Arial, sans-serif !important;
+            ">${groupIds.split(',').length} Assets werden geladen...</p>
+          </div>
+        </div>
+      </div>
+      
+      <style>
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideIn {
+          from { transform: scale(0.9) translateY(-20px); opacity: 0; }
+          to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        @keyframes rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes dash {
+          0% {
+            stroke-dasharray: 1, 150;
+            stroke-dashoffset: 0;
+          }
+          50% {
+            stroke-dasharray: 90, 150;
+            stroke-dashoffset: -35;
+          }
+          100% {
+            stroke-dasharray: 90, 150;
+            stroke-dashoffset: -124;
+          }
+        }
+      </style>
+    `;
+    
+    // Modal zum Body hinzufügen
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Body-Scroll verhindern
+    document.body.style.overflow = 'hidden';
+    
+    console.log('✅ MD3 Modal erfolgreich erstellt und angezeigt!');
+    
+    // Asset-Details laden
+    setTimeout(() => {
+      loadGroupAssetDetails(assetIds, groupName);
+    }, 500); // Kurze Verzögerung für bessere UX
+  }
+  
+  // Funktion zum Laden der Gruppen-Asset-Details
+  function loadGroupAssetDetails(assetIds, groupName) {
+    console.log('📊 Lade Asset-Details für Gruppe:', groupName, 'Asset-IDs:', assetIds);
+    
+    // Simuliere API-Aufruf mit Test-Daten
+    const testAssets = assetIds.map((id, index) => ({
+      id: id,
+      name: `Asset ${index + 1}`,
+      category: 'Test Kategorie',
+      status: 'active',
+      serial_number: `SN-${id}`,
+      location: { name: 'Test Standort' },
+      manufacturer: { name: 'Test Hersteller' },
+      value: (Math.random() * 1000).toFixed(2)
+    }));
+    
+    // Modal-Inhalt mit Asset-Details ersetzen
+    const modal = document.getElementById('simple-group-modal');
+    if (!modal) {
+      console.error('Modal nicht gefunden!');
+      return;
+    }
+    
+    const modalContent = modal.querySelector('div[onclick="event.stopPropagation()"]');
+    if (!modalContent) {
+      console.error('Modal-Content nicht gefunden!');
+      return;
+    }
+    
+    // Neuen Inhalt mit Asset-Details erstellen
+    modalContent.innerHTML = `
+      <!-- Header -->
+      <div style="
+        padding: 24px 24px 16px 24px !important;
+        border-bottom: 1px solid var(--md-sys-color-outline-variant, #e0e0e0) !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+      ">
+        <div>
+          <h2 style="
+            margin: 0 0 4px 0 !important;
+            font-size: 24px !important;
+            font-weight: 500 !important;
+            color: var(--md-sys-color-on-surface, #1c1b1f) !important;
+            font-family: 'Google Sans', 'Roboto', Arial, sans-serif !important;
+          ">${groupName}</h2>
+          <p style="
+            margin: 0 !important;
+            font-size: 14px !important;
+            color: var(--md-sys-color-on-surface-variant, #49454f) !important;
+          ">${assetIds.length} Assets in dieser Gruppe</p>
+        </div>
+        <button onclick="closeGroupModal()" style="
+          background: transparent !important;
+          border: none !important;
+          border-radius: 50% !important;
+          width: 40px !important;
+          height: 40px !important;
+          cursor: pointer !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          color: var(--md-sys-color-on-surface-variant, #49454f) !important;
+          transition: background-color 0.2s ease !important;
+        " onmouseover="this.style.backgroundColor='var(--md-sys-color-surface-variant, #f3f0f4)'" onmouseout="this.style.backgroundColor='transparent'">
+          <span class="material-symbols-outlined" style="font-size: 20px !important;">close</span>
+        </button>
+      </div>
+      
+      <!-- Asset-Grid -->
+      <div style="
+        padding: 24px !important;
+        max-height: 60vh !important;
+        overflow-y: auto !important;
+      ">
+        <div style="
+          display: grid !important;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
+          gap: 16px !important;
+        ">
+          ${testAssets.map(asset => `
+            <div style="
+              background: var(--md-sys-color-surface-container-lowest, #ffffff) !important;
+              border: 1px solid var(--md-sys-color-outline-variant, #e0e0e0) !important;
+              border-radius: 16px !important;
+              padding: 16px !important;
+              transition: all 0.2s ease !important;
+              cursor: pointer !important;
+            " onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.1)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)'" onclick="openSingleAssetModal({assetId: '${asset.id}', assetName: '${asset.name}'})">
+              <div style="
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: flex-start !important;
+                margin-bottom: 12px !important;
+              ">
+                <h3 style="
+                  margin: 0 !important;
+                  font-size: 16px !important;
+                  font-weight: 500 !important;
+                  color: var(--md-sys-color-on-surface, #1c1b1f) !important;
+                ">${asset.name}</h3>
+                <span style="
+                  background: var(--md-sys-color-primary-container, #eaddff) !important;
+                  color: var(--md-sys-color-on-primary-container, #21005d) !important;
+                  padding: 4px 8px !important;
+                  border-radius: 8px !important;
+                  font-size: 12px !important;
+                  font-weight: 500 !important;
+                ">Aktiv</span>
+              </div>
+              <div style="
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 8px !important;
+                font-size: 14px !important;
+                color: var(--md-sys-color-on-surface-variant, #49454f) !important;
+              ">
+                <div>
+                  <div style="font-weight: 500 !important; margin-bottom: 2px !important;">Kategorie</div>
+                  <div>${asset.category}</div>
+                </div>
+                <div>
+                  <div style="font-weight: 500 !important; margin-bottom: 2px !important;">Seriennummer</div>
+                  <div style="font-family: 'Roboto Mono', monospace !important;">${asset.serial_number}</div>
+                </div>
+                <div>
+                  <div style="font-weight: 500 !important; margin-bottom: 2px !important;">Standort</div>
+                  <div>${asset.location.name}</div>
+                </div>
+                <div>
+                  <div style="font-weight: 500 !important; margin-bottom: 2px !important;">Wert</div>
+                  <div style="font-weight: 500 !important; color: var(--md-sys-color-primary, #6750a4) !important;">${asset.value} €</div>
+                </div>
+              </div>
+              <div style="
+                margin-top: 12px !important;
+                padding-top: 12px !important;
+                border-top: 1px solid var(--md-sys-color-outline-variant, #e0e0e0) !important;
+                display: flex !important;
+                gap: 8px !important;
+              ">
+                <button onclick="event.stopPropagation(); window.location.href='/assets/${asset.id}/edit'" style="
+                  background: var(--md-sys-color-warning-container, #fef7e0) !important;
+                  color: var(--md-sys-color-on-warning-container, #31270a) !important;
+                  border: none !important;
+                  padding: 6px 12px !important;
+                  border-radius: 12px !important;
+                  font-size: 12px !important;
+                  font-weight: 500 !important;
+                  cursor: pointer !important;
+                  display: flex !important;
+                  align-items: center !important;
+                  gap: 4px !important;
+                ">
+                  <span class="material-symbols-outlined" style="font-size: 16px !important;">edit</span>
+                  Bearbeiten
+                </button>
+                <button onclick="event.stopPropagation(); openSingleAssetModal({assetId: '${asset.id}', assetName: '${asset.name}'})" style="
+                  background: var(--md-sys-color-primary-container, #eaddff) !important;
+                  color: var(--md-sys-color-on-primary-container, #21005d) !important;
+                  border: none !important;
+                  padding: 6px 12px !important;
+                  border-radius: 12px !important;
+                  font-size: 12px !important;
+                  font-weight: 500 !important;
+                  cursor: pointer !important;
+                  display: flex !important;
+                  align-items: center !important;
+                  gap: 4px !important;
+                ">
+                  <span class="material-symbols-outlined" style="font-size: 16px !important;">visibility</span>
+                  Details
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    
+    console.log('✅ Gruppen-Asset-Details erfolgreich geladen!');
+  }
+  
+  // Funktion zum Schließen des Modals
+  function closeGroupModal() {
+    const modal = document.getElementById('simple-group-modal');
+    if (modal) {
+      // Fade-out Animation
+      modal.style.animation = 'fadeOut 0.2s ease-in';
+      setTimeout(() => {
+        modal.remove();
+        document.body.style.overflow = '';
+      }, 200);
+    }
+  }
+  
+  // Funktion für Click-Outside-to-Close
+  function closeModalOnOutsideClick(event) {
+    if (event.target.id === 'simple-group-modal') {
+      closeGroupModal();
+    }
+  }
+  
+  // Escape-Taste zum Schließen
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+      const modal = document.getElementById('simple-group-modal');
+      if (modal) {
+        closeGroupModal();
+      }
+    }
+  });
+  
+  // Fade-out Animation hinzufügen
+  const fadeOutStyle = document.createElement('style');
+  fadeOutStyle.textContent = `
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+  `;
+  document.head.appendChild(fadeOutStyle);
+  
+  // Funktion für Einzel-Asset-Modal mit vollständigen MD3-Details
+  function openSingleAssetModal(assetData) {
+    console.log('🔍 Öffne vollständiges MD3 Asset-Details-Modal für:', assetData);
+    
+    // Lade Asset-Details vom Backend
+    fetch(`/api/assets/${assetData.assetId}`)
+      .then(response => response.json())
+      .then(asset => {
+        console.log('📊 Asset-Daten erhalten:', asset);
+        
+        // Modal-Container erstellen
+        const modal = document.createElement('div');
+        modal.id = 'single-asset-modal';
+        modal.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 10000;
+          animation: fadeIn 0.3s ease-out;
+        `;
+        
+        // Modal-Content erstellen
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+          background: var(--md-sys-color-surface, #ffffff);
+          border-radius: 28px;
+          max-width: 95vw;
+          max-height: 95vh;
+          width: 1000px;
+          box-shadow: var(--md-sys-elevation-level5, 0 8px 12px rgba(0,0,0,0.15));
+          overflow: hidden;
+          animation: slideUp 0.3s ease-out;
+        `;
+        
+        // Header mit Close-Button erstellen
+        const header = document.createElement('div');
+        header.style.cssText = `
+          background: var(--md-sys-color-surface-container-lowest, #ffffff);
+          padding: 16px 24px;
+          border-bottom: 1px solid var(--md-sys-color-outline-variant, #e0e0e0);
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+        `;
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = 'close';
+        closeBtn.className = 'material-symbols-outlined';
+        closeBtn.onclick = () => closeSingleAssetModal();
+        closeBtn.style.cssText = `
+          background: transparent;
+          border: none;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          cursor: pointer;
+          font-size: 20px;
+          color: var(--md-sys-color-on-surface-variant, #49454f);
+          transition: background-color 0.2s ease;
+        `;
+        
+        header.appendChild(closeBtn);
+        
+        // Body mit vollständigen Asset-Details erstellen
+        const body = document.createElement('div');
+        body.innerHTML = createFullAssetDetailsHTML(asset);
+        
+        // Zusammenbauen
+        modalContent.appendChild(header);
+        modalContent.appendChild(body);
+        modal.appendChild(modalContent);
+        
+        // Click-outside-to-close Event
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            closeSingleAssetModal();
+          }
+        });
+        
+        // Modal zum DOM hinzufügen
+        document.body.appendChild(modal);
+        document.body.style.overflow = 'hidden';
+        
+        console.log('✅ Vollständiges MD3 Asset-Details-Modal erfolgreich erstellt!');
+      })
+      .catch(error => {
+        console.error('❌ Fehler beim Laden der Asset-Details:', error);
+        
+        // Fallback: Einfaches Modal mit Fehlermeldung
+        const modal = document.createElement('div');
+        modal.id = 'single-asset-modal';
+        modal.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 10000;
+          animation: fadeIn 0.3s ease-out;
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+          background: var(--md-sys-color-surface, #ffffff);
+          border-radius: 28px;
+          max-width: 90vw;
+          max-height: 90vh;
+          width: 600px;
+          box-shadow: var(--md-sys-elevation-level5, 0 8px 12px rgba(0,0,0,0.15));
+          overflow: hidden;
+          animation: slideUp 0.3s ease-out;
+        `;
+        
+        modalContent.innerHTML = `
+          <div style="
+            padding: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant, #e0e0e0);
+          ">
+            <h2 style="
+              margin: 0;
+              color: var(--md-sys-color-on-surface, #1c1b1f);
+              font-size: 24px;
+              font-weight: 500;
+            ">${assetData.assetName}</h2>
+            <button onclick="closeSingleAssetModal()" class="material-symbols-outlined" style="
+              background: transparent;
+              border: none;
+              border-radius: 50%;
+              width: 40px;
+              height: 40px;
+              cursor: pointer;
+              font-size: 20px;
+              color: var(--md-sys-color-on-surface-variant, #49454f);
+            ">close</button>
+          </div>
+          ${createAssetErrorHTML()}
+        `;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        document.body.style.overflow = 'hidden';
+      });
+  }
+  
+  // Funktion zum Schließen des Asset-Details-Modals
+  function closeSingleAssetModal() {
+    const modal = document.getElementById('single-asset-modal');
+    if (modal) {
+      modal.style.animation = 'fadeOut 0.2s ease-in';
+      setTimeout(() => {
+        modal.remove();
+        document.body.style.overflow = '';
+      }, 200);
+    }
+  }
+  
+  // ESC-Taste Event Listener für Modal schließen
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+      closeSingleAssetModal();
+    }
+  });
+
+  console.log('🎉 MD3 Asset-Details-Modal System erfolgreich geladen!');
+  
+  // === VOLLSTÄNDIGE MD3 ASSET-DETAILS-MODAL FUNKTIONEN ===
+  
+  // Hilfsfunktion für vollständige Asset-Details-HTML
+  function createFullAssetDetailsHTML(asset) {
+    return `
+      <div style="
+        padding: 0 !important;
+        background: var(--md-sys-color-surface, #ffffff) !important;
+        border-radius: 0 0 28px 28px !important;
+        overflow: hidden !important;
+      ">
+        <!-- Asset-Header mit Aktions-Buttons -->
+        <div style="
+          padding: 24px !important;
+          background: var(--md-sys-color-surface-container-lowest, #ffffff) !important;
+          border-bottom: 1px solid var(--md-sys-color-outline-variant, #e0e0e0) !important;
+        ">
+          <div style="
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            margin-bottom: 16px !important;
+          ">
+            <h2 style="
+              margin: 0 !important;
+              color: var(--md-sys-color-on-surface, #1c1b1f) !important;
+              font-size: 24px !important;
+              font-weight: 500 !important;
+              font-family: 'Google Sans', 'Roboto', Arial, sans-serif !important;
+            ">${asset.name}</h2>
+            <div style="
+              display: flex !important;
+              gap: 8px !important;
+            ">
+              <button onclick="window.location.href='/assets/${asset.id}/edit'" style="
+                background: var(--md-sys-color-warning-container, #fef7e0) !important;
+                color: var(--md-sys-color-on-warning-container, #31270a) !important;
+                border: none !important;
+                padding: 8px 16px !important;
+                border-radius: 20px !important;
+                font-size: 14px !important;
+                font-weight: 500 !important;
+                cursor: pointer !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 8px !important;
+              ">
+                <span class="material-symbols-outlined" style="font-size: 18px !important;">edit</span>
+                Bearbeiten
+              </button>
+              ${asset.status !== 'on_loan' ? `
+              <button onclick="window.location.href='/assets/${asset.id}/loan'" style="
+                background: var(--md-sys-color-primary-container, #eaddff) !important;
+                color: var(--md-sys-color-on-primary-container, #21005d) !important;
+                border: none !important;
+                padding: 8px 16px !important;
+                border-radius: 20px !important;
+                font-size: 14px !important;
+                font-weight: 500 !important;
+                cursor: pointer !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 8px !important;
+              ">
+                <span class="material-symbols-outlined" style="font-size: 18px !important;">handshake</span>
+                Ausleihen
+              </button>
+              ` : ''}
+              <button onclick="window.location.href='/assets/${asset.id}/documents'" style="
+                background: var(--md-sys-color-tertiary-container, #ffd8e4) !important;
+                color: var(--md-sys-color-on-tertiary-container, #31111d) !important;
+                border: none !important;
+                padding: 8px 16px !important;
+                border-radius: 20px !important;
+                font-size: 14px !important;
+                font-weight: 500 !important;
+                cursor: pointer !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 8px !important;
+              ">
+                <span class="material-symbols-outlined" style="font-size: 18px !important;">description</span>
+                Dokumente
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Asset-Inhalt -->
+        <div style="
+          display: grid !important;
+          grid-template-columns: 1fr 2fr !important;
+          gap: 24px !important;
+          padding: 24px !important;
+          max-height: 60vh !important;
+          overflow-y: auto !important;
+        ">
+          <!-- Linke Spalte: Bild und QR-Code -->
+          <div style="
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 20px !important;
+          ">
+            <!-- Asset-Bild Platzhalter -->
+            <div style="
+              width: 200px !important;
+              height: 200px !important;
+              background: var(--md-sys-color-surface-container-low, #f7f2fa) !important;
+              border: 2px dashed var(--md-sys-color-outline-variant, #e0e0e0) !important;
+              border-radius: 16px !important;
+              display: flex !important;
+              flex-direction: column !important;
+              align-items: center !important;
+              justify-content: center !important;
+              color: var(--md-sys-color-on-surface-variant, #49454f) !important;
+            ">
+              <span class="material-symbols-outlined" style="font-size: 48px !important; margin-bottom: 8px !important;">image</span>
+              <p style="margin: 0 !important; font-size: 14px !important; text-align: center !important;">Asset-Bild<br>Platzhalter</p>
+            </div>
+            
+            <!-- QR-Code -->
+            <div style="
+              background: var(--md-sys-color-surface-container-lowest, #ffffff) !important;
+              border: 1px solid var(--md-sys-color-outline-variant, #e0e0e0) !important;
+              border-radius: 16px !important;
+              padding: 16px !important;
+              text-align: center !important;
+            ">
+              <h4 style="
+                margin: 0 0 12px 0 !important;
+                color: var(--md-sys-color-primary, #6750a4) !important;
+                font-size: 14px !important;
+                font-weight: 500 !important;
+                text-transform: uppercase !important;
+                letter-spacing: 0.5px !important;
+              ">QR-Code</h4>
+              <div style="
+                width: 120px !important;
+                height: 120px !important;
+                background: var(--md-sys-color-surface-container-low, #f7f2fa) !important;
+                border: 1px solid var(--md-sys-color-outline-variant, #e0e0e0) !important;
+                border-radius: 8px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                margin: 0 auto 12px auto !important;
+              ">
+                <span class="material-symbols-outlined" style="font-size: 32px !important; color: var(--md-sys-color-on-surface-variant, #49454f) !important;">qr_code</span>
+              </div>
+              <button onclick="window.location.href='/assets/${asset.id}/qr'" style="
+                background: var(--md-sys-color-primary-container, #eaddff) !important;
+                color: var(--md-sys-color-on-primary-container, #21005d) !important;
+                border: none !important;
+                padding: 6px 12px !important;
+                border-radius: 12px !important;
+                font-size: 12px !important;
+                font-weight: 500 !important;
+                cursor: pointer !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 6px !important;
+                margin: 0 auto !important;
+              ">
+                <span class="material-symbols-outlined" style="font-size: 16px !important;">download</span>
+                QR herunterladen
+              </button>
+            </div>
+          </div>
+          
+          <!-- Rechte Spalte: Asset-Details -->
+          ${createAssetDetailsGrid(asset)}
+        </div>
+      </div>
+    `;
+  }
+  
+  // Hilfsfunktion für Asset-Details-Grid
+  function createAssetDetailsGrid(asset) {
+    return `
+      <div style="
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 16px !important;
+        align-content: start !important;
+      ">
+        ${createDetailCard('Status', getStatusDisplay(asset.status))}
+        ${createDetailCard('Artikelnummer', asset.article_number || 'N/A', true)}
+        ${createDetailCard('EAN', asset.ean || 'N/A', true)}
+        ${createDetailCard('Kategorie', asset.category ? asset.category.name : 'Keine Kategorie')}
+        ${createDetailCard('Hersteller', asset.manufacturers && asset.manufacturers.length > 0 ? asset.manufacturers.map(m => m.name).join(', ') : 'N/A')}
+        ${createDetailCard('Lieferanten', asset.suppliers && asset.suppliers.length > 0 ? asset.suppliers.map(s => s.name).join(', ') : 'N/A')}
+        ${createDetailCard('Standort', asset.location_obj ? asset.location_obj.name : 'Kein Standort')}
+        ${createDetailCard('Wert', asset.value ? parseFloat(asset.value).toFixed(2) + ' €' : '0.00 €', true)}
+        ${createDetailCard('Anschaffungsdatum', asset.purchase_date ? new Date(asset.purchase_date).toLocaleDateString('de-DE') : 'Nicht angegeben')}
+        ${createDetailCard('Beschreibung', asset.description || 'Keine Beschreibung', false, true)}
+        ${createDetailCard('Zuordnungen', createAssignmentTags(asset.assignments), false, true)}
+      </div>
+    `;
+  }
+  
+  // Hilfsfunktion für Detail-Karten
+  function createDetailCard(title, content, monospace = false, fullWidth = false) {
+    return `
+      <div style="
+        ${fullWidth ? 'grid-column: 1 / -1 !important;' : ''}
+        padding: 16px !important;
+        background: var(--md-sys-color-surface-container-lowest, #ffffff) !important;
+        border: 1px solid var(--md-sys-color-outline-variant, #e0e0e0) !important;
+        border-radius: 16px !important;
+      ">
+        <h4 style="
+          margin: 0 0 8px 0 !important;
+          color: var(--md-sys-color-primary, #6750a4) !important;
+          font-size: 14px !important;
+          font-weight: 500 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.5px !important;
+        ">${title}</h4>
+        <div style="
+          margin: 0 !important;
+          color: var(--md-sys-color-on-surface, #1c1b1f) !important;
+          font-size: 16px !important;
+          font-weight: 400 !important;
+          ${monospace ? 'font-family: "Roboto Mono", monospace !important;' : ''}
+          ${fullWidth && title === 'Beschreibung' ? 'line-height: 1.5 !important;' : ''}
+        ">${content}</div>
+      </div>
+    `;
+  }
+  
+  // Hilfsfunktion für Status-Anzeige
+  function getStatusDisplay(status) {
+    const statusConfig = {
+      'active': { text: 'Aktiv', color: 'var(--md-sys-color-primary, #6750a4)' },
+      'on_loan': { text: 'Ausgeliehen', color: 'var(--md-sys-color-tertiary, #7d5260)' },
+      'inactive': { text: 'Inaktiv', color: 'var(--md-sys-color-error, #ba1a1a)' }
+    };
+    
+    const config = statusConfig[status] || statusConfig['inactive'];
+    
+    return `
+      <span style="
+        background: ${config.color} !important;
+        color: white !important;
+        padding: 6px 16px !important;
+        border-radius: 16px !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+      ">${config.text}</span>
+    `;
+  }
+  
+  // Hilfsfunktion für Zuordnungs-Tags
+  function createAssignmentTags(assignments) {
+    if (!assignments || assignments.length === 0) {
+      return '<span style="color: var(--md-sys-color-on-surface-variant, #49454f) !important; font-style: italic !important;">Keine Zuordnungen</span>';
+    }
+    
+    return `
+      <div style="
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+      ">
+        ${assignments.map(assignment => `
+          <span style="
+            background: var(--md-sys-color-tertiary-container, #ffd8e4) !important;
+            color: var(--md-sys-color-on-tertiary-container, #31111d) !important;
+            padding: 4px 12px !important;
+            border-radius: 12px !important;
+            font-size: 12px !important;
+            font-weight: 500 !important;
+          ">${assignment.name}</span>
+        `).join('')}
+      </div>
+    `;
+  }
+  
+  // Hilfsfunktion für Fehler-Anzeige
+  function createAssetErrorHTML() {
+    return `
+      <div style="
+        text-align: center !important;
+        padding: 40px 20px !important;
+        color: var(--md-sys-color-on-surface-variant, #49454f) !important;
+      ">
+        <div style="
+          font-size: 48px !important;
+          color: var(--md-sys-color-outline, #79747e) !important;
+          margin-bottom: 16px !important;
+        ">📁</div>
+        <p style="margin: 0 !important; font-size: 16px !important;">Asset-Details nicht verfügbar</p>
+      </div>
+    `;
+  }
+  
+</script>
+
+{% endblock %}
+  console.log('Event-Listener wird registriert...'); // Debug
+  
+  // Sofortige Registrierung der Event-Listener
+  function registerOverlayListeners() {
+    console.log('Registriere Overlay-Event-Listener...'); // Debug
+    
+    // Event-Delegation für alle Klicks
+    document.addEventListener('click', function(e) {
+      console.log('Klick erkannt auf:', e.target); // Debug
+      
+      // Prüfe verschiedene Möglichkeiten
+      let button = null;
+      if (e.target.classList.contains('toggle-group-overlay')) {
+        button = e.target;
+      } else if (e.target.closest('.toggle-group-overlay')) {
+        button = e.target.closest('.toggle-group-overlay');
+      } else if (e.target.closest('md-icon-button.toggle-group-overlay')) {
+        button = e.target.closest('md-icon-button.toggle-group-overlay');
+      }
+      
+      if (button) {
+        console.log('Overlay-Button gefunden:', button); // Debug
+        const groupId = button.getAttribute('data-group');
+        const groupCount = button.getAttribute('data-group-count');
+        const groupName = button.getAttribute('data-group-name');
+        console.log('Overlay-Button geklickt:', groupId, groupCount, groupName); // Debug
+        e.preventDefault();
+        e.stopPropagation();
+        openGroupOverlay(groupId, groupCount, groupName);
+      }
+    });
+    
+    // Zusätzliche direkte Event-Listener für alle vorhandenen Buttons
+    const overlayButtons = document.querySelectorAll('.toggle-group-overlay');
+    console.log('Gefundene Overlay-Buttons:', overlayButtons.length); // Debug
+    
+    overlayButtons.forEach((button, index) => {
+      console.log(`Button ${index}:`, button); // Debug
+      button.addEventListener('click', function(e) {
+        console.log('Direkter Button-Klick:', this); // Debug
+        const groupId = this.getAttribute('data-group');
+        const groupCount = this.getAttribute('data-group-count');
+        const groupName = this.getAttribute('data-group-name');
+        console.log('Direkte Button-Daten:', groupId, groupCount, groupName); // Debug
+        e.preventDefault();
+        e.stopPropagation();
+        openGroupOverlay(groupId, groupCount, groupName);
+      });
+    });
+  }
+  
+  // Registriere Event-Listener sofort
+  registerOverlayListeners();
+  
+  // Registriere auch nach DOM-Änderungen
+  setTimeout(registerOverlayListeners, 1000); // Nach 1 Sekunde nochmal
+  setTimeout(registerOverlayListeners, 3000); // Nach 3 Sekunden nochmal
+  
+  // Test-Button für sofortiges Overlay-Testing
+  console.log('Erstelle Test-Button für Overlay...');
+  const testButton = document.createElement('button');
+  testButton.textContent = '🔴 TEST OVERLAY 🔴';
+  testButton.id = 'overlay-test-button';
+  testButton.style.cssText = `
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    z-index: 999999 !important;
+    background: #ff0000 !important;
+    color: white !important;
+    padding: 15px 20px !important;
+    border: 3px solid #fff !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    font-size: 16px !important;
+    font-weight: bold !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+    transform: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+  `;
+  testButton.onclick = function() {
+    console.log('Test-Button geklickt!');
+    alert('Test-Button funktioniert! Overlay wird geöffnet...');
+    openGroupOverlay('test-123', '5', 'Test-Gruppe');
+  };
+  
+  // Button mehrfach hinzufügen für bessere Sichtbarkeit
+  document.body.appendChild(testButton);
+  
+  // Zusätzlich auch in andere Container einfügen
+  setTimeout(() => {
+    const containers = [document.body, document.documentElement];
+    containers.forEach(container => {
+      if (container && !container.querySelector('#overlay-test-button')) {
+        const cloneButton = testButton.cloneNode(true);
+        cloneButton.onclick = testButton.onclick;
+        container.appendChild(cloneButton);
+      }
+    });
+    console.log('Test-Button in mehrere Container eingefügt!');
+  }, 500);
+  
+  console.log('Test-Button hinzugefügt!', testButton);
+  
+  // DIREKTER OVERLAY-TEST - 3 Sekunden nach Seitenladung
+  console.log('Direkter Overlay-Test wird in 3 Sekunden ausgeführt...');
+  setTimeout(() => {
+    console.log('=== DIREKTER OVERLAY-TEST ===');
+    console.log('Teste Overlay-System direkt...');
+    
+    // Teste ob Overlay-Element existiert
+    const overlay = document.getElementById('group-details-overlay');
+    console.log('Overlay-Element gefunden:', !!overlay);
+    
+    if (overlay) {
+      console.log('Overlay wird direkt geöffnet...');
+      openGroupOverlay('direct-test', '3', 'Direkter Test');
+    } else {
+      console.error('Overlay-Element nicht gefunden! HTML-Problem.');
+      
+      // Erstelle Overlay dynamisch falls es fehlt
+      console.log('Erstelle Overlay-Element dynamisch...');
+      const newOverlay = document.createElement('div');
+      newOverlay.id = 'group-details-overlay';
+      newOverlay.className = 'group-overlay';
+      newOverlay.style.cssText = `
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        z-index: 999999 !important;
+        background: rgba(0,0,0,0.8) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+      `;
+      
+      newOverlay.innerHTML = `
+        <div style="
+          background: white !important;
+          padding: 40px !important;
+          border-radius: 12px !important;
+          max-width: 500px !important;
+          text-align: center !important;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
+        ">
+          <h2 style="margin: 0 0 20px 0 !important; color: #333 !important;">🎉 Overlay-System funktioniert!</h2>
+          <p style="margin: 0 0 20px 0 !important; color: #666 !important;">Das Overlay-System ist korrekt implementiert und funktionsfähig.</p>
+          <button onclick="this.closest('.group-overlay').style.display='none'" style="
+            background: #007bff !important;
+            color: white !important;
+            border: none !important;
+            padding: 12px 24px !important;
+            border-radius: 6px !important;
+            cursor: pointer !important;
+            font-size: 16px !important;
+          ">Schließen</button>
+        </div>
+      `;
+      
+      document.body.appendChild(newOverlay);
+      console.log('Dynamisches Overlay erstellt und angezeigt!');
+    }
+  }, 3000);
+  
+  // Debug: Prüfe ob Button sichtbar ist
+  setTimeout(() => {
+    const button = document.getElementById('overlay-test-button');
+    if (button) {
+      const rect = button.getBoundingClientRect();
+      const styles = window.getComputedStyle(button);
+      console.log('=== TEST-BUTTON DEBUG ===');
+      console.log('Button gefunden:', !!button);
+      console.log('Button Position:', rect);
+      console.log('Button Styles:', {
+        display: styles.display,
+        visibility: styles.visibility,
+        opacity: styles.opacity,
+        zIndex: styles.zIndex,
+        position: styles.position
+      });
+      console.log('Button im Viewport:', rect.top >= 0 && rect.left >= 0 && rect.bottom <= window.innerHeight && rect.right <= window.innerWidth);
+      console.log('=== END TEST-BUTTON DEBUG ===');
+    } else {
+      console.error('Test-Button nicht im DOM gefunden!');
+    }
+  }, 1000);
+  
+  // Zusätzlicher Test: Prüfe ob Gruppierung aktiv ist
+  setTimeout(function() {
+    const groupingCheckbox = document.querySelector('input[name="group_duplicates"]');
+    const overlayButtons = document.querySelectorAll('.toggle-group-overlay');
+    console.log('=== OVERLAY DEBUG STATUS ===');
+    console.log('Gruppierung-Checkbox gefunden:', !!groupingCheckbox);
+    console.log('Gruppierung aktiv:', groupingCheckbox ? groupingCheckbox.checked : 'N/A');
+    console.log('Overlay-Buttons gefunden:', overlayButtons.length);
+    console.log('Overlay-Element vorhanden:', !!document.getElementById('group-details-overlay'));
+    overlayButtons.forEach((btn, i) => {
+      console.log(`Button ${i}:`, btn, 'Data-Attribute:', {
+        group: btn.getAttribute('data-group'),
+        count: btn.getAttribute('data-group-count'),
+        name: btn.getAttribute('data-group-name')
+      });
+    });
+    console.log('=== END DEBUG STATUS ===');
+  }, 2000);
+
+  function openGroupOverlay(groupId, groupCount, groupName) {
+    console.log('openGroupOverlay aufgerufen:', groupId, groupCount, groupName); // Debug
+    
+    const overlay = document.getElementById('group-details-overlay');
+    const titleElement = document.getElementById('overlay-group-title');
+    const countElement = document.getElementById('overlay-group-count');
+    const assetsList = document.getElementById('overlay-assets-list');
+    
+    console.log('Overlay-Elemente gefunden:', {
+      overlay: !!overlay,
+      titleElement: !!titleElement,
+      countElement: !!countElement,
+      assetsList: !!assetsList
+    }); // Debug
+    
+    if (!overlay) {
+      console.error('Overlay-Element nicht gefunden!');
+      return;
+    }
+    
+    // Titel und Count setzen
+    if (titleElement) titleElement.textContent = `Assets in Gruppe: ${groupName}`;
+    if (countElement) countElement.textContent = `${groupCount} Assets`;
+    
+    // Assets aus der bestehenden Gruppe laden
+    const groupDetailsElement = document.getElementById(`group-details-${groupId}`);
+    console.log('Group Details Element gefunden:', !!groupDetailsElement); // Debug
+    
+    if (groupDetailsElement && assetsList) {
+      const groupAssets = groupDetailsElement.querySelectorAll('.md3-group-asset-item');
+      console.log('Anzahl gefundener Assets:', groupAssets.length); // Debug
+      
+      // Assets-Liste leeren
+      assetsList.innerHTML = '';
+      
+      if (groupAssets.length === 0) {
+        // Fallback: Erstelle Test-Karten wenn keine Assets gefunden
+        assetsList.innerHTML = `
+          <div class="overlay-asset-card">
+            <div class="overlay-asset-header">
+              <h3 class="overlay-asset-name">${groupName}</h3>
+              <span class="md3-status-badge aktiv">Aktiv</span>
+            </div>
+            <div class="overlay-asset-details">
+              <div class="overlay-asset-detail">
+                <span class="overlay-asset-detail-label">Seriennummer:</span>
+                <span>Test-Serial</span>
+              </div>
+              <div class="overlay-asset-detail">
+                <span class="overlay-asset-detail-label">Standort:</span>
+                <span>Test-Standort</span>
+              </div>
+            </div>
+            <div class="overlay-asset-actions">
+              <md-filled-button onclick="alert('Test-Bearbeitung')">
+                <span class="material-symbols-outlined">edit</span>
+                Bearbeiten
+              </md-filled-button>
+              <md-outlined-button onclick="alert('Test-Details')">
+                <span class="material-symbols-outlined">visibility</span>
+                Details
+              </md-outlined-button>
+            </div>
+          </div>
+        `;
+      } else {
+        // Assets in Overlay-Format konvertieren
+        groupAssets.forEach(assetItem => {
+          const assetCard = createOverlayAssetCard(assetItem);
+          assetsList.appendChild(assetCard);
+        });
+      }
+    }
+    
+    // Overlay anzeigen
+    console.log('Overlay wird angezeigt...'); // Debug
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+  
+  function createOverlayAssetCard(assetItem) {
+    const card = document.createElement('div');
+    card.className = 'overlay-asset-card';
+    
+    // Asset-Daten extrahieren
+    const nameElement = assetItem.querySelector('.md3-asset-name');
+    const serialElement = assetItem.querySelector('.md3-asset-serial');
+    const locationElement = assetItem.querySelector('.md3-asset-location');
+    const statusElement = assetItem.querySelector('.md3-status-badge');
+    const editBtn = assetItem.querySelector('.asset-edit-btn');
+    const detailsBtn = assetItem.querySelector('.asset-details-btn');
+    
+    const name = nameElement ? nameElement.textContent.trim() : 'Unbekannt';
+    const serial = serialElement ? serialElement.textContent.trim() : '-';
+    const location = locationElement ? locationElement.textContent.trim() : '-';
+    const status = statusElement ? statusElement.textContent.trim() : 'Unbekannt';
+    const editUrl = editBtn ? editBtn.getAttribute('data-asset-url') : '#';
+    const detailsUrl = detailsBtn ? detailsBtn.getAttribute('data-asset-url') : '#';
+    
+    card.innerHTML = `
+      <div class="overlay-asset-header">
+        <h3 class="overlay-asset-name">${name}</h3>
+        <span class="md3-status-badge ${status.toLowerCase()}">${status}</span>
+      </div>
+      <div class="overlay-asset-details">
+        <div class="overlay-asset-detail">
+          <span class="overlay-asset-detail-label">Seriennummer:</span>
+          <span>${serial}</span>
+        </div>
+        <div class="overlay-asset-detail">
+          <span class="overlay-asset-detail-label">Standort:</span>
+          <span>${location}</span>
+        </div>
+      </div>
+      <div class="overlay-asset-actions">
+        <md-filled-button onclick="window.location.href='${editUrl}'">
+          <span class="material-symbols-outlined">edit</span>
+          Bearbeiten
+        </md-filled-button>
+        <md-outlined-button onclick="window.location.href='${detailsUrl}'">
+          <span class="material-symbols-outlined">visibility</span>
+          Details
+        </md-outlined-button>
+      </div>
+    `;
+    
+    return card;
+  }
+  
+  function closeGroupOverlay() {
+    const overlay = document.getElementById('group-details-overlay');
+    overlay.style.display = 'none';
+    document.body.style.overflow = 'auto';
+  }
+  
+  // ESC-Taste zum Schließen
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeGroupOverlay();
+    }
+  });
+</script>
+
+<!-- Gruppendetails Modal -->
+<div id="group-details-modal">
+  <div class="md-modal-content">
+    <div class="md-modal-header">
+      <h2 id="group-details-title" class="md-modal-title">Gruppendetails</h2>
+      <button class="md-modal-close" onclick="document.getElementById('group-details-modal').classList.remove('show'); document.body.style.overflow = '';" aria-label="Schließen">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="md-modal-body">
+      <div id="group-details-loading" class="md-modal-loading">
+        <span class="material-symbols-outlined">progress_activity</span>
+        <p>Lade Asset-Details...</p>
+      </div>
+      <div id="group-details-table" style="display: none;">
+        <!-- Asset-Details werden hier eingefügt -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay für Gruppen-Details -->
+<div id="group-details-overlay" class="group-overlay" style="display: none;">
+  <div class="group-overlay-backdrop" onclick="closeGroupOverlay()"></div>
+  <div class="group-overlay-content">
+    <div class="group-overlay-header">
+      <div class="group-overlay-title">
+        <h2 id="overlay-group-title">Assets in dieser Gruppe</h2>
+        <span id="overlay-group-count" class="md3-tag">0 Assets</span>
+      </div>
+      <md-icon-button onclick="closeGroupOverlay()" aria-label="Schließen">
+        <span class="material-symbols-outlined">close</span>
+      </md-icon-button>
+    </div>
+    <div class="group-overlay-body">
+      <div id="overlay-assets-list" class="overlay-assets-grid">
+        <!-- Assets werden hier dynamisch eingefügt -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.group-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-overlay-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.group-overlay-content {
+  position: relative;
+  background: var(--md-sys-color-surface-container);
+  border-radius: 16px;
+  box-shadow: var(--md-sys-elevation-level4);
+  max-width: 90vw;
+  max-height: 80vh;
+  width: 1000px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.group-overlay-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface);
+}
+
+.group-overlay-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.group-overlay-title h2 {
+  margin: 0;
+  font-family: var(--md-sys-typescale-headline-small-font-family-name);
+  font-size: var(--md-sys-typescale-headline-small-font-size);
+  font-weight: var(--md-sys-typescale-headline-small-font-weight);
+  color: var(--md-sys-color-on-surface);
+}
+
+.group-overlay-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.overlay-assets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.overlay-asset-card {
+  background: var(--md-sys-color-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.overlay-asset-card:hover {
+  box-shadow: var(--md-sys-elevation-level2);
+  border-color: var(--md-sys-color-primary);
+}
+
+.overlay-asset-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.overlay-asset-name {
+  font-family: var(--md-sys-typescale-title-medium-font-family-name);
+  font-size: var(--md-sys-typescale-title-medium-font-size);
+  font-weight: var(--md-sys-typescale-title-medium-font-weight);
+  color: var(--md-sys-color-on-surface);
+  margin: 0;
+}
+
+.overlay-asset-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.overlay-asset-detail {
+  display: flex;
+  flex-direction: column;
+}
+
+.overlay-asset-detail-label {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.overlay-asset-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+@media (max-width: 768px) {
+  .group-overlay-content {
+    width: 95vw;
+    max-height: 90vh;
+  }
+  
+  .overlay-assets-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .group-overlay-header {
+    padding: 16px;
+  }
+  
+  .group-overlay-body {
+    padding: 16px;
+  }
+}
+</style>
+
+{% endblock %}

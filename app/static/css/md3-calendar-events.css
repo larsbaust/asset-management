@@ -1,0 +1,307 @@
+/**
+ * MD3 Kalender-Events Styling
+ * Teil des MD3-Migrations-Projekts
+ */
+
+/* Event-Indikatoren für Tage im Kalender */
+.md3-calendar-day .event-indicator {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+}
+
+.md3-calendar-day .event-indicator .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--md-sys-color-primary, #6750a4);
+}
+
+/* Event-Typ-spezifische Farben */
+.md3-calendar-day .event-indicator .dot.delivery {
+  background-color: var(--md-sys-color-tertiary, #7d5260);
+}
+
+.md3-calendar-day .event-indicator .dot.inventory {
+  background-color: var(--md-sys-color-secondary, #625b71);
+}
+
+.md3-calendar-day .event-indicator .dot.manual {
+  background-color: var(--md-sys-color-primary, #6750a4);
+}
+
+/* Event-Anzahl Badge */
+.md3-calendar-day .event-count {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background-color: var(--md-sys-color-error, #b3261e);
+  color: var(--md-sys-color-on-error, #ffffff);
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-sizing: border-box;
+  font-weight: 500;
+}
+
+/* Event-Popup-Styling */
+.md3-event-popup {
+  position: absolute;
+  z-index: 100;
+  width: 280px;
+  max-height: 400px;
+  overflow-y: auto;
+  background-color: var(--md-sys-color-surface-container, #fef7ff);
+  border-radius: 16px;
+  box-shadow: var(--md-sys-elevation-3);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md3-event-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.md3-event-popup-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface, #1d1b16);
+}
+
+.md3-event-popup-date {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant, #49454f);
+}
+
+.md3-event-popup-close {
+  cursor: pointer;
+  color: var(--md-sys-color-on-surface-variant, #49454f);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.md3-event-popup-close:hover {
+  background-color: var(--md-sys-color-surface-container-highest, #efe0ff);
+}
+
+/* Event-Karten innerhalb des Popups */
+.md3-event-card {
+  padding: 12px;
+  border-radius: 12px;
+  background-color: var(--md-sys-color-surface-container-high, #ece6f0);
+  margin-bottom: 8px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.md3-event-card:hover {
+  background-color: var(--md-sys-color-surface-container-highest, #e8def8);
+}
+
+.md3-event-card-content {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.md3-event-card-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.md3-event-card-info {
+  flex-grow: 1;
+}
+
+.md3-event-card-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface, #1d1b16);
+  margin-bottom: 4px;
+}
+
+.md3-event-card-details {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant, #49454f);
+}
+
+.md3-event-card-time {
+  font-size: 12px;
+  color: var(--md-sys-color-primary, #6750a4);
+  font-weight: 500;
+}
+
+/* Event-Karten Typen */
+.md3-event-card.delivery {
+  border-left: 4px solid var(--md-sys-color-tertiary, #7d5260);
+}
+
+.md3-event-card.inventory {
+  border-left: 4px solid var(--md-sys-color-secondary, #625b71);
+}
+
+.md3-event-card.manual {
+  border-left: 4px solid var(--md-sys-color-primary, #6750a4);
+}
+
+/* Event-Detailansicht */
+.md3-event-detail {
+  padding: 24px;
+  border-radius: 16px;
+  background-color: var(--md-sys-color-surface, #fef7ff);
+  box-shadow: var(--md-sys-elevation-1);
+  margin-bottom: 16px;
+}
+
+.md3-event-detail-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.md3-event-detail-title {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface, #1d1b16);
+}
+
+.md3-event-detail-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.md3-event-detail-badge.delivery {
+  background-color: var(--md-sys-color-tertiary-container, #ffd8e4);
+  color: var(--md-sys-color-on-tertiary-container, #31111d);
+}
+
+.md3-event-detail-badge.inventory {
+  background-color: var(--md-sys-color-secondary-container, #e8def8);
+  color: var(--md-sys-color-on-secondary-container, #1d192b);
+}
+
+.md3-event-detail-badge.manual {
+  background-color: var(--md-sys-color-primary-container, #eaddff);
+  color: var(--md-sys-color-on-primary-container, #21005d);
+}
+
+.md3-event-detail-info {
+  margin-bottom: 16px;
+}
+
+.md3-event-detail-datetime {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.md3-event-detail-location {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.md3-event-detail-description {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--md-sys-color-outline-variant, #cac4d0);
+}
+
+/* Add New Event Button */
+.md3-add-event-button {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background-color: var(--md-sys-color-primary, #6750a4);
+  color: var(--md-sys-color-on-primary, #ffffff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--md-sys-elevation-3);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: none;
+}
+
+.md3-add-event-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--md-sys-elevation-4);
+}
+
+.md3-add-event-button:active {
+  transform: translateY(0);
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+/* Reminder Chip */
+.md3-reminder-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background-color: var(--md-sys-color-secondary-container, #e8def8);
+  color: var(--md-sys-color-on-secondary-container, #1d192b);
+  font-size: 12px;
+  font-weight: 500;
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+
+/* Notification Container in Nav */
+.md3-notification-container {
+  max-height: 400px;
+  width: 320px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.md3-notification-item {
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  background-color: var(--md-sys-color-surface-container, #f3edf7);
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+
+.md3-notification-item:hover {
+  background-color: var(--md-sys-color-surface-container-high, #ece6f0);
+}
+
+.md3-notification-item.unread {
+  background-color: var(--md-sys-color-primary-container, #eaddff);
+}
+
+.md3-notification-item.unread:hover {
+  background-color: var(--md-sys-color-primary-container, #d0bcff);
+}

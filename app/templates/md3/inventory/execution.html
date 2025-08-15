@@ -1,0 +1,858 @@
+{% extends "md3/base.html" %}
+
+{% block title %}Inventur Ausführung - {{ session.name }}{% endblock %}
+
+{% block content %}
+<!-- CSRF Token for AJAX requests -->
+<input type="hidden" id="csrf-token" value="{{ csrf_token }}">
+
+<!-- MD3 Navigation Bar -->
+{% include 'md3-nav.html' %}
+
+<div class="md3-container">
+  <!-- Session Header -->
+  <div class="md3-session-header">
+    <div class="md3-breadcrumb">
+      <a href="{{ url_for('md3_inventory.planning') }}">Inventurplanung</a>
+      <span class="material-symbols-outlined">chevron_right</span>
+      <span>{{ session.name }}</span>
+    </div>
+    
+    <h1 class="md3-headline-large">{{ session.name }}</h1>
+    <p class="md3-subtitle">Inventur Alle Standorte</p>
+    
+    <div class="md3-session-meta">
+      <div class="md3-meta-item">
+        <span class="material-symbols-outlined">location_on</span>
+        <span>Alle Standorte</span>
+      </div>
+      <div class="md3-meta-item">
+        <span class="material-symbols-outlined">schedule</span>
+        <span>{{ session.start_date.strftime('%d.%m.%Y') if session.start_date else '08.08.2025' }} - {{ session.end_date.strftime('%d.%m.%Y') if session.end_date else '08.08.2025' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress Section -->
+  <div class="md3-progress-section">
+    <h2 class="md3-headline-medium">Inventur {{ session.location.name if session.location else 'Alle Standorte' }}</h2>
+    
+    <div class="md3-progress-bar-container">
+      <div class="md3-progress-bar">
+        <div class="md3-progress-fill" style="width: {{ progress_percentage|default(0) }}%"></div>
+      </div>
+      <span class="md3-progress-text">Fortschritt: {{ counted_assets }} von {{ total_assets }} Menge erfasst ({{ progress_percentage }}%)</span>
+    </div>
+  </div>
+
+  <!-- Status Cards -->
+  <div class="md3-status-grid">
+    <div class="md3-status-card md3-status-gefunden">
+      <div class="md3-status-number">{{ status_counts.gefunden or 0 }}</div>
+      <div class="md3-status-label">GEFUNDEN</div>
+    </div>
+    
+    <div class="md3-status-card md3-status-fehlend">
+      <div class="md3-status-number">{{ status_counts.fehlend or 0 }}</div>
+      <div class="md3-status-label">FEHLEND</div>
+    </div>
+    
+    <div class="md3-status-card md3-status-beschaedigt">
+      <div class="md3-status-number">{{ status_counts.beschaedigt or 0 }}</div>
+      <div class="md3-status-label">BESCHÄDIGT</div>
+    </div>
+    
+    <div class="md3-status-card md3-status-unberuehrt">
+      <div class="md3-status-number">{{ status_counts.unberuehrt or 0 }}</div>
+      <div class="md3-status-label">UNBERÜHRT</div>
+    </div>
+  </div>
+
+  <!-- Assets Table -->
+  <div class="md3-assets-section">
+    <div class="md3-section-header">
+      <h3 class="md3-headline-small">Assets ({{ assets|length }})</h3>
+      <div class="md3-table-actions">
+        <button class="md3-button md3-button-outlined" onclick="exportInventory()">
+          <span class="material-symbols-outlined">download</span>
+          Export
+        </button>
+      </div>
+    </div>
+
+    <div class="md3-table-container">
+      <table class="md3-table">
+        <thead>
+          <tr>
+            <th>Asset</th>
+            <th>Kategorie</th>
+            <th>Erwarteter Standort</th>
+            <th>Soll-Menge</th>
+            <th>Gezählte Menge</th>
+            <th>Davon beschädigt</th>
+            <th>Tatsächlicher Standort</th>
+            <th>Notizen</th>
+            <th>Seriennummern</th>
+            <th>Aktionen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for asset in assets %}
+          <tr class="md3-table-row" data-asset-id="{{ asset.id }}">
+            <td class="md3-asset-cell">
+              <div class="md3-asset-info">
+                <strong>{{ asset.name }}</strong>
+                {% if asset.article_number %}
+                <div class="md3-asset-meta">Art.-Nr.: {{ asset.article_number }}</div>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              <div class="md3-chip md3-chip-outlined">
+                {{ asset.category.name if asset.category else 'Keine Kategorie' }}
+              </div>
+            </td>
+            <td>{{ asset.location.name if asset.location else 'Unbekannt' }}</td>
+            <td class="md3-quantity-cell">
+              <input type="number" class="md3-input md3-input-small" value="1" min="0" readonly>
+            </td>
+            <td class="md3-quantity-cell">
+              <input type="number" class="md3-input md3-input-small counted-quantity" 
+                     value="{{ inventory_items[asset.id].counted_quantity if asset.id in inventory_items and inventory_items[asset.id].counted_quantity is not none else '' }}" 
+                     min="0" data-asset-id="{{ asset.id }}" 
+                     onchange="updateAssetCount(this)">
+            </td>
+            <td class="md3-quantity-cell">
+              <input type="number" class="md3-input md3-input-small damaged-quantity" 
+                     value="{{ inventory_items[asset.id].damaged_quantity if asset.id in inventory_items and inventory_items[asset.id].damaged_quantity is not none else '' }}" 
+                     min="0" data-asset-id="{{ asset.id }}" 
+                     onchange="updateDamagedCount(this)">
+            </td>
+            <td>
+              <input type="text" class="md3-input actual-location" 
+                     value="{{ inventory_items[asset.id].actual_location if asset.id in inventory_items and inventory_items[asset.id].actual_location else '' }}"
+                     placeholder="Tatsächlicher Standort" data-asset-id="{{ asset.id }}" 
+                     onchange="updateActualLocation(this)">
+            </td>
+            <td>
+              <input type="text" class="md3-input notes" 
+                     value="{{ inventory_items[asset.id].condition_notes if asset.id in inventory_items and inventory_items[asset.id].condition_notes else '' }}"
+                     placeholder="Notizen" data-asset-id="{{ asset.id }}" 
+                     onchange="updateNotes(this)">
+            </td>
+            <td>
+              <button class="md3-button md3-button-text" onclick="openSerialNumbers({{ asset.id }})">
+                <span class="material-symbols-outlined">qr_code</span>
+                Bearbeiten
+              </button>
+            </td>
+            <td>
+              <button class="md3-button md3-button-text" onclick="markAsFound({{ asset.id }})">
+                <span class="material-symbols-outlined">check</span>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="md3-action-buttons">
+    <button class="md3-button md3-button-outlined" onclick="saveProgress()">
+      <span class="material-symbols-outlined">save</span>
+      Fortschritt speichern
+    </button>
+    
+    <button class="md3-button md3-button-filled" onclick="completeInventory()">
+      <span class="material-symbols-outlined">check_circle</span>
+      Inventur abschließen
+    </button>
+  </div>
+</div>
+
+<style>
+.md3-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.md3-session-header {
+  margin-bottom: 48px;
+  padding: 24px;
+  background: var(--md-sys-color-surface-container-lowest);
+  border-radius: 16px;
+}
+
+.md3-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.md3-breadcrumb a {
+  color: var(--md-sys-color-primary);
+  text-decoration: none;
+}
+
+.md3-subtitle {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 1.125rem;
+  margin: 8px 0 24px 0;
+  font-weight: 400;
+}
+
+.md3-session-meta {
+  display: flex;
+  gap: 32px;
+  margin-top: 24px;
+}
+
+.md3-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 1rem;
+}
+
+.md3-progress-section {
+  background: var(--md-sys-color-surface-container-low);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.md3-progress-bar-container {
+  margin-top: 16px;
+}
+
+.md3-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.md3-progress-fill {
+  height: 100%;
+  background: var(--md-sys-color-primary);
+  transition: width 0.3s ease;
+}
+
+.md3-progress-text {
+  display: block;
+  margin-top: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.md3-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.md3-status-card {
+  background: var(--md-sys-color-surface-container);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.md3-status-number {
+  font-size: 3rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.md3-status-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.md3-status-gefunden .md3-status-number { color: var(--md-sys-color-tertiary); }
+.md3-status-fehlend .md3-status-number { color: var(--md-sys-color-error); }
+.md3-status-beschaedigt .md3-status-number { color: var(--md-sys-color-error-container); }
+.md3-status-unberuehrt .md3-status-number { color: var(--md-sys-color-outline); }
+
+.md3-assets-section {
+  background: var(--md-sys-color-surface);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.md3-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-table-container {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.md3-table th,
+.md3-table td {
+  padding: 16px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  vertical-align: middle;
+}
+
+.md3-table th {
+  background: var(--md-sys-color-surface-container-low);
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+}
+
+.md3-table tr:hover {
+  background: var(--md-sys-color-surface-container-lowest);
+}
+
+.md3-input-small {
+  width: 80px;
+  padding: 8px 12px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: 8px;
+  background: var(--md-sys-color-surface);
+  font-size: 0.875rem;
+}
+
+.md3-input-small:focus {
+  outline: none;
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 2px rgba(103, 80, 164, 0.1);
+}
+
+/* MD3 Notification Styles */
+.md3-notification {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 1000;
+  min-width: 320px;
+  max-width: 480px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateX(100%);
+  opacity: 0;
+  transition: all 0.3s ease;
+  font-family: 'Roboto', sans-serif;
+}
+
+.md3-notification-show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.md3-notification-success {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  border-left: 4px solid var(--md-sys-color-tertiary);
+}
+
+.md3-notification-error {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  border-left: 4px solid var(--md-sys-color-error);
+}
+
+.md3-notification-info {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-left: 4px solid var(--md-sys-color-primary);
+}
+
+.md3-notification-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.md3-notification-content .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.md3-action-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+  padding-top: 24px;
+}
+</style>
+
+<script>
+// Session data
+const sessionId = {{ session.id }};
+let assetData = {};
+
+// Live update function for progress and status cards
+function updateProgressAndCounts() {
+  console.log("MD3 updateProgressAndCounts called");
+  try {
+    const countedInputs = document.querySelectorAll('.counted-quantity');
+    const damagedInputs = document.querySelectorAll('.damaged-quantity');
+    
+    let total = {{ assets|length }};
+    let counted = 0;
+    let found = 0;
+    let damaged = 0;
+    let missing = 0;
+    let unberuehrt = total;
+    
+    // Calculate counts
+    countedInputs.forEach((input, idx) => {
+      const countedValue = input.value !== '' ? parseInt(input.value) || 0 : null;
+      const damagedValue = damagedInputs[idx] ? (parseInt(damagedInputs[idx].value) || 0) : 0;
+      
+      // Only count as "counted" if value is not empty (0 is valid for missing assets)
+      if (countedValue !== null) {
+        counted++;
+        unberuehrt--;
+        
+        if (countedValue > 0) {
+          if (damagedValue > 0) {
+            damaged++;
+          } else {
+            found++;
+          }
+        } else if (countedValue === 0) {
+          missing++; // Assets with 0 quantity are missing but counted
+        }
+      }
+    });
+    
+    // Missing calculation is already done in the loop above
+    
+    // Update progress bar
+    const percentage = total > 0 ? Math.round((counted / total) * 100) : 0;
+    const progressFill = document.querySelector('.md3-progress-fill');
+    const progressText = document.querySelector('.md3-progress-text');
+    
+    if (progressFill) {
+      progressFill.style.width = percentage + '%';
+    }
+    
+    if (progressText) {
+      progressText.textContent = `Fortschritt: ${counted} von ${total} Menge erfasst (${percentage}%)`;
+    }
+    
+    // Update status cards
+    const gefundenCard = document.querySelector('.md3-status-gefunden .md3-status-number');
+    const fehlendCard = document.querySelector('.md3-status-fehlend .md3-status-number');
+    const beschaedigtCard = document.querySelector('.md3-status-beschaedigt .md3-status-number');
+    const unberuehrtCard = document.querySelector('.md3-status-unberuehrt .md3-status-number');
+    
+    if (gefundenCard) gefundenCard.textContent = found;
+    if (fehlendCard) fehlendCard.textContent = missing;
+    if (beschaedigtCard) beschaedigtCard.textContent = damaged;
+    if (unberuehrtCard) unberuehrtCard.textContent = unberuehrt;
+    
+    console.log(`Updated counts: Found=${found}, Missing=${missing}, Damaged=${damaged}, Unberührt=${unberuehrt}`);
+    
+  } catch (e) {
+    console.error('Fehler beim MD3 Live-Update:', e);
+  }
+}
+
+// Update asset count
+function updateAssetCount(input) {
+  const assetId = input.dataset.assetId;
+  const count = parseInt(input.value) || 0;
+  
+  if (!assetData[assetId]) assetData[assetId] = {};
+  assetData[assetId].counted_quantity = count;
+  
+  updateProgressAndCounts();
+  autoSave();
+}
+
+// Update damaged count
+function updateDamagedCount(input) {
+  const assetId = input.dataset.assetId;
+  const count = parseInt(input.value) || 0;
+  
+  if (!assetData[assetId]) assetData[assetId] = {};
+  assetData[assetId].damaged_quantity = count;
+  
+  updateProgressAndCounts();
+  autoSave();
+}
+
+// Update actual location
+function updateActualLocation(input) {
+  const assetId = input.dataset.assetId;
+  const location = input.value;
+  
+  if (!assetData[assetId]) assetData[assetId] = {};
+  assetData[assetId].actual_location = location;
+  
+  autoSave();
+}
+
+// Update notes
+function updateNotes(input) {
+  const assetId = input.dataset.assetId;
+  const notes = input.value;
+  
+  if (!assetData[assetId]) assetData[assetId] = {};
+  assetData[assetId].notes = notes;
+  
+  autoSave();
+}
+
+// Build payload from current form state (includes zeros as valid values)
+function buildPayloadFromForm() {
+  const payload = {};
+  const rows = document.querySelectorAll('tr.md3-table-row');
+  rows.forEach(row => {
+    const assetId = row.getAttribute('data-asset-id');
+    if (!assetId) return;
+
+    const countedInput = row.querySelector('.counted-quantity');
+    const damagedInput = row.querySelector('.damaged-quantity');
+    const locationInput = row.querySelector('.actual-location');
+    const notesInput = row.querySelector('.notes');
+
+    // counted_quantity: include if the field is not empty ("" means uncounted). 0 is valid.
+    if (countedInput) {
+      const raw = countedInput.value;
+      if (raw !== '') {
+        const val = parseInt(raw, 10);
+        if (!payload[assetId]) payload[assetId] = {};
+        payload[assetId].counted_quantity = isNaN(val) ? 0 : val;
+      }
+    }
+
+    // damaged_quantity: include if field not empty; default to 0 if NaN
+    if (damagedInput) {
+      const raw = damagedInput.value;
+      if (raw !== '') {
+        const val = parseInt(raw, 10);
+        if (!payload[assetId]) payload[assetId] = {};
+        payload[assetId].damaged_quantity = isNaN(val) ? 0 : val;
+      }
+    }
+
+    // actual_location: include if non-empty
+    if (locationInput) {
+      const val = (locationInput.value || '').trim();
+      if (val) {
+        if (!payload[assetId]) payload[assetId] = {};
+        payload[assetId].actual_location = val;
+      }
+    }
+
+    // notes: include if non-empty
+    if (notesInput) {
+      const val = (notesInput.value || '').trim();
+      if (val) {
+        if (!payload[assetId]) payload[assetId] = {};
+        payload[assetId].notes = val;
+      }
+    }
+  });
+  return payload;
+}
+
+// Auto-save functionality (background only)
+let saveTimeout;
+function autoSave() {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    autoSaveProgress();
+  }, 2000);
+}
+
+// Background auto-save (no redirect, minimal notification)
+function autoSaveProgress() {
+  console.log('Auto-saving progress...', assetData);
+  const payload = Object.keys(assetData).length === 0 ? buildPayloadFromForm() : assetData;
+  
+  fetch(`/md3/inventory/sessions/${sessionId}/save-progress`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.getElementById('csrf-token')?.value || ''
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log('Auto-save successful');
+      // Small, subtle notification
+      showNotification('Fortschritt automatisch gespeichert', 'info');
+    } else {
+      console.error('Auto-save failed:', data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Auto-save error:', error);
+  });
+}
+
+// Explicit save progress (with redirect)
+function saveProgress() {
+  console.log('=== FRONTEND DEBUG: saveProgress() called ===');
+  console.log('Current assetData:', assetData);
+  console.log('assetData keys:', Object.keys(assetData));
+  console.log('assetData length:', Object.keys(assetData).length);
+  
+  // Debug: Check if any input fields have values
+  const countedInputs = document.querySelectorAll('.counted-quantity');
+  const damagedInputs = document.querySelectorAll('.damaged-quantity');
+  const locationInputs = document.querySelectorAll('.actual-location');
+  const notesInputs = document.querySelectorAll('.notes');
+  
+  console.log('=== INPUT FIELD DEBUG ===');
+  console.log('Counted inputs found:', countedInputs.length);
+  console.log('Damaged inputs found:', damagedInputs.length);
+  console.log('Location inputs found:', locationInputs.length);
+  console.log('Notes inputs found:', notesInputs.length);
+  
+  // Check values in input fields
+  countedInputs.forEach((input, idx) => {
+    const assetId = input.dataset.assetId;
+    const value = input.value;
+    console.log(`Counted input ${idx}: asset_id=${assetId}, value=${value}`);
+  });
+  
+  // Always build a fresh payload from the form if assetData is empty
+  const payload = Object.keys(assetData).length === 0 ? buildPayloadFromForm() : assetData;
+  console.log('Final payload to send (save):', payload);
+  
+  console.log('=== FRONTEND DEBUG END ===');
+  
+  // Show saving indicator
+  const saveButton = document.querySelector('button[onclick="saveProgress()"]');
+  if (saveButton) {
+    const originalText = saveButton.innerHTML;
+    saveButton.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Speichert...';
+    saveButton.disabled = true;
+  }
+  
+  fetch(`/md3/inventory/sessions/${sessionId}/save-progress`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.getElementById('csrf-token')?.value || ''
+    },
+    body: JSON.stringify(assetData)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log('Explicit save successful');
+      showNotification('Fortschritt erfolgreich gespeichert - Zurück zur Übersicht...', 'success');
+      
+      // Reset save button
+      if (saveButton) {
+        saveButton.innerHTML = '<span class="material-symbols-outlined">save</span> Fortschritt speichern';
+        saveButton.disabled = false;
+      }
+      
+      // Redirect to planning overview after short delay
+      setTimeout(() => {
+        window.location.href = '/md3/inventory/planning';
+      }, 2000);
+    } else {
+      throw new Error(data.message || 'Unbekannter Fehler');
+    }
+  })
+  .catch(error => {
+    console.error('Error saving progress:', error);
+    showNotification('Fehler beim Speichern des Fortschritts', 'error');
+    
+    // Reset save button
+    if (saveButton) {
+      saveButton.innerHTML = '<span class="material-symbols-outlined">save</span> Fortschritt speichern';
+      saveButton.disabled = false;
+    }
+  });
+}
+
+// Complete inventory
+function completeInventory() {
+  if (confirm('Möchten Sie die Inventur wirklich abschließen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+    console.log('Completing inventory...');
+    
+    // Show completion indicator
+    const completeButton = document.querySelector('button[onclick="completeInventory()"]');
+    if (completeButton) {
+      completeButton.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Schließt ab...';
+      completeButton.disabled = true;
+    }
+    
+    // First, ensure we have a complete payload (includes zeros)
+    const payload = Object.keys(assetData).length === 0 ? buildPayloadFromForm() : assetData;
+    console.log('Final payload to send (complete):', payload);
+
+    // First save current progress
+    fetch(`/md3/inventory/sessions/${sessionId}/save-progress`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.getElementById('csrf-token')?.value || ''
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Now complete the inventory
+        return fetch(`/md3/inventory/sessions/${sessionId}/complete`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.getElementById('csrf-token')?.value || ''
+          }
+        });
+      } else {
+        throw new Error('Fehler beim Speichern des Fortschritts');
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showNotification('Inventur erfolgreich abgeschlossen!', 'success');
+        
+        // Redirect to reports after a short delay
+        setTimeout(() => {
+          if (data.redirect_url) {
+            window.location.href = data.redirect_url;
+          } else {
+            window.location.href = '/md3/inventory/reports';
+          }
+        }, 2000);
+      } else {
+        throw new Error(data.message || 'Unbekannter Fehler beim Abschließen');
+      }
+    })
+    .catch(error => {
+      console.error('Error completing inventory:', error);
+      showNotification(error.message || 'Fehler beim Abschließen der Inventur', 'error');
+      
+      // Reset complete button
+      if (completeButton) {
+        completeButton.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Inventur abschließen';
+        completeButton.disabled = false;
+      }
+    });
+  }
+}
+
+// Show notification function
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `md3-notification md3-notification-${type}`;
+  notification.innerHTML = `
+    <div class="md3-notification-content">
+      <span class="material-symbols-outlined">${type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'info'}</span>
+      <span>${message}</span>
+    </div>
+  `;
+  
+  // Add to page
+  document.body.appendChild(notification);
+  
+  // Show with animation
+  setTimeout(() => {
+    notification.classList.add('md3-notification-show');
+  }, 100);
+  
+  // Remove after delay
+  setTimeout(() => {
+    notification.classList.remove('md3-notification-show');
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 4000);
+}
+
+// Mark asset as found
+function markAsFound(assetId) {
+  const row = document.querySelector(`[data-asset-id="${assetId}"]`);
+  const countInput = row.querySelector('.counted-quantity');
+  countInput.value = '1';
+  updateAssetCount(countInput);
+}
+
+// Export inventory
+function exportInventory() {
+  window.location.href = `/inventory/sessions/${sessionId}/export`;
+}
+
+// Initialize and attach event listeners
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('MD3 Inventory execution template loaded');
+  
+  // Attach event listeners to all input fields
+  document.querySelectorAll('.counted-quantity').forEach(input => {
+    input.addEventListener('input', function() {
+      updateAssetCount(this);
+    });
+  });
+  
+  document.querySelectorAll('.damaged-quantity').forEach(input => {
+    input.addEventListener('input', function() {
+      updateDamagedCount(this);
+    });
+  });
+  
+  document.querySelectorAll('.actual-location').forEach(input => {
+    input.addEventListener('input', function() {
+      updateActualLocation(this);
+    });
+  });
+  
+  document.querySelectorAll('.notes').forEach(input => {
+    input.addEventListener('input', function() {
+      updateNotes(this);
+    });
+  });
+  
+  // Initial update
+  updateProgressAndCounts();
+});
+</script>
+
+<input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}" id="csrf-token">
+{% endblock %}

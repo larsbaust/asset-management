@@ -1,0 +1,1099 @@
+<!-- Material Design 3 Navigationsbar (Entwurf für Integration) -->
+
+<style>
+  /* Material Design 3 Bottom Navigation Bar Styles gemäß MD3-Spezifikationen */
+  /* CSS-Variablen für RGB-Werte der Farben */
+  :root {
+    --md-sys-color-surface-rgb: 246, 238, 255; /* RGB-Werte für #F6EEFF */
+  }
+  
+  .md-nav-container {
+    background-color: #F6EEFF; /* Helles Lavendel aus dem Screenshot */
+    height: 64px; /* 64dp gemäß MD3 Container Spec */
+    width: 100%; /* Volle Breite im Normalzustand */
+    position: fixed;
+    top: 0; /* Kein Abstand im Normalzustand */
+    left: 0; /* Kein Abstand im Normalzustand */
+    right: 0; /* Kein Abstand im Normalzustand */
+    z-index: 100;
+    font-family: var(--md-sys-typescale-label-medium-font-family-name);
+    box-shadow: none; /* Kein Schatten im Normalzustand */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 0; /* Keine Rundungen im Normalzustand */
+    transition: all 0.3s ease; /* Sanfte Übergänge für alle Eigenschaften */
+    overflow: visible; /* Wichtig: Erlaubt Dropdown-Menüs außerhalb der Navbar */
+  }
+  
+  /* Scrolled-Zustand der Navigationsleiste */
+  .md-nav-container.scrolled {
+    height: 56px; /* Kompaktere Höhe beim Scrollen */
+    width: calc(100% - 110px); /* Deutlich schmaler im gescrollten Zustand */
+    max-width: 900px; /* Maximale Breite begrenzen */
+    margin: 0 auto; /* Zentrieren */
+    left: 0; 
+    right: 0;
+    top: 4px; /* Abstand nach oben im gescrollten Zustand */
+    border-radius: 16px; /* Abgerundete Ecken im gescrollten Zustand */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); /* Schatten im gescrollten Zustand */
+    background-color: rgba(246, 238, 255, 0.95); /* Leicht transparenter Hintergrund */
+  }
+
+  .md-nav-content {
+    display: flex;
+    align-items: center;
+    height: var(--md-sys-spacing-unit-7x); /* 56px */
+    padding: 0;
+    max-width: 900px; /* Erhöhte Breite für vollständige Icon-Sichtbarkeit */
+    margin: 0 auto;
+    justify-content: center;
+  }
+
+  .md-nav-title {
+    display: none; /* Kein Titel in der neuen Navigation wie im Screenshot */
+  }
+
+  /* Verstecke Navigation Title - im Screenshot nicht vorhanden */
+  .md-nav-title span.material-symbols-outlined {
+    display: none;
+  }
+
+  .md-nav-sections {
+    display: flex;
+    overflow-x: auto;
+    flex-grow: 0;
+    justify-content: center;
+    margin: 0 auto;
+    scrollbar-width: none;
+    width: 100%;
+    max-width: 640px;
+  }
+
+  .md-nav-sections::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Basis-Tab-Stil ohne Links/Dropdown-Funktionalität */
+  .md-nav-tab {
+    color: #585E71; /* Farbe aus dem Screenshot für inaktive Tabs */
+    height: 56px;
+    width: 95px; /* Optimale Breite für bessere Platznutzung */
+    padding: var(--md-sys-spacing-unit-1x) var(--md-sys-spacing-unit-0-5x);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    position: relative;
+    transition: all var(--md-sys-motion-duration-short4); /* 200ms */
+    font-family: 'Roboto', sans-serif; /* Explizite Schriftart */
+    font-size: 12px; /* Exakte Schriftgröße aus Screenshot */
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    text-transform: none;
+    line-height: 16px;
+    cursor: pointer;
+  }
+  
+  /* Style für den Tab-Text-Label */
+  .md-nav-tab-label {
+    margin-top: 4px;
+    z-index: 1;
+    white-space: nowrap; /* Verhindert Zeilenumbrüche */
+    text-align: center;
+  }
+  
+  /* Spezielle Formatierung für Standorte-Link damit er wie andere Tabs aussieht */
+  #locations-dropdown .md-nav-tab-trigger {
+    color: #585E71; /* Gleiche Farbe wie andere Tabs */
+    text-decoration: none; /* Keine Unterstreichung */
+    font-family: 'Roboto', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    line-height: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 56px;
+    width: 95px; /* Angepasst an neue Tab-Breite */
+    padding: var(--md-sys-spacing-unit-1x) var(--md-sys-spacing-unit-0-5x);
+    transition: all var(--md-sys-motion-duration-short4);
+    cursor: pointer;
+  }
+  
+  /* Hover-Effekt für Standorte-Link */
+  #locations-dropdown .md-nav-tab-trigger:hover {
+    color: #1E1B16; /* Aktive Textfarbe beim Hover */
+    text-decoration: none;
+  }
+  
+  /* Einheitliche Ausrichtung für alle Navigation-Tab-Trigger (sowohl <a> als auch <div>) */
+  .md-nav-tab-trigger {
+    color: #585E71; /* Gleiche Farbe wie andere Tabs */
+    text-decoration: none;
+    font-family: 'Roboto', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    line-height: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 56px;
+    width: 95px; /* Optimale Breite für bessere Platznutzung */
+    padding: var(--md-sys-spacing-unit-1x) var(--md-sys-spacing-unit-0-5x);
+    transition: all var(--md-sys-motion-duration-short4);
+    cursor: pointer;
+    /* Wichtig: Gleiche Box-Model-Eigenschaften wie .md-nav-tab */
+    box-sizing: border-box;
+    margin: 0;
+    border: none;
+    background: none;
+    outline: none;
+  }
+  
+  /* Hover-Effekt für alle Navigation-Tab-Trigger */
+  .md-nav-tab-trigger:hover {
+    color: #1E1B16; /* Aktive Textfarbe beim Hover */
+    text-decoration: none;
+  }
+  
+  /* Verbesserte Badge-Formatierung für Benachrichtigungen */
+  .md-badge {
+    position: absolute;
+    top: 8px;
+    right: 24px;
+    background-color: #E92E2E; /* Rote Benachrichtigungsfarbe */
+    color: white;
+    font-size: 11px;
+    font-weight: 500;
+    height: 16px;
+    min-width: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+
+  /* MD3 Hover-Effekt für Navigationselemente */
+  .md-nav-tab:hover {
+    cursor: pointer;
+  }
+  
+  /* Hover Indicator für Navigationselemente - höher positioniert, um das Icon mehr zu überdecken */
+  .md-nav-tab:hover:not(.active)::after {
+    content: '';
+    position: absolute;
+    width: 64px;
+    height: 32px;
+    background-color: #E8DEF8; /* MD3 secondary-container */
+    border-radius: 16px;
+    z-index: -1; /* Hinter dem Content positionieren */
+    top: 30%; /* Höhere Position, um das Icon mehr zu überdecken */
+    left: 50%;
+    transform: translate(-50%, -50%); /* Vollständige Zentrierung (horizontal und vertikal) */
+  }
+
+  .md-nav-tab.active {
+    color: #1E1B16; /* Dunklere Textfarbe für aktiven Tab wie im Screenshot */
+  }
+
+  /* Entferne den Indikator unten, da im Screenshot nicht vorhanden */
+  .md-nav-tab.active::before {
+    display: none;
+  }
+
+  /* Größere, besser ausgerichtete Material Icons */
+  .md-nav-tab .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+  }
+  
+  /* Fülleffekt-Animation für Icons */
+  @keyframes icon-fill {
+    from { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    to { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  }
+  
+  @keyframes icon-unfill {
+    from { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    to { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  }
+  
+  /* Gefüllte Icons mit Animation für aktive/ausgewählte Elemente */
+  .active .material-symbols-outlined,
+  .is-active .material-symbols-outlined,
+  .md-nav-tab.active .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    animation: icon-fill 0.3s ease-in-out;
+  }
+  
+  /* Fülleffekt auch beim Hover über die Icons */
+  .md-nav-tab:hover .material-symbols-outlined,
+  .md-action-item:hover .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    animation: icon-fill 0.2s ease-in-out forwards;
+  }
+  
+  /* Beim Verlassen des Hover wieder zurück zu Outline, wenn nicht aktiv */
+  .md-nav-tab:not(.active):not(:hover) .material-symbols-outlined,
+  .md-action-item:not(.is-active):not(:hover) .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    animation: icon-unfill 0.2s ease-in-out forwards;
+  }
+  
+  /* Animation beim Deaktivieren */
+  .material-symbols-outlined {
+    transition: color 0.3s ease;
+  }
+  
+  /* Größere Icons wie im Screenshot */
+  .md-nav-tab .material-symbols-outlined {
+    transition: all 0.2s ease;
+    z-index: 1;
+    color: #585E71; /* Inaktive Icon-Farbe aus dem Screenshot */
+    display: flex; /* Flex für bessere Zentrierung */
+    align-items: center;
+    justify-content: center;
+    text-align: center; /* Zentrierte Icons */
+    line-height: 1; /* Verhindert unerwünschte Abstände */
+    width: 100%; /* Volle Breite für bessere Zentrierung */
+    height: 24px;
+    margin: 0 auto 6px;
+  }
+
+  /* Verbessertes Design für aktive Icons */
+  .md-nav-tab.active .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    color: #1E1B16; /* Dunklere Icon-Farbe für aktiven Tab */
+  }
+
+  /* MD3 Active Indicator für Navigationselemente - höher positioniert wie der Hover-Indikator */
+  .md-nav-tab.active::after {
+    content: '';
+    position: absolute;
+    width: 64px;
+    height: 32px;
+    background-color: #E8DEF8; /* MD3 secondary-container / secondary90 */
+    border-radius: 16px; /* Vollständige Abrundung */
+    z-index: 0;
+    top: 30%; /* Höhere Position, um das Icon mehr zu überdecken - identisch mit Hover */
+    left: 50%;
+    transform: translate(-50%, -50%); /* Vollständige Zentrierung (horizontal und vertikal) */
+  }
+
+  /* Container für die gesamte rechte Seite */
+  .md-right-container {
+    display: flex;
+    align-items: center;
+    margin-left: auto; /* Schiebt den Container ganz nach rechts */
+  }
+  
+  /* Trenner zwischen Navigation und Aktions-Icons */
+  .md-right-spacer {
+    width: 24px; /* Zusätzlicher Abstand als Trenner */
+  }
+
+  /* Container für die Action-Icons */
+  .md-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Reduzierter Abstand zwischen Icons */
+    padding-right: 8px; /* Abstand zum rechten Rand */
+  }
+
+  /* Stil für MD3-konforme Aktionsschaltflächen */
+  .md-nav-actions md-icon-button {
+    --md-icon-button-icon-color: var(--md-sys-color-on-surface-variant);
+    --md-icon-button-state-layer-height: 40px;
+    --md-icon-button-state-layer-width: 40px;
+    margin: 0 4px; /* Horizontaler Abstand zwischen Buttons */
+  }
+  
+  /* Action-Icon Items */
+  .md-action-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+  }
+  
+  /* MD3 Badge Styling */
+  .md-badge {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    background-color: #B3261E; /* MD3 Error Farbe (md.sys.color.error) */
+    color: white;
+    font-family: var(--md-sys-typescale-label-small-font-family-name);
+    font-size: 11px; /* Kleinere Schrift für Badge */
+    font-weight: 500;
+    height: 16px; /* 16dp gemäß MD3 Spec */
+    min-width: 16px;
+    padding: 0 4px;
+    border-radius: 8px; /* 8dp gemäß MD3 Spec */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); /* Leichter Schatten für visuelles Abheben */
+    line-height: 1;
+  }
+  
+  /* Large Badge Styling - wie in MD3 Screenshot */
+  .md-badge.large {
+    height: 16px; /* 16dp gemäß MD3 Spec */
+    min-width: 16px;
+    border-radius: 8px; /* 8dp gemäß MD3 Spec */
+    font-size: 11px;
+    padding: 0 4px;
+  }
+
+  /* Label für Aktions-Items */
+  .md-action-label {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    color: #585E71;
+    margin-top: 2px;
+    text-align: center;
+  }
+  
+  /* Bessere Ausrichtung für Action-Icons */
+  .md-nav-actions .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; /* Gleiche Formatierung wie Navigations-Icons */
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    width: 24px;
+    height: 24px;
+  }
+
+  .md-nav-menu-button {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--md-sys-color-on-primary);
+    cursor: pointer;
+  }
+
+  .md-nav-dropdown {
+    position: relative;
+  }
+  
+  /* Basis Dropdown-Menü Styling */
+  .md-dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: white;
+    min-width: 240px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.14), 0 1px 4px rgba(0, 0, 0, 0.12);
+    z-index: 9999;
+    overflow: visible;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 8px 0;
+  }
+  
+  /* Spezifischere Selektoren für bessere CSS-Spezifität */
+  /* Dropdown für Navigations-Tabs (Inventur, Bestellung) */
+  #inventory-dropdown .md-dropdown-content,
+  #orders-dropdown .md-dropdown-content {
+    top: 56px; /* Direkt unter dem Tab */
+    left: 0;
+    width: 280px;
+    z-index: 10000;
+    display: none; /* Initial ausblenden */
+  }
+  
+  /* Dropdown für Action-Icons (rechts in der Navbar) */
+  #admin-dropdown .md-dropdown-content,
+  #user-dropdown .md-dropdown-content,
+  .md-action-item .md-dropdown-content {
+    top: 40px; /* Näher an den Icons für die Desktop-Ansicht */
+    right: 0;
+    left: auto;
+  }
+  
+  /* Anzeige im aktiven Zustand sicherstellen */
+  .md-nav-dropdown.is-active .md-dropdown-content {
+    display: block !important;
+  }
+
+  .md-nav-dropdown.is-active .md-dropdown-content {
+    display: block;
+  }
+
+  /* Dropdown-Menüoptionen nach MD3-Spezifikation */
+  .md-dropdown-item {
+    color: #1E1B16; /* MD3 on-surface-variant aus Screenshot */
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    text-decoration: none;
+    transition: all 0.2s;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 400;
+    font-size: 14px; /* Korrekte Schriftgröße nach MD3 */
+    line-height: 20px;
+    letter-spacing: 0.25px;
+    border-radius: 8px;
+    margin: 0 8px;
+  }
+
+  /* Icon in Dropdown-Items */
+  .md-dropdown-item .material-symbols-outlined {
+    font-size: 18px;
+    margin-right: 12px;
+    opacity: 0.8;
+  }
+
+  .md-dropdown-item:hover {
+    background-color: #E8DEF8; /* MD3 state layer für hover */
+    color: #1E1B16;
+  }
+
+  .md-dropdown-item:active {
+    background-color: #D0BCFF; /* MD3 state layer für pressed */
+    color: #1E1B16;
+  }
+  
+  /* Dropdown-Abschnittsüberschriften */
+  .md-dropdown-section {
+    color: #6750A4; /* MD3 primary */
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px 16px;
+    margin-top: 8px;
+    letter-spacing: 0.5px;
+  }
+  
+  /* Dropdown-Trennlinie */
+  .md-dropdown-divider {
+    height: 1px;
+    background-color: rgba(0, 0, 0, 0.08); /* Subtile Trennlinie */
+    margin: 4px 8px;
+  }
+
+  .md-dropdown-item .material-symbols-outlined {
+    margin-right: 12px;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    font-size: 20px;
+  }
+
+  .md-dropdown-divider {
+    height: 1px;
+    margin: 8px 16px;
+    background-color: var(--md-sys-color-outline-variant);
+    opacity: 0.8;
+  }
+
+  .md-dropdown-section {
+    padding: 8px 16px;
+    color: var(--md-sys-color-on-surface-variant);
+    font-family: var(--md-ref-typeface-plain);
+    font-weight: var(--md-ref-typeface-weight-medium);
+    font-size: 12pt;
+    line-height: 16pt;
+    letter-spacing: 0.5pt;
+    text-transform: uppercase;
+  }
+
+  .md-badge {
+    background-color: var(--md-sys-color-error);
+    color: var(--md-sys-color-on-error);
+    font-family: var(--md-ref-typeface-plain);
+    font-weight: var(--md-ref-typeface-weight-medium);
+    font-size: 12pt;
+    line-height: 16pt;
+    height: 20px;
+    min-width: 20px;
+    border-radius: 16px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+  }
+
+  /* Mobile adjustments */
+  @media (max-width: 1023px) {
+    .md-nav-container {
+      width: 100%;
+      height: 64dp; /* MD3-Spezifikation: 64dp standardmäßige Höhe */
+      flex-direction: row;
+      border-radius: 0; /* md.sys.shape.corner.none */
+    }
+
+    .md-nav-menu-button {
+      display: block;
+      padding: 8px;
+      margin-right: 0;
+      border-radius: 28px;
+      transition: background-color 0.2s;
+    }
+
+    .md-nav-menu-button:hover {
+      background-color: var(--md-sys-color-surface-variant);
+    }
+
+    .md-nav-sections {
+      position: fixed;
+      top: 64px;
+      left: 0;
+      right: 0;
+      background-color: var(--md-sys-color-surface);
+      flex-direction: column;
+      align-items: flex-start;
+      height: auto;
+      max-height: 0;
+      overflow: hidden;
+      margin-left: 0;
+      transition: max-height 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+      z-index: 90;
+    }
+
+    .md-nav-sections.is-active {
+      max-height: calc(100vh - 64px);
+      overflow-y: auto;
+      box-shadow: 0px 4px 5px rgba(0, 0, 0, 0.14), 0px 1px 10px rgba(0, 0, 0, 0.12), 0px 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .md-nav-tab {
+      height: 56px;
+      width: 100%;
+      color: var(--md-sys-color-on-surface);
+      padding: 0 24px;
+    }
+
+    .md-nav-tab.active::after {
+      display: none;
+    }
+
+    .md-nav-tab.active {
+      background-color: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+    }
+    
+    .md-dropdown-content {
+      position: static;
+      width: 100%;
+      margin: 0;
+      box-shadow: none;
+      border-radius: 0;
+    }
+    
+    .md-dropdown-item {
+      padding-left: 32px;
+    }
+  }
+</style>
+
+<!-- MD3 Navigation Bar -->
+<header class="md-nav-container">
+  <div class="md-nav-content">
+    <!-- Brand/Logo -->
+    <a href="#" class="md-nav-title">
+      <span class="material-symbols-outlined">inventory</span>
+      <span>Asset Management</span>
+    </a>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="md-nav-menu-button" id="md-nav-menu-toggle">
+      <span class="material-symbols-outlined">menu</span>
+    </button>
+
+    <!-- Navigation Links -->
+    <nav class="md-nav-sections" id="md-nav-sections">
+      {% if current_user.is_authenticated %}
+        <!-- Dashboard -->
+        <a href="/md3/dashboard" class="md-nav-tab">
+          <span class="material-symbols-outlined">dashboard</span>
+          <span class="md-nav-tab-label">Dashboard</span>
+        </a>
+
+        <!-- Alle Assets -->
+        <a href="{{ url_for('md3_assets') }}" class="md-nav-tab">
+          <span class="material-symbols-outlined">inventory_2</span>
+          <span class="md-nav-tab-label">Alle Assets</span>
+        </a>
+
+        <!-- Standorte mit Dropdown und direkter Navigation -->
+        <div class="md-nav-dropdown md-nav-tab" id="locations-dropdown">
+          <a href="{{ url_for('md3_locations') }}" class="md-nav-tab-trigger" id="locations-dropdown-toggle">
+            <span class="material-symbols-outlined">location_on</span>
+            <span class="md-nav-tab-label">Standorte</span>
+          </a>
+          <div class="md-dropdown-content" id="locations-dropdown-content">
+            <div class="md-dropdown-section">Standorte</div>
+            <a href="{{ url_for('md3_locations') }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">map</span>
+              Alle Standorte
+            </a>
+            <div class="md-dropdown-divider"></div>
+            <a href="#" onclick="openNewLocationModal()" class="md-dropdown-item">
+              <span class="material-symbols-outlined">add</span>
+              Neuer Standort
+            </a>
+            <a href="{{ url_for('main.md3_location_import') }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">upload_file</span>
+              CSV Import
+            </a>
+            <a href="#" onclick="toggleView()" class="md-dropdown-item">
+              <span class="material-symbols-outlined">grid_view</span>
+              Ansicht wechseln
+            </a>
+          </div>
+        </div>
+        
+        <!-- Inventur mit Dropdown (wie Action-Icons) -->
+        <div class="md-nav-dropdown md-nav-tab" id="inventory-dropdown">
+          <div class="md-nav-tab-trigger" id="inventory-dropdown-toggle">
+            <span class="material-symbols-outlined">checklist</span>
+            <span class="md-nav-tab-label">Inventur</span>
+          </div>
+          <div id="inventory-dropdown-content" class="md-dropdown-content">
+            <div class="md-dropdown-section">Inventur</div>
+            <a href="{{ url_for('md3_inventory.planning') }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">inventory_2</span>
+              Inventurplanung
+            </a>
+            <a href="{{ url_for('md3_inventory.md3_reports') }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">analytics</span>
+              Inventurberichte
+            </a>
+            <div class="md-dropdown-divider"></div>
+            <a href="{{ url_for('md3_inventory.history') }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">history</span>
+              Inventurhistorie
+            </a>
+          </div>
+        </div>
+        
+        <!-- Bestellung mit Dropdown (wie Action-Icons) -->
+        <div class="md-nav-dropdown md-nav-tab" id="orders-dropdown">
+          <div class="md-nav-tab-trigger" id="orders-dropdown-toggle">
+            <span class="material-symbols-outlined">shopping_cart</span>
+            <span class="md-nav-tab-label">Bestellung</span>
+          </div>
+          <div class="md-dropdown-content" id="orders-dropdown-content">
+            <div class="md-dropdown-section">Bestellung</div>
+            <a href="{{ url_for('md3_order.wizard_start') }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">add_shopping_cart</span>
+              Neue Bestellung
+            </a>
+            <a href="{{ url_for('md3_order.overview') }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">receipt</span>
+              Bestellübersicht
+            </a>
+            <a href="{{ url_for('md3_order.import_csv') }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">upload_file</span>
+              CSV Import
+            </a>
+            <div class="md-dropdown-divider"></div>
+            <a href="{{ url_for('md3_order.overview', archived=1) }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">history</span>
+              Bestellhistorie
+            </a>
+          </div>
+        </div>
+        
+        <!-- Lieferanten -->
+        <a href="#" class="md-nav-tab">
+          <span class="material-symbols-outlined">local_shipping</span>
+          <span class="md-nav-tab-label">Lieferanten</span>
+        </a>
+        
+        <!-- Kalender -->
+        <a href="{{ url_for('calendar') }}" class="md-nav-tab">
+          <span class="material-symbols-outlined">calendar_month</span>
+          <span class="md-nav-tab-label">Kalender</span>
+        </a>
+      {% endif %}
+    </nav>
+
+    <!-- Rechter Container mit Trenner und Action-Icons -->
+    <div class="md-right-container">
+      <div class="md-right-spacer"></div>
+      
+      <!-- Action-Icons -->
+      <div class="md-nav-actions">
+      {% if current_user.is_authenticated %}
+        <!-- Nachrichten-Icon mit Badge und Dropdown -->
+        <div class="md-nav-dropdown md-action-item" id="messages-dropdown">
+          <md-icon-button id="messages-dropdown-toggle" aria-label="Nachrichten" style="--md-icon-button-icon-color: var(--md-sys-color-on-primary);">
+            <span class="material-symbols-outlined">mail</span>
+          </md-icon-button>
+          <span class="md-badge large">8</span>
+          <div class="md-dropdown-content">
+            <div class="md-dropdown-section">Nachrichten</div>
+            <a href="#" class="md-dropdown-item">
+              <span class="material-symbols-outlined">mail</span>
+              Nachrichten
+            </a>
+            <div class="md-dropdown-divider"></div>
+            <a href="#" class="md-dropdown-item">
+              <span class="material-symbols-outlined">chat</span>
+              Livechat öffnen
+            </a>
+          </div>
+        </div>
+
+        <!-- Benachrichtigungen-Icon mit Badge -->
+        <div class="md-action-item">
+          <md-icon-button id="notifications-button" aria-label="Benachrichtigungen" style="--md-icon-button-icon-color: var(--md-sys-color-on-primary);">
+            <span class="material-symbols-outlined">notifications</span>
+          </md-icon-button>
+          <span class="md-badge large">2</span>
+        </div>
+        
+        <!-- Admin Settings (if allowed) -->
+        {% if has_permission(current_user, 'manage_users') or has_permission(current_user, 'manage_roles') or has_permission(current_user, 'backup_data') or has_permission(current_user, 'view_changelog') or has_permission(current_user, 'view_asset_log') %}
+          <div class="md-nav-dropdown md-action-item" id="admin-dropdown">
+            <md-icon-button id="admin-dropdown-toggle" aria-label="Admin Panel" style="--md-icon-button-icon-color: var(--md-sys-color-on-primary);">
+              <span class="material-symbols-outlined">admin_panel_settings</span>
+            </md-icon-button>
+            <div class="md-dropdown-content">
+              <div class="md-dropdown-section">Administration</div>
+              {% if has_permission(current_user, 'manage_users') %}
+                <a href="{{ url_for('admin.user_management') }}" class="md-dropdown-item">
+                  <span class="material-symbols-outlined">group</span>
+                  Benutzer verwalten
+                </a>
+              {% endif %}
+              
+              {% if has_permission(current_user, 'manage_roles') %}
+                <a href="{{ url_for('admin.role_management') }}" class="md-dropdown-item">
+                  <span class="material-symbols-outlined">manage_accounts</span>
+                  Rollen & Rechte
+                </a>
+              {% endif %}
+              
+              {% if has_permission(current_user, 'backup_data') %}
+                <a href="{{ url_for('admin.backup_restore') }}" class="md-dropdown-item">
+                  <span class="material-symbols-outlined">cloud_download</span>
+                  Backup & Wiederherstellung
+                </a>
+              {% endif %}
+              
+              {% if has_permission(current_user, 'view_changelog') %}
+                <a href="{{ url_for('admin.changelog') }}" class="md-dropdown-item">
+                  <span class="material-symbols-outlined">history</span>
+                  Änderungshistorie
+                </a>
+              {% endif %}
+              
+              {% if has_permission(current_user, 'view_asset_log') %}
+                <a href="{{ url_for('admin.asset_log') }}" class="md-dropdown-item">
+                  <span class="material-symbols-outlined">receipt_long</span>
+                  Asset Protokoll
+                </a>
+              {% endif %}
+              
+              {% if has_permission(current_user, 'import_csv') %}
+                <a href="#" class="md-dropdown-item">
+                  <span class="material-symbols-outlined">file_upload</span>
+                  CSV Import
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+        
+        <!-- User Menu -->
+        <div class="md-nav-dropdown md-action-item" id="user-dropdown">
+          <md-icon-button id="user-dropdown-toggle" aria-label="Benutzerprofil" style="--md-icon-button-icon-color: #1E1B16;">
+            <span class="material-symbols-outlined">person</span>
+          </md-icon-button>
+          <div class="md-dropdown-content">
+            <a href="#" class="md-dropdown-item">
+              <span class="material-symbols-outlined">account_circle</span>
+              Mein Profil
+            </a>
+            <a href="#" class="md-dropdown-item">
+              <span class="material-symbols-outlined">settings</span>
+              Einstellungen
+            </a>
+            <div class="md-dropdown-divider"></div>
+            <a href="{{ url_for('auth.logout') }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">logout</span>
+              Abmelden
+            </a>
+          </div>
+        </div>
+      {% else %}
+        <md-filled-button href="{{ url_for('auth.login') }}">
+          <span class="material-symbols-outlined" slot="icon">login</span>
+          Anmelden
+        </md-filled-button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+</header>
+
+<!-- JavaScript für Scroll-Effekt -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    window.addEventListener('scroll', function() {
+      const nav = document.querySelector('.md-nav-container');
+      
+      // Fügt Klasse 'scrolled' hinzu, wenn gescrollt wird (mehr als 20px)
+      if (window.scrollY > 20) {
+        nav.classList.add('scrolled');
+      } else {
+        nav.classList.remove('scrolled');
+      }
+    });
+  });
+</script>
+
+<!-- Füge Dropdowns direkt zum Navigation HTML hinzu -->
+<!-- Dropdown-Inhalte sind jetzt direkt in den jeweiligen Dropdown-Containern im Navigation-HTML enthalten -->
+
+<!-- Required script for navigation behavior -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mobile menu toggle
+  const menuButton = document.getElementById('md-nav-menu-toggle');
+  const navSections = document.getElementById('md-nav-sections');
+  
+  if (menuButton && navSections) {
+    menuButton.addEventListener('click', function() {
+      navSections.classList.toggle('is-active');
+    });
+  }
+  
+  // Portal-Container für alle Dropdown-Menüs außerhalb der Navbar erstellen
+  const portalContainer = document.createElement('div');
+  portalContainer.id = 'dropdown-portal-container';
+  portalContainer.style.position = 'absolute';
+  portalContainer.style.top = '0';
+  portalContainer.style.left = '0';
+  portalContainer.style.width = '100%';
+  portalContainer.style.height = '0';
+  portalContainer.style.overflow = 'visible';
+  portalContainer.style.zIndex = '9999';
+  document.body.appendChild(portalContainer);
+  
+  // Dropdown handling for all menus (admin, user, inventur, bestellung)
+  const dropdowns = document.querySelectorAll('.md-nav-dropdown');
+  
+  function closeAllDropdowns() {
+    dropdowns.forEach(dropdown => {
+      dropdown.classList.remove('is-active');
+    });
+  }
+  
+  // Schließen aller Dropdowns (sowohl in Navbar als auch in Portal)
+  function closeAllDropdowns() {
+    // Dropdown-Status in der Navbar zurücksetzen
+    dropdowns.forEach(dropdown => {
+      dropdown.classList.remove('is-active');
+    });
+    
+    // Alle Portal-Dropdowns ausblenden
+    document.querySelectorAll('.md-dropdown-portal').forEach(content => {
+      content.style.display = 'none';
+    });
+  }
+  
+  // Schließe alle Dropdowns, wenn man außerhalb klickt
+  document.addEventListener('click', function(event) {
+    // Wenn NICHT innerhalb eines Dropdown-Bereichs oder eines Portal-Dropdowns geklickt wurde
+    if (!event.target.closest('.md-nav-dropdown') && 
+        !event.target.closest('.md-dropdown-portal')) {
+      closeAllDropdowns();
+    }
+  });
+  
+  // Die Dropdown-Inhalte sind jetzt direkt im HTML integriert und müssen nicht mehr per JavaScript angehängt werden
+  
+  // Dropdown-Inhalte extrahieren und in Portal-Container verlagern
+  dropdowns.forEach(dropdown => {
+    const dropdownContent = dropdown.querySelector('.md-dropdown-content');
+    if (dropdownContent) {
+      // Entferne das Original aus dem DOM
+      dropdown.removeChild(dropdownContent);
+      
+      // Füge eine Kopie zum Portal-Container hinzu
+      const portalDropdown = dropdownContent.cloneNode(true);
+      portalDropdown.id = dropdownContent.id || 'dropdown-' + dropdown.id + '-content';
+      portalDropdown.dataset.forDropdown = dropdown.id;
+      portalDropdown.style.display = 'none';
+      portalDropdown.style.position = 'absolute';
+      portalDropdown.classList.add('md-dropdown-portal');
+      portalContainer.appendChild(portalDropdown);
+    }
+  });
+  
+  // Funktion zum Öffnen eines Dropdowns
+  function openDropdown(dropdown) {
+    if (!dropdown) return;
+    
+    // Toggle-Element im Dropdown finden
+    const toggle = dropdown.querySelector('.md-nav-tab-trigger, #admin-dropdown-toggle, #user-dropdown-toggle, #inventory-dropdown-toggle, #orders-dropdown-toggle, #messages-dropdown-toggle');
+    if (!toggle) return;
+    
+    // Aktiviere Dropdown-Status
+    dropdown.classList.add('is-active');
+    
+    // Finde das entsprechende Portal-Dropdown
+    const portalDropdown = document.querySelector(`.md-dropdown-portal[data-for-dropdown="${dropdown.id}"]`);
+    if (!portalDropdown) return;
+    
+    // Positioniere das Dropdown relativ zum Toggle
+    const toggleRect = toggle.getBoundingClientRect();
+    const isNavTab = dropdown.classList.contains('md-nav-tab');
+    
+    // Positionierung basierend auf Typ (NavTab oder ActionIcon)
+    if (isNavTab) {
+      // Für Navigation Tabs (unten zentriert)
+      portalDropdown.style.top = (toggleRect.bottom + window.scrollY) + 'px';
+      portalDropdown.style.left = (toggleRect.left + (toggleRect.width / 2) - 140) + 'px'; // Zentriert
+    } else {
+      // Für Action Icons (rechts ausgerichtet)
+      portalDropdown.style.top = (toggleRect.bottom + window.scrollY) + 'px';
+      portalDropdown.style.left = (toggleRect.right - portalDropdown.offsetWidth) + 'px';
+    }
+    
+    // Zeige das Dropdown an
+    portalDropdown.style.display = 'block';
+  }
+  
+  // Event-Listener für alle Dropdown-Elemente (Admin, User, Inventur, Bestellung) mit Hybrid-Aktivierung
+  dropdowns.forEach(dropdown => {
+    // Toggle-Element im Dropdown finden
+    const toggle = dropdown.querySelector('.md-nav-tab-trigger, #admin-dropdown-toggle, #user-dropdown-toggle, #inventory-dropdown-toggle, #orders-dropdown-toggle, #messages-dropdown-toggle');
+    
+    // 1. Hover-Verhalten (mouseenter)
+    dropdown.addEventListener('mouseenter', function() {
+      console.log('Dropdown hover:', dropdown.id);
+      closeAllDropdowns(); // Andere Dropdowns schließen
+      openDropdown(dropdown);
+    });
+    
+    // 2. Auch Klick-Verhalten für bessere Zugänglichkeit
+    if (toggle) {
+      toggle.addEventListener('click', function(e) {
+        // Spezielle Behandlung für Standorte: Erlaube direkte Navigation
+        if (dropdown.id === 'locations-dropdown') {
+          // Für Standorte: Nur bei bereits aktivem Dropdown das Event abfangen
+          const isActive = dropdown.classList.contains('is-active');
+          if (isActive) {
+            e.preventDefault();
+            e.stopPropagation();
+            closeAllDropdowns();
+          }
+          // Sonst: Normale Navigation erlauben (kein preventDefault)
+          return;
+        }
+        
+        // Für alle anderen Dropdowns: Bisheriges Verhalten
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Dropdown geklickt:', dropdown.id);
+        
+        const isActive = dropdown.classList.contains('is-active');
+        
+        // Wenn bereits aktiv, dann schließen (Toggle-Verhalten)
+        if (isActive) {
+          closeAllDropdowns();
+        } else {
+          // Sonst öffnen
+          closeAllDropdowns();
+          openDropdown(dropdown);
+        }
+      });
+    }
+    
+    // Sorgt dafür, dass das Dropdown offen bleibt, wenn die Maus darüber ist
+    dropdown.addEventListener('mouseleave', function() {
+      console.log('Dropdown verlassen:', dropdown.id);
+      // Dropdown nicht sofort schließen, sondern prüfen ob die Maus über dem Portal ist
+      setTimeout(() => {
+        if (!document.querySelector(`.md-dropdown-portal[data-for-dropdown="${dropdown.id}"]:hover`)) {
+          closeAllDropdowns();
+        }
+      }, 100);
+    });
+  });
+  
+  // Event-Listener für Portal-Dropdowns
+  document.querySelectorAll('.md-dropdown-portal').forEach(portalDropdown => {
+    portalDropdown.addEventListener('mouseleave', function() {
+      console.log('Portal-Dropdown verlassen');
+      closeAllDropdowns();
+    });
+  });
+  
+  // Debug-Funktion für Dropdown-Tests
+  document.getElementById('debug-toggle').addEventListener('click', function(e) {
+    e.preventDefault();
+    console.log('Debug Toggle clicked');
+    document.querySelectorAll('.md-dropdown-portal').forEach(portal => {
+      console.log('Portal ID:', portal.getAttribute('data-for-dropdown'));
+      console.log('Portal Display:', portal.style.display);
+    });
+  });
+
+  // Aktive Navigation-Tabs verwalten
+  document.querySelectorAll('.md-nav-tab').forEach(tab => {
+    if (!tab.classList.contains('md-nav-dropdown')) { // Normale Tabs ohne Dropdown
+      tab.addEventListener('click', function(e) {
+        // Alle Tabs deaktivieren
+        document.querySelectorAll('.md-nav-tab').forEach(t => {
+          t.classList.remove('active');
+        });
+        
+        // Nur diesen Tab aktivieren
+        this.classList.add('active');
+      });
+    }
+  });
+  
+  // Dropdown-Menü-Items verwalten (Navigation innerhalb von Dropdown-Menüs)
+  document.querySelectorAll('.md-dropdown-menu a').forEach(menuItem => {
+    menuItem.addEventListener('click', function() {
+      // Alle Tabs deaktivieren
+      document.querySelectorAll('.md-nav-tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Den übergeordneten Dropdown-Tab aktivieren
+      const parentDropdownId = this.closest('.md-dropdown-portal').getAttribute('data-for-dropdown');
+      if (parentDropdownId) {
+        document.getElementById(parentDropdownId).classList.add('active');
+      }
+      
+      // Dropdown nach der Navigation schließen
+      closeAllDropdowns();
+    });
+  });
+  
+  console.log('Dropdown-Handler initialisiert');
+  console.log('Gefundene Dropdowns:', dropdowns.length);
+  
+  // Liste alle Dropdown-IDs auf
+  dropdowns.forEach(dropdown => {
+    console.log('Dropdown ID:', dropdown.id, 'Klassen:', dropdown.className);
+    const toggleElement = dropdown.querySelector('.md-nav-tab-trigger, #admin-dropdown-toggle, #user-dropdown-toggle');
+    if (toggleElement) {
+      console.log(' - Toggle gefunden:', toggleElement.id || toggleElement.className);
+    } else {
+      console.log(' - Kein Toggle-Element gefunden!');
+    }
+  });
+});
+</script>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Material Design 3 Navigation Preview</title>
+    
+    <!-- Material Design 3 Fonts und Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+    
+    <!-- Material Design 3 Web Components -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@material/web@1.0.0/all.js"></script>
+    
+    <!-- Material Design 3 Theme CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='material/m3-theme.css') }}">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+        }
+        
+        .content {
+            margin-top: 84px;
+            padding: 24px;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .preview-section {
+            margin-bottom: 24px;
+            padding: 24px;
+            border-radius: 16px;
+            background-color: var(--md-sys-color-surface);
+        }
+        
+        h1 {
+            color: var(--md-sys-color-primary);
+            margin-bottom: 16px;
+        }
+        
+        .button-row {
+            display: flex;
+            gap: 16px;
+            margin: 16px 0;
+        }
+        
+        .color-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        
+        .color-swatch {
+            height: 100px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+            color: white;
+            text-shadow: 0 0 4px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <!-- Include the MD3 Navigation -->
+    {% include 'md3-nav.html' %}
+    
+    <div class="content">
+        <div class="preview-section">
+            <h1>Material Design 3 Navigation Preview</h1>
+            <p>Diese Seite zeigt die neue MD3-Navigationsleiste. Sie können die verschiedenen Dropdown-Menüs und Funktionen testen.</p>
+            
+            <h2>Hinweise zur Navigation:</h2>
+            <ul>
+                <li>Die Navigation ist voll responsiv und passt sich an mobile Geräte an</li>
+                <li>Dropdown-Menüs für Inventur, Bestellungen, Admin und Benutzer</li>
+                <li>Material Design 3 Icons und Designsprache</li>
+                <li>Anpassbare Farbgestaltung über CSS-Variablen</li>
+            </ul>
+        </div>
+        
+        <div class="preview-section">
+            <h2>MD3 Button-Komponenten</h2>
+            <div class="button-row">
+                <md-filled-button>Gefüllter Button</md-filled-button>
+                <md-outlined-button>Outlined Button</md-outlined-button>
+                <md-elevated-button>Elevated Button</md-elevated-button>
+                <md-tonal-button>Tonal Button</md-tonal-button>
+                <md-text-button>Text Button</md-text-button>
+            </div>
+            
+            <div class="button-row">
+                <md-filled-button disabled>Disabled</md-filled-button>
+                <md-icon-button>
+                    <span class="material-symbols-outlined">favorite</span>
+                </md-icon-button>
+                <md-filled-tonal-icon-button>
+                    <span class="material-symbols-outlined">settings</span>
+                </md-filled-tonal-icon-button>
+            </div>
+        </div>
+        
+        <div class="preview-section">
+            <h2>MD3 Farbpalette</h2>
+            <div class="color-preview">
+                <div class="color-swatch" style="background-color: var(--md-sys-color-primary);">Primary</div>
+                <div class="color-swatch" style="background-color: var(--md-sys-color-primary-container);">Primary Container</div>
+                <div class="color-swatch" style="background-color: var(--md-sys-color-secondary);">Secondary</div>
+                <div class="color-swatch" style="background-color: var(--md-sys-color-secondary-container);">Secondary Container</div>
+                <div class="color-swatch" style="background-color: var(--md-sys-color-tertiary);">Tertiary</div>
+                <div class="color-swatch" style="background-color: var(--md-sys-color-tertiary-container);">Tertiary Container</div>
+                <div class="color-swatch" style="background-color: var(--md-sys-color-error);">Error</div>
+                <div class="color-swatch" style="background-color: var(--md-sys-color-surface);">Surface</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Demo user data für die Vorschau
+        window.currentUsername = "{{ current_user.username if current_user.is_authenticated else 'Vorschau-Nutzer' }}";
+        const unread_messages = 2; // Demonstrationswert
+        
+        // Stellt sicher, dass der aktuelle Benutzer als angemeldet erscheint
+        if (!window.currentUsername) {
+            window.currentUsername = "Vorschau-Nutzer";
+        }
+    </script>
+</body>
+</html>

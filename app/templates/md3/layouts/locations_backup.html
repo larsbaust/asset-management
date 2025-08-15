@@ -1,0 +1,1003 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  .md3-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .md3-locations-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding: 24px 0;
+  }
+
+  .md3-locations-title {
+    font-family: var(--md-sys-typescale-display-small-font-family-name);
+    font-size: var(--md-sys-typescale-display-small-font-size);
+    font-weight: var(--md-sys-typescale-display-small-font-weight);
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+  }
+
+  .md3-action-buttons {
+    display: flex;
+    gap: 12px;
+  }
+
+  .md3-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+  }
+
+  .md3-primary-btn {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+  }
+
+  .md3-primary-btn:hover {
+    background: var(--md-sys-color-primary);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .md3-secondary-btn {
+    background: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-on-surface-variant);
+    border: 1px solid var(--md-sys-color-outline);
+  }
+
+  .md3-secondary-btn:hover {
+    background: var(--md-sys-color-surface-variant);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  /* MD3 Action Button Icons */
+  .md3-action-btn-icon {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+  }
+
+  .md3-delete-btn:hover {
+    background: var(--md-sys-color-error-container);
+    border-radius: 50%;
+  }
+
+  .md3-delete-btn:hover .material-symbols-outlined {
+    color: var(--md-sys-color-on-error-container) !important;
+  }
+
+  .md3-checkbox {
+    accent-color: var(--md-sys-color-primary);
+  }
+
+  .md3-asset-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--md-sys-color-surface);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--md-sys-elevation-level5);
+  }
+
+  .md3-asset-table th {
+    background: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-on-surface-variant);
+    padding: 16px;
+    text-align: left;
+    font-weight: 500;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .md3-asset-table td {
+    padding: 8px;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    vertical-align: middle;
+  }
+
+  .md3-asset-table tr:hover {
+    background: var(--md-sys-color-surface-variant);
+  }
+
+  .md3-action-icon {
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--md-sys-color-on-surface-variant);
+    transition: all 0.2s ease;
+  }
+
+  .md3-action-icon:hover {
+    background: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-primary);
+  }
+
+  .md3-status-badge {
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .status-active {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+  }
+
+  .md3-location-image {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .md3-location-placeholder {
+    width: 48px;
+    height: 48px;
+    background: var(--md-sys-color-surface-variant);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 20px;
+  }
+
+  .md3-location-name {
+    font-weight: 500;
+    color: var(--md-sys-color-primary);
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .md3-location-name:hover {
+    text-decoration: underline;
+  }
+
+  .md3-action-menu {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .md3-action-icon {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .md3-action-icon:hover {
+    background: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .md3-asset-count {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .md3-empty-state {
+    text-align: center;
+    padding: 64px 24px;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .md3-empty-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    color: var(--md-sys-color-outline);
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🏢 MD3 Locations Template geladen');
+
+  // Location Details Modal öffnen
+  window.openLocationDetailsModal = function(locationId) {
+    console.log('🔍 Öffne Location Details Modal für ID:', locationId);
+    // TODO: Implementierung folgt
+  };
+
+  // Location bearbeiten Modal öffnen
+  window.openEditLocationModal = function(locationId) {
+    console.log('✏️ Öffne Location bearbeiten Modal für ID:', locationId);
+    // TODO: Implementierung folgt
+  };
+
+  // Location löschen
+  window.deleteLocation = function(locationId, locationName) {
+    if (confirm(`Sind Sie sicher, dass Sie den Standort "${locationName}" löschen möchten?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`)) {
+      // Send DELETE request to backend
+      fetch(`/locations/${locationId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+        }
+      })
+      .then(response => {
+        if (response.ok) {
+          // Reload page to reflect changes
+          window.location.reload();
+        } else {
+          alert(`Fehler beim Löschen des Standorts "${locationName}". Bitte versuchen Sie es erneut.`);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert(`Fehler beim Löschen des Standorts "${locationName}". Bitte versuchen Sie es erneut.`);
+      });
+    }
+  };
+
+  // Neuer Standort Modal öffnen
+  window.openNewLocationModal = function() {
+    console.log('🆕 Öffne Neuer Standort Modal');
+    
+    const modal = document.createElement('div');
+    modal.id = 'new-location-modal';
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center;
+      align-items: flex-start; z-index: 10000; animation: fadeIn 0.3s ease-out;
+      overflow-y: auto; padding: 20px 0;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: var(--md-sys-color-surface);
+      border-radius: 28px;
+      box-shadow: var(--md-sys-elevation-level5);
+      width: 95vw;
+      max-width: 800px;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: slideUp 0.3s ease-out;
+      margin: 20px auto;
+    `;
+    
+    modalContent.innerHTML = `
+      <div style="padding: 32px;">
+        <!-- Modal Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <h2 style="
+            font-family: var(--md-sys-typescale-headline-small-font-family-name);
+            font-size: var(--md-sys-typescale-headline-small-font-size);
+            font-weight: var(--md-sys-typescale-headline-small-font-weight);
+            color: var(--md-sys-color-on-surface);
+            margin: 0;
+          ">Neuer Standort</h2>
+          <button onclick="closeNewLocationModal()" style="
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 20px;
+            color: var(--md-sys-color-on-surface-variant);
+          ">
+            <span class="material-symbols-outlined" style="font-size: 24px;">close</span>
+          </button>
+        </div>
+        
+        <!-- Neuer Standort Form -->
+        <form method="POST" action="/locations/add" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          
+          <!-- Zwei-Spalten Layout -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+            
+            <!-- Linke Spalte: Basis-Daten -->
+            <div>
+              <h3 style="
+                font-family: var(--md-sys-typescale-title-medium-font-family-name);
+                font-size: var(--md-sys-typescale-title-medium-font-size);
+                font-weight: var(--md-sys-typescale-title-medium-font-weight);
+                color: var(--md-sys-color-on-surface);
+                margin: 0 0 16px 0;
+              ">Standort-Daten</h3>
+              
+              <!-- Name -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Name *</label>
+                <input type="text" name="name" required style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+              </div>
+              
+              <!-- Straße -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Straße</label>
+                <input type="text" name="street" style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+              </div>
+              
+              <!-- PLZ und Stadt -->
+              <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px; margin-bottom: 16px;">
+                <div>
+                  <label style="
+                    display: block;
+                    font-family: var(--md-sys-typescale-body-small-font-family-name);
+                    font-size: var(--md-sys-typescale-body-small-font-size);
+                    font-weight: var(--md-sys-typescale-body-small-font-weight);
+                    color: var(--md-sys-color-on-surface-variant);
+                    margin-bottom: 8px;
+                  ">PLZ</label>
+                  <input type="text" name="postal_code" style="
+                    width: 100%;
+                    padding: 16px;
+                    border: 1px solid var(--md-sys-color-outline);
+                    border-radius: 8px;
+                    background: var(--md-sys-color-surface);
+                    color: var(--md-sys-color-on-surface);
+                    font-family: var(--md-sys-typescale-body-large-font-family-name);
+                    font-size: var(--md-sys-typescale-body-large-font-size);
+                    box-sizing: border-box;
+                  ">
+                </div>
+                <div>
+                  <label style="
+                    display: block;
+                    font-family: var(--md-sys-typescale-body-small-font-family-name);
+                    font-size: var(--md-sys-typescale-body-small-font-size);
+                    font-weight: var(--md-sys-typescale-body-small-font-weight);
+                    color: var(--md-sys-color-on-surface-variant);
+                    margin-bottom: 8px;
+                  ">Stadt</label>
+                  <input type="text" name="city" style="
+                    width: 100%;
+                    padding: 16px;
+                    border: 1px solid var(--md-sys-color-outline);
+                    border-radius: 8px;
+                    background: var(--md-sys-color-surface);
+                    color: var(--md-sys-color-on-surface);
+                    font-family: var(--md-sys-typescale-body-large-font-family-name);
+                    font-size: var(--md-sys-typescale-body-large-font-size);
+                    box-sizing: border-box;
+                  ">
+                </div>
+              </div>
+              
+              <!-- Bundesland -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Bundesland</label>
+                <input type="text" name="state" style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+              </div>
+            </div>
+            
+            <!-- Rechte Spalte: Details & Bild -->
+            <div>
+              <h3 style="
+                font-family: var(--md-sys-typescale-title-medium-font-family-name);
+                font-size: var(--md-sys-typescale-title-medium-font-size);
+                font-weight: var(--md-sys-typescale-title-medium-font-weight);
+                color: var(--md-sys-color-on-surface);
+                margin: 0 0 16px 0;
+              ">Details & Bild</h3>
+              
+              <!-- Größe und Sitzplätze -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div>
+                  <label style="
+                    display: block;
+                    font-family: var(--md-sys-typescale-body-small-font-family-name);
+                    font-size: var(--md-sys-typescale-body-small-font-size);
+                    font-weight: var(--md-sys-typescale-body-small-font-weight);
+                    color: var(--md-sys-color-on-surface-variant);
+                    margin-bottom: 8px;
+                  ">Größe (m²)</label>
+                  <input type="number" name="size_sqm" style="
+                    width: 100%;
+                    padding: 16px;
+                    border: 1px solid var(--md-sys-color-outline);
+                    border-radius: 8px;
+                    background: var(--md-sys-color-surface);
+                    color: var(--md-sys-color-on-surface);
+                    font-family: var(--md-sys-typescale-body-large-font-family-name);
+                    font-size: var(--md-sys-typescale-body-large-font-size);
+                    box-sizing: border-box;
+                  ">
+                </div>
+                <div>
+                  <label style="
+                    display: block;
+                    font-family: var(--md-sys-typescale-body-small-font-family-name);
+                    font-size: var(--md-sys-typescale-body-small-font-size);
+                    font-weight: var(--md-sys-typescale-body-small-font-weight);
+                    color: var(--md-sys-color-on-surface-variant);
+                    margin-bottom: 8px;
+                  ">Sitzplätze</label>
+                  <input type="number" name="seats" style="
+                    width: 100%;
+                    padding: 16px;
+                    border: 1px solid var(--md-sys-color-outline);
+                    border-radius: 8px;
+                    background: var(--md-sys-color-surface);
+                    color: var(--md-sys-color-on-surface);
+                    font-family: var(--md-sys-typescale-body-large-font-family-name);
+                    font-size: var(--md-sys-typescale-body-large-font-size);
+                    box-sizing: border-box;
+                  ">
+                </div>
+              </div>
+              
+              <!-- Beschreibung -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Beschreibung</label>
+                <textarea name="description" rows="3" style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                  resize: vertical;
+                "></textarea>
+              </div>
+              
+              <!-- Standort Bild -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Standort-Bild</label>
+                
+                <!-- Bild Upload -->
+                <div style="
+                  border: 2px dashed var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  padding: 24px;
+                  text-align: center;
+                  background: var(--md-sys-color-surface-variant);
+                  cursor: pointer;
+                  transition: all 0.2s ease;
+                " onclick="document.getElementById('location-image-upload').click()">
+                  <span class="material-symbols-outlined" style="
+                    font-size: 48px;
+                    color: var(--md-sys-color-on-surface-variant);
+                    margin-bottom: 8px;
+                    display: block;
+                  ">cloud_upload</span>
+                  <p style="
+                    font-family: var(--md-sys-typescale-body-medium-font-family-name);
+                    font-size: var(--md-sys-typescale-body-medium-font-size);
+                    color: var(--md-sys-color-on-surface-variant);
+                    margin: 0;
+                  ">Bild hochladen</p>
+                  <input type="file" id="location-image-upload" name="image" accept="image/*" style="display: none;" onchange="updateLocationImagePreview(this)">
+                </div>
+                
+                <!-- Bild Vorschau -->
+                <div id="location-image-preview-container" style="display: none; margin-top: 12px;">
+                  <img id="location-image-preview" style="
+                    width: 100%;
+                    max-width: 200px;
+                    height: auto;
+                    border-radius: 8px;
+                    border: 1px solid var(--md-sys-color-outline-variant);
+                    object-fit: cover;
+                  ">
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Modal Actions -->
+          <div style="
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding-top: 24px;
+            border-top: 1px solid var(--md-sys-color-outline-variant);
+          ">
+            <button type="button" onclick="closeNewLocationModal()" style="
+              padding: 12px 24px;
+              border: 1px solid var(--md-sys-color-outline);
+              border-radius: 20px;
+              background: var(--md-sys-color-surface);
+              color: var(--md-sys-color-on-surface);
+              font-family: var(--md-sys-typescale-label-large-font-family-name);
+              font-size: var(--md-sys-typescale-label-large-font-size);
+              font-weight: var(--md-sys-typescale-label-large-font-weight);
+              cursor: pointer;
+              transition: all 0.2s ease;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            ">
+              <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
+              Abbrechen
+            </button>
+            <button type="submit" style="
+              padding: 12px 24px;
+              border: none;
+              border-radius: 20px;
+              background: var(--md-sys-color-primary);
+              color: var(--md-sys-color-on-primary);
+              font-family: var(--md-sys-typescale-label-large-font-family-name);
+              font-size: var(--md-sys-typescale-label-large-font-size);
+              font-weight: var(--md-sys-typescale-label-large-font-weight);
+              cursor: pointer;
+              transition: all 0.2s ease;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            ">
+              <span class="material-symbols-outlined" style="font-size: 18px;">save</span>
+              Standort erstellen
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+    
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // Click outside to close
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) {
+        closeNewLocationModal();
+      }
+    });
+    
+    // ESC key to close
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeNewLocationModal();
+      }
+    });
+  };
+  
+  window.closeNewLocationModal = function() {
+    const modal = document.getElementById('new-location-modal');
+    if (modal) {
+      modal.style.animation = 'fadeOut 0.3s ease-out';
+      setTimeout(() => {
+        modal.remove();
+      }, 300);
+    }
+  };
+  
+  window.updateLocationImagePreview = function(input) {
+    const preview = document.getElementById('location-image-preview');
+    const container = document.getElementById('location-image-preview-container');
+    
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.src = e.target.result;
+        container.style.display = 'block';
+      };
+      reader.readAsDataURL(input.files[0]);
+    } else {
+      container.style.display = 'none';
+    }
+  };
+});
+</script>
+{% endblock %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+
+<div class="md3-container" style="margin-top: 80px;">
+  <div class="md3-assets-header">
+    <h1 class="md3-assets-title">Standorte</h1>
+    <div class="md3-action-buttons">
+      <button onclick="openNewLocationModal()" class="md3-action-btn md3-primary-btn">
+        <span class="material-symbols-outlined">add</span>
+        Neuer Standort
+      </button>
+      <button class="md3-action-btn md3-secondary-btn">
+        <span class="material-symbols-outlined">upload</span>
+        CSV Import
+      </button>
+    </div>
+  </div>
+
+  {% if locations %}
+  <div class="md3-asset-table-container" style="overflow-x: auto; margin-bottom: 24px; width: 100%; padding: 0; max-width: 100vw;">
+    <table class="md3-asset-table" style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+      <colgroup>
+        <col style="width: 30px;">   <!-- Checkbox -->
+        <col style="width: 40px;">   <!-- Bild -->
+        <col style="width: 120px;">  <!-- Name -->
+        <col style="width: 70px;">   <!-- Adresse -->
+        <col style="width: 60px;">   <!-- Typ -->
+        <col style="width: 60px;">   <!-- Größe -->
+        <col style="width: 50px;">   <!-- Plätze -->
+        <col style="width: 50px;">   <!-- Status -->
+        <col style="width: 60px;">   <!-- Assets -->
+        <col style="width: 60px;">   <!-- Kapazität -->
+        <col style="width: 60px;">   <!-- Ausstattung -->
+        <col style="width: 60px;">   <!-- Verfügbar -->
+        <col style="width: 100px;">  <!-- Aktionen -->
+      </colgroup>
+      <thead>
+        <tr>
+          <!-- Checkbox -->
+          <th style="width: 30px; text-align: center; padding: 8px; vertical-align: middle;">
+            <input type="checkbox" id="select-all" class="md3-checkbox">
+          </th>
+          <!-- Bild -->
+          <th style="width: 40px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Bild
+          </th>
+          <!-- Name -->
+          <th style="width: 120px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Name
+          </th>
+          <!-- Adresse -->
+          <th style="width: 70px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Adresse
+          </th>
+          <!-- Typ -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Typ
+          </th>
+          <!-- Größe -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Größe
+          </th>
+          <!-- Plätze -->
+          <th style="width: 50px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Plätze
+          </th>
+          <!-- Status -->
+          <th style="width: 50px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Status
+          </th>
+          <!-- Assets -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Assets
+          </th>
+          <!-- Kapazität -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Kapazität
+          </th>
+          <!-- Ausstattung -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Ausstattung
+          </th>
+          <!-- Verfügbar -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Verfügbar
+          </th>
+          <!-- Aktionen -->
+          <th style="width: 100px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Aktionen
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for location in locations %}
+        <tr class="" style="height: 48px; border-bottom: 1px solid var(--md-sys-color-outline-variant); background: white;">
+          <!-- Checkbox -->
+          <td style="width: 30px; text-align: center; padding: 8px; vertical-align: middle;">
+            <input type="checkbox" 
+              name="selected_locations"
+              class="location-checkbox md3-checkbox" 
+              value="{{ location.id }}">
+          </td>
+          <!-- Bild -->
+          <td style="width: 40px; text-align: center; padding: 8px; vertical-align: middle;">
+            {% if location.image_url %}
+            <img src="{{ location.image_url }}" alt="{{ location.name }}" style="width: 24px; height: 24px; object-fit: cover; border-radius: 2px;">
+            {% else %}
+            <span class="material-symbols-outlined" style="color: var(--md-sys-color-outline); font-size: 16px;">image_not_supported</span>
+            {% endif %}
+          </td>
+          <!-- Name -->
+          <td style="width: 120px; padding: 8px; text-align: left; vertical-align: middle; font-size: 14px; line-height: 20px;">
+            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--md-sys-color-on-surface);" title="{{ location.name }}">
+              {{ location.name[:15] }}{{ '...' if location.name|length > 15 else '' }}
+            </div>
+          </td>
+          <!-- Adresse -->
+          <td style="width: 70px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {{ (location.address or '—')[:8] }}{{ '...' if location.address and location.address|length > 8 else '' }}
+          </td>
+          <!-- Typ -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {{ (location.location_type or 'Büro')[:6] }}{{ '...' if location.location_type and location.location_type|length > 6 else '' }}
+          </td>
+          <!-- Größe -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {{ (location.size or '—')[:6] }}{{ '...' if location.size and location.size|length > 6 else '' }}
+          </td>
+          <!-- Plätze -->
+          <td style="width: 50px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {{ location.seats or '—' }}
+          </td>
+          <!-- Status -->
+          <td style="width: 50px; text-align: center; padding: 8px; vertical-align: middle;">
+            <span style="background: #EADDFF; color: #21005E; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; white-space: nowrap;">
+              {{ 'Aktiv' if location.is_active else 'Inaktiv' }}
+            </span>
+          </td>
+          <!-- Assets -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {{ location.asset_count or '0' }}
+          </td>
+          <!-- Kapazität -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {{ location.capacity or '—' }}
+          </td>
+          <!-- Ausstattung -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {{ (location.equipment or '—')[:8] }}{{ '...' if location.equipment and location.equipment|length > 8 else '' }}
+          </td>
+          <!-- Verfügbar -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle;">
+            <span style="background: #EADDFF; color: #21005E; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; white-space: nowrap;">
+              {{ 'Ja' if location.available else 'Nein' }}
+            </span>
+          </td>
+          <!-- Aktionen -->
+          <td style="width: 100px; text-align: center; padding: 8px; vertical-align: middle; display: flex; justify-content: center; align-items: center; gap: 2px;">
+            <button data-action="view" data-location-id="{{ location.id }}" 
+                    class="md3-icon-button location-action-btn" 
+                    style="width: 24px; height: 24px; border: none; background: transparent; cursor: pointer; border-radius: 12px; display: flex; align-items: center; justify-content: center;" 
+                    title="Details anzeigen">
+              <span class="material-symbols-outlined" style="font-size: 16px; color: var(--md-sys-color-primary);">visibility</span>
+            </button>
+            <button data-action="edit" data-location-id="{{ location.id }}" 
+                    class="md3-icon-button location-action-btn" 
+                    style="width: 24px; height: 24px; border: none; background: transparent; cursor: pointer; border-radius: 12px; display: flex; align-items: center; justify-content: center;" 
+                    title="Bearbeiten">
+              <span class="material-symbols-outlined" style="font-size: 16px; color: var(--md-sys-color-primary);">edit</span>
+            </button>
+            <button data-action="delete" data-location-id="{{ location.id }}" 
+                    class="md3-icon-button location-action-btn" 
+                    style="width: 24px; height: 24px; border: none; background: transparent; cursor: pointer; border-radius: 12px; display: flex; align-items: center; justify-content: center;" 
+                    title="Löschen">
+              <span class="material-symbols-outlined" style="font-size: 16px; color: var(--md-sys-color-error);">delete</span>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="md3-empty-state">
+    <div class="md3-empty-icon">
+      <span class="material-symbols-outlined" style="font-size: inherit;">location_off</span>
+    </div>
+    <h3 style="
+      font-family: var(--md-sys-typescale-headline-small-font-family-name);
+      font-size: var(--md-sys-typescale-headline-small-font-size);
+      color: var(--md-sys-color-on-surface-variant);
+      margin: 0 0 8px 0;
+    ">Keine Standorte gefunden</h3>
+    <p style="
+      font-family: var(--md-sys-typescale-body-medium-font-family-name);
+      font-size: var(--md-sys-typescale-body-medium-font-size);
+      color: var(--md-sys-color-on-surface-variant);
+      margin: 0 0 24px 0;
+    ">Erstellen Sie Ihren ersten Standort, um zu beginnen.</p>
+    <button onclick="openNewLocationModal()" class="md3-action-btn md3-primary-btn">
+      <span class="material-symbols-outlined">add</span>
+      Ersten Standort erstellen
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+<script>
+// JavaScript Event Handlers for Location Actions
+document.addEventListener('DOMContentLoaded', function() {
+  // Location name click handler
+  document.querySelectorAll('.location-name-link').forEach(link => {
+    link.addEventListener('click', function() {
+      const locationId = this.getAttribute('data-location-id');
+      viewLocation(locationId);
+    });
+  });
+
+  // View location button handler
+  document.querySelectorAll('.location-view-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const locationId = this.getAttribute('data-location-id');
+      viewLocation(locationId);
+    });
+  });
+
+  // Edit location button handler
+  document.querySelectorAll('.location-edit-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const locationId = this.getAttribute('data-location-id');
+      editLocation(locationId);
+    });
+  });
+
+  // Delete location button handler
+  document.querySelectorAll('.location-delete-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const locationId = this.getAttribute('data-location-id');
+      deleteLocation(locationId);
+    });
+  });
+});
+
+// Location Action Functions
+function viewLocation(locationId) {
+  // Navigate to location detail page or open modal
+  window.location.href = `/locations/${locationId}`;
+}
+
+function editLocation(locationId) {
+  // Open edit location modal
+  console.log('Edit location:', locationId);
+  // TODO: Implement edit location modal
+}
+
+function deleteLocation(locationId) {
+  // Confirm and delete location
+  if (confirm('Sind Sie sicher, dass Sie diesen Standort löschen möchten?')) {
+    console.log('Delete location:', locationId);
+    // TODO: Implement delete location functionality
+  }
+}
+
+function openNewLocationModal() {
+  // Open new location modal
+  console.log('Open new location modal');
+  // TODO: Implement new location modal
+}
+</script>
+
+<script>
+// Location action button event listeners
+document.addEventListener('DOMContentLoaded', function() {
+  // Add event listeners for location action buttons
+  document.querySelectorAll('.location-action-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const action = this.dataset.action;
+      const locationId = this.dataset.locationId;
+      
+      switch(action) {
+        case 'view':
+          openLocationModal(locationId);
+          break;
+        case 'edit':
+          editLocation(locationId);
+          break;
+        case 'delete':
+          deleteLocation(locationId);
+          break;
+      }
+    });
+  });
+});
+
+// Placeholder JavaScript functions
+function openLocationModal(locationId) {
+  console.log('Opening location modal for ID:', locationId);
+  // TODO: Implement location modal functionality
+}
+
+function editLocation(locationId) {
+  console.log('Editing location with ID:', locationId);
+  // TODO: Implement location edit functionality
+}
+
+function deleteLocation(locationId) {
+  console.log('Deleting location with ID:', locationId);
+  // TODO: Implement location delete functionality
+}
+</script>
+
+{% endblock %}

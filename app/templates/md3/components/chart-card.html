@@ -1,0 +1,46 @@
+{# MD3 Chart Card Component 
+   Speziell für Dashboard-Chart-Karten optimiert
+   
+   Usage: 
+   {% set title = 'Chart Title' %}    # Titel der Chart-Karte
+   {% set canvas_id = 'myChart' %}    # ID für das Canvas-Element (für Chart.js)
+   {% set height = '300px' %}         # Optional: Höhe des Chart (default: 300px)
+   {% set full_width = true %}        # Optional: Volle Breite (default: true)
+   {% set circle_chart = false %}     # Optional: Optimierung für Kreis-Charts (default: false)
+   {% include 'md3/components/chart-card.html' %}
+#}
+
+{# Set default values if not provided #}
+{% set height = height|default('300px') %}
+{% set full_width = full_width|default(true) %}
+{% set circle_chart = circle_chart|default(false) %}
+
+{# Bereite Style-String vor für bessere CSS-Kompatibilität #}
+{% if circle_chart %}
+  {% set container_style = 'max-width: 100%;' %}
+{% else %}
+  {% set container_style = '' %}
+{% endif %}
+
+{% set canvas_style = 'height: ' ~ height ~ '; width: 100%;' %}
+
+{# Bereite Variablen für die Card-Komponente vor #}
+{% set card_content %}
+  <div class="md-chart-container" {% if container_style %}style="{{ container_style }}"{% endif %}>
+    <canvas id="{{ canvas_id }}" {% if canvas_style %}style="{{ canvas_style }}"{% endif %}></canvas>
+  </div>
+{% endset %}
+
+{# Include Card-Komponente mit vorbereiteten Variablen #}
+{% include 'md3/components/card.html' %}
+
+<style>
+  .md-chart-container {
+    position: relative;
+    margin: 0 auto;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+</style>

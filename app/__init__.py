@@ -98,6 +98,17 @@ def create_app():
     # Location Blueprint registrieren
     from .location import location as location_module
     app.register_blueprint(location_module, name='location_module')
+    
+    # MD3 Inventory Blueprint registrieren
+    from .inventory.md3_routes import inventory_bp
+    app.register_blueprint(inventory_bp, url_prefix='/md3/inventory', name='md3_inventory')
+
+    # MD3 Order Blueprint registrieren
+    try:
+        from .order.md3_routes import md3_order_bp
+        app.register_blueprint(md3_order_bp, name='md3_order')
+    except Exception as e:
+        print("Warnung: MD3 Order Blueprint konnte nicht registriert werden:", e)
 
     print("JINJA LOADER SUCHT IN:")
     for loader in app.jinja_loader.loaders:
@@ -117,8 +128,12 @@ def create_app():
     @app.after_request
     def set_csp(response):
         response.headers['Content-Security-Policy'] = (
-            "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://unpkg.com; "
+            "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com "
+            "https://maps.googleapis.com https://cdn.socket.io; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com "
+            "https://unpkg.com https://maps.googleapis.com; "
+            "img-src 'self' data: https://*.googleapis.com https://*.gstatic.com https://*.ggpht.com; "
+            "connect-src 'self' https://*.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:;"
         )
         return response
@@ -147,7 +162,17 @@ def create_app():
     app.register_blueprint(import_assets)
     from app.export_assets import export_assets
     app.register_blueprint(export_assets)
+    
+    # MD3 Inventory Blueprint registrieren (bereits oben registriert mit URL-Prefix)
 
+    # Routes aus routes.py    # Routen registrieren
+    from . import routes
+    routes.init_app(app)
+    
+    # API-Routen registrieren
+    from . import api_routes
+    api_routes.init_api_routes(app)
+    
     with app.app_context():
         db.create_all()
     # Create test user if it doesn't exist

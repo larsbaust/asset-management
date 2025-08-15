@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+
+{% block title %}Standorte importieren{% endblock %}
+
+{% block extra_css %}
+<style>
+/* MD3 Import Page Styling */
+.md3-import-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+  position: relative;
+  z-index: 10;
+}
+
+.md3-import-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.md3-import-title {
+  font-size: 32px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  margin: 0 0 8px 0;
+  font-family: var(--md-sys-typescale-headline-large-font);
+}
+
+.md3-import-subtitle {
+  font-size: 16px;
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0;
+  font-family: var(--md-sys-typescale-body-large-font);
+}
+
+/* MD3 Card Styling */
+.md3-import-card {
+  background: var(--md-sys-color-surface);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--md-sys-elevation-level1);
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-card-title {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  margin: 0 0 16px 0;
+  font-family: var(--md-sys-typescale-title-medium-font);
+}
+
+/* MD3 Form Styling */
+.md3-form-field {
+  margin-bottom: 20px;
+}
+
+.md3-form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  margin-bottom: 8px;
+  font-family: var(--md-sys-typescale-body-medium-font);
+}
+
+.md3-file-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: 8px;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-size: 14px;
+  font-family: var(--md-sys-typescale-body-medium-font);
+  transition: all 0.2s ease;
+}
+
+.md3-file-input:focus {
+  outline: none;
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 2px rgba(103, 80, 164, 0.2);
+}
+
+.md3-select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: 8px;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-size: 14px;
+  font-family: var(--md-sys-typescale-body-medium-font);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.md3-select:focus {
+  outline: none;
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 2px rgba(103, 80, 164, 0.2);
+}
+
+.md3-help-text {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-top: 4px;
+  font-family: var(--md-sys-typescale-body-small-font);
+}
+
+/* MD3 Button Styling */
+.md3-form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.md3-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 20px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  font-family: var(--md-sys-typescale-label-large-font);
+}
+
+.md3-btn-primary {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+.md3-btn-primary:hover {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(103, 80, 164, 0.3);
+}
+
+.md3-btn-secondary {
+  background: var(--md-sys-color-surface-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  border: 1px solid var(--md-sys-color-outline);
+}
+
+.md3-btn-secondary:hover {
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  border-color: var(--md-sys-color-primary);
+  transform: translateY(-1px);
+}
+
+/* MD3 Table Styling */
+.md3-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.md3-table th {
+  background: var(--md-sys-color-surface-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  font-family: var(--md-sys-typescale-body-medium-font);
+}
+
+.md3-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-sys-typescale-body-medium-font);
+}
+
+.md3-table tr:hover {
+  background: var(--md-sys-color-surface-variant);
+}
+
+.md3-required-yes {
+  color: var(--md-sys-color-primary);
+  font-weight: 500;
+}
+
+.md3-required-no {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* MD3 Code Block */
+.md3-code-block {
+  background: var(--md-sys-color-surface-variant);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.md3-code-block pre {
+  margin: 0;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: pre-wrap;
+}
+
+/* Background Map */
+.md3-map-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  opacity: 0.3;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .md3-import-container {
+    padding: 16px;
+  }
+  
+  .md3-import-card {
+    padding: 16px;
+  }
+  
+  .md3-form-actions {
+    flex-direction: column;
+  }
+  
+  .md3-btn {
+    justify-content: center;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+
+<!-- Fullscreen Map Background -->
+<div class="md3-map-background">
+  <div id="map"></div>
+</div>
+
+<div class="md3-import-container">
+  <!-- Header -->
+  <div class="md3-import-header">
+    <h1 class="md3-import-title">Standorte importieren</h1>
+    <p class="md3-import-subtitle">CSV-Datei hochladen und Standorte automatisch importieren</p>
+  </div>
+
+  <!-- Upload Form Card -->
+  <div class="md3-import-card">
+    <h2 class="md3-card-title">
+      <span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 8px;">upload_file</span>
+      CSV-Datei hochladen
+    </h2>
+    
+    <form method="post" enctype="multipart/form-data">
+      
+      <div class="md3-form-field">
+        <label class="md3-form-label">CSV-Datei</label>
+        <input class="md3-file-input" type="file" name="csv_file" accept=".csv" required>
+        <p class="md3-help-text">Bitte wählen Sie eine CSV-Datei aus.</p>
+      </div>
+      
+      <div class="md3-form-field">
+        <label class="md3-form-label">Trennzeichen</label>
+        <select class="md3-select" name="delimiter">
+          <option value=",">Komma (,)</option>
+          <option value=";" selected>Semikolon (;)</option>
+          <option value="\t">Tab</option>
+        </select>
+        <p class="md3-help-text">Wählen Sie das Trennzeichen Ihrer CSV-Datei.</p>
+      </div>
+      
+      <div class="md3-form-actions">
+        <button type="submit" class="md3-btn md3-btn-primary">
+          <span class="material-symbols-outlined">upload</span>
+          Importieren
+        </button>
+        <a href="{{ url_for('md3_locations') }}" class="md3-btn md3-btn-secondary">
+          <span class="material-symbols-outlined">arrow_back</span>
+          Zurück zu Standorte
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <!-- CSV Format Card -->
+  <div class="md3-import-card">
+    <h2 class="md3-card-title">
+      <span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 8px;">description</span>
+      CSV-Format
+    </h2>
+    <p>Die CSV-Datei sollte folgende Spalten enthalten:</p>
+    
+    <table class="md3-table">
+      <thead>
+        <tr>
+          <th>Spaltenname</th>
+          <th>Beschreibung</th>
+          <th>Pflichtfeld</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Name</strong></td>
+          <td>Name des Standorts</td>
+          <td class="md3-required-yes">Ja</td>
+        </tr>
+        <tr>
+          <td><strong>Straße</strong></td>
+          <td>Straße und Hausnummer</td>
+          <td class="md3-required-no">Nein</td>
+        </tr>
+        <tr>
+          <td><strong>PLZ</strong></td>
+          <td>Postleitzahl</td>
+          <td class="md3-required-no">Nein</td>
+        </tr>
+        <tr>
+          <td><strong>Stadt</strong></td>
+          <td>Stadt/Ort</td>
+          <td class="md3-required-no">Nein</td>
+        </tr>
+        <tr>
+          <td><strong>Bundesland</strong></td>
+          <td>Bundesland/Region</td>
+          <td class="md3-required-no">Nein</td>
+        </tr>
+        <tr>
+          <td><strong>Größe</strong></td>
+          <td>Größe in Quadratmeter (numerisch)</td>
+          <td class="md3-required-no">Nein</td>
+        </tr>
+        <tr>
+          <td><strong>Sitzplätze</strong></td>
+          <td>Anzahl der Sitzplätze (numerisch)</td>
+          <td class="md3-required-no">Nein</td>
+        </tr>
+        <tr>
+          <td><strong>Beschreibung</strong></td>
+          <td>Zusätzliche Informationen</td>
+          <td class="md3-required-no">Nein</td>
+        </tr>
+        <tr>
+          <td><strong>Bild</strong></td>
+          <td>URL oder Pfad zum Bild</td>
+          <td class="md3-required-no">Nein</td>
+        </tr>
+        <tr>
+          <td><strong>Latitude</strong></td>
+          <td>Breitengrad (Dezimalzahl)</td>
+          <td class="md3-required-no">Nein</td>
+        </tr>
+        <tr>
+          <td><strong>Longitude</strong></td>
+          <td>Längengrad (Dezimalzahl)</td>
+          <td class="md3-required-no">Nein</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Example Card -->
+  <div class="md3-import-card">
+    <h2 class="md3-card-title">
+      <span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 8px;">code</span>
+      Beispiel CSV-Datei
+    </h2>
+    <p>Beispiel für eine korrekt formatierte CSV-Datei:</p>
+    
+    <div class="md3-code-block">
+      <pre>Name;Straße;PLZ;Stadt;Bundesland;Größe;Sitzplätze;Beschreibung;Latitude;Longitude
+Hauptsitz Berlin;Unter den Linden 1;10117;Berlin;Berlin;500;100;Hauptsitz;52,518611;13,376111
+Filiale Hamburg;Speicherstadt 7;20457;Hamburg;Hamburg;250;50;Filiale Nord;53,544389;9,993333
+Filiale München;Münchnerstr. 15;80331;München;Bayern;180;30;Filiale Süd;48,137154;11,576124</pre>
+    </div>
+  </div>
+
+  <!-- Tips Card -->
+  <div class="md3-import-card">
+    <h2 class="md3-card-title">
+      <span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 8px;">lightbulb</span>
+      Tipps für den Import
+    </h2>
+    <ul style="color: var(--md-sys-color-on-surface); font-family: var(--md-sys-typescale-body-medium-font);">
+      <li>Stellen Sie sicher, dass die erste Zeile die Spaltennamen enthält</li>
+      <li>Verwenden Sie das richtige Trennzeichen (meist Semikolon bei deutschen Excel-Dateien)</li>
+      <li>Latitude und Longitude sollten als Dezimalzahlen angegeben werden (z.B. 52.518611)</li>
+      <li>Leere Felder sind erlaubt, außer für das Pflichtfeld "Name"</li>
+      <li>Bei Fehlern wird eine detaillierte Fehlermeldung angezeigt</li>
+    </ul>
+  </div>
+</div>
+
+<!-- Google Maps JavaScript API -->
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap"></script>
+
+<script>
+// Initialize background map
+function initMap() {
+  const map = new google.maps.Map(document.getElementById('map'), {
+    zoom: 6,
+    center: { lat: 51.1657, lng: 10.4515 }, // Germany center
+    styles: [
+      {
+        "featureType": "all",
+        "elementType": "geometry.fill",
+        "stylers": [{"saturation": -100}, {"lightness": 40}]
+      },
+      {
+        "featureType": "all",
+        "elementType": "labels.text",
+        "stylers": [{"visibility": "off"}]
+      }
+    ],
+    disableDefaultUI: true,
+    gestureHandling: 'none',
+    zoomControl: false,
+    scrollwheel: false,
+    disableDoubleClickZoom: true
+  });
+}
+
+// Handle form submission with loading state
+document.querySelector('form').addEventListener('submit', function(e) {
+  const submitBtn = this.querySelector('button[type="submit"]');
+  const originalText = submitBtn.innerHTML;
+  
+  submitBtn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Importiere...';
+  submitBtn.disabled = true;
+  
+  // Re-enable after 10 seconds as fallback
+  setTimeout(() => {
+    submitBtn.innerHTML = originalText;
+    submitBtn.disabled = false;
+  }, 10000);
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends 'md3/base.html' %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+<div class="md3-page">
+  <style>
+    .wizard-container { max-width: 1280px; margin: 24px auto; padding: 0 16px; }
+    .wizard-steps { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:16px; }
+    .wizard-step { display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background: var(--md-sys-color-surface); box-shadow: var(--md-sys-elevation-1); }
+    .wizard-step .num { width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); font-size:12px; }
+    .wizard-step.active { background: color-mix(in srgb, var(--md-sys-color-primary) 12%, var(--md-sys-color-surface)); }
+    .wizard-card { padding: 16px; border-radius: 16px; }
+    .wizard-actions { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .table-wrap { overflow:auto; border-radius: 12px; }
+    @media (max-width: 900px) { .info-grid { grid-template-columns:1fr; } }
+  </style>
+  <div class="wizard-container">
+    <div class="md3-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div>
+        <div class="md3-title">Bestellassistent – Schritt 4/4</div>
+        <div class="md3-subtitle">Zusammenfassung & Abschluss</div>
+      </div>
+    </div>
+
+    <div class="md3-card wizard-steps" aria-label="Fortschritt" style="margin-bottom:12px;">
+      <div class="wizard-step"><span class="num">1</span><span>Auswahl</span></div>
+      <div class="wizard-step"><span class="num">2</span><span>Artikel</span></div>
+      <div class="wizard-step"><span class="num">3</span><span>Details</span></div>
+      <div class="wizard-step active"><span class="num">4</span><span>Abschluss</span></div>
+    </div>
+
+    <div class="md3-card wizard-card" style="display:grid;gap:12px;">
+      <div class="info-grid">
+        <div>
+          <div class="md3-subtitle">Lieferant</div>
+          <div><strong>{{ supplier.name if supplier else '—' }}</strong></div>
+        </div>
+        <div>
+          <div class="md3-subtitle">Standort</div>
+          <div>
+            {% if location %}{{ location.name }}{% else %}—{% endif %}
+          </div>
+        </div>
+        <div>
+          <div class="md3-subtitle">Tracking</div>
+          <div>{{ data.tracking_carrier or '—' }}{% if data.tracking_number %} · {{ data.tracking_number }}{% endif %}</div>
+        </div>
+        <div>
+          <div class="md3-subtitle">Erwartetes Lieferdatum</div>
+          <div>{{ data.expected_delivery_date or '—' }}</div>
+        </div>
+        <div style="grid-column:1/span 2;">
+          <div class="md3-subtitle">Kommentar</div>
+          <div>{{ data.comment or '—' }}</div>
+        </div>
+      </div>
+
+      <div style="margin-top:4px;">
+        <div class="md3-subtitle" style="margin-bottom:8px;">Artikel</div>
+        <div class="table-wrap">
+        <table class="md3-table" style="width:100%;border-collapse:separate;border-spacing:0 8px;min-width:720px;">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:8px 12px;">Artikel</th>
+              <th style="text-align:left;padding:8px 12px;">Menge</th>
+              <th style="text-align:left;padding:8px 12px;">Seriennummer</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in items %}
+            <tr class="md3-row" style="background:var(--md-sys-color-surface);box-shadow:var(--md-sys-elevation-1);border-radius:12px;">
+              <td style="padding:8px 12px;">
+                <div><strong>{{ it.asset.name if it.asset else 'Unbekannter Artikel' }}</strong></div>
+                <div class="md3-subtitle">{{ it.asset.article_number if it.asset else '-' }}</div>
+              </td>
+              <td style="padding:8px 12px;min-width:80px;">{{ it.quantity }}</td>
+              <td style="padding:8px 12px;min-width:160px;">{{ it.serial_number or '-' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <form method="post" class="md3-card wizard-card" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end;">
+      {{ form.hidden_tag() }}
+      <a href="{{ url_for('md3_order.wizard_step3') }}" class="md3-button md3-button-text">Zurück</a>
+      {{ form.save(class='md3-button md3-button-filled') }}
+      {{ form.send_email(class='md3-button md3-button-tonal') }}
+      {{ form.import_assets(class='md3-button md3-button-tonal') }}
+    </form>
+  </div>
+</div>
+{% endblock %}

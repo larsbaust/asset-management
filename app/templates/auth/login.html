@@ -1,17 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% set last_message = messages[-1] if messages %}
-      {% if last_message %}
-        <div class="notification is-{{ last_message[0] }} flash-message animate__animated animate__fadeInDown" style="max-width: 400px; margin: 2rem auto 1.5rem auto; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.13);">
-          <button class="delete"></button>
-          {{ last_message[1]|safe }}
-        </div>
-      {% endif %}
-    {% endif %}
-  {% endwith %}
 <style>
   body {
     background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
@@ -72,6 +61,8 @@
     padding: 0.75rem;
     box-shadow: 0 2px 6px rgba(56,178,172,0.10);
     transition: background 0.2s;
+    width: 100%;
+    cursor: pointer;
   }
   .login-btn:hover {
     background: linear-gradient(90deg, #38b2ac 0%, #4fd1c5 100%);
@@ -96,7 +87,62 @@
     color: #285e61;
     text-decoration: underline;
   }
+  .notification {
+    background-color: #fff5f5;
+    color: #c53030;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  .notification.is-error {
+    background-color: #fff5f5;
+    color: #c53030;
+  }
+  .notification.is-success {
+    background-color: #f0fff4;
+    color: #2f855a;
+  }
+  .notification .delete {
+    float: right;
+    background-color: rgba(0,0,0,0.1);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: block; /* Geändert von inline-block zu block wegen float */
+    height: 20px;
+    width: 20px;
+    position: relative;
+  }
+  .notification .delete::before,
+  .notification .delete::after {
+    background-color: #fff;
+    content: "";
+    display: block;
+    height: 2px;
+    width: 12px;
+    position: absolute;
+    left: 4px;
+    top: 9px;
+  }
+  .notification .delete::before {
+    transform: rotate(45deg);
+  }
+  .notification .delete::after {
+    transform: rotate(-45deg);
+  }
 </style>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% set last_message = messages[-1] if messages %}
+      {% if last_message %}
+        <div class="notification is-{{ last_message[0] }} flash-message animate__animated animate__fadeInDown" style="max-width: 400px; margin: 2rem auto 1.5rem auto; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.13);">
+          <button class="delete"></button>
+          {{ last_message[1]|safe }}
+        </div>
+      {% endif %}
+    {% endif %}
+  {% endwith %}
 <div class="login-wrapper">
   <div class="login-card" style="width: 410px; min-width: 410px;">
     <div class="login-card-header">

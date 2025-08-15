@@ -1,0 +1,151 @@
+{% extends "md3/base.html" %}
+{% block title %}CSV-Import (Bestellungen){% endblock %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+
+<div class="md3-container">
+  <div class="md3-page-card">
+    <div class="md3-header-section">
+      <div class="md3-page-header">
+        <div class="md3-page-title">
+          <span class="material-symbols-outlined md3-page-icon">upload_file</span>
+          <h1>CSV-Import für Bestellpositionen</h1>
+        </div>
+        <p class="md3-page-subtitle">CSV-Datei hochladen, Spalten zuordnen und importieren</p>
+      </div>
+      <div class="md3-actions-row">
+        <a class="md3-button" href="{{ url_for('md3_order.overview') }}">
+          <span class="material-symbols-outlined">arrow_back</span>
+          Zur Übersicht
+        </a>
+      </div>
+    </div>
+
+    <!-- Upload Card -->
+    <div class="md3-card md3-card-padded">
+      <form id="csv-upload-form" enctype="multipart/form-data" method="POST" action="{{ url_for('md3_order.import_csv') }}">
+        <div class="md3-form-grid">
+          <label class="md3-field">
+            <span class="md3-field-label">CSV-Datei</span>
+            <input class="md3-input" type="file" id="csvFile" name="csvFile" accept=".csv" required>
+          </label>
+        </div>
+        <div class="md3-actions-row">
+          <button type="submit" class="md3-button md3-button-filled">
+            <span class="material-symbols-outlined">cloud_upload</span>
+            Hochladen
+          </button>
+          <a href="{{ url_for('order.order_plan') }}" class="md3-button md3-button-text">Zurück zum Bestellplan</a>
+        </div>
+      </form>
+    </div>
+
+    {% if columns and columns|length %}
+    <!-- Mapping Card -->
+    <div class="md3-card md3-card-padded" style="margin-top:16px;">
+      <h3 class="md3-card-title">Spaltenzuordnung</h3>
+      <form id="csv-mapping-form" method="POST" action="{{ url_for('md3_order.import_csv') }}">
+        <div class="md3-table-wrapper">
+          <table class="md3-table">
+            <thead>
+              <tr>
+                <th>App-Feld</th>
+                <th>CSV-Spalte</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for field in app_fields %}
+              <tr class="md3-row">
+                <td class="md3-cell">{{ field }}</td>
+                <td class="md3-cell">
+                  <div class="md3-select">
+                    <select name="mapping_{{ field }}" class="md3-input">
+                      <option value="">Nicht zuordnen</option>
+                      {% for c in columns %}
+                        <option value="{{ c }}" {% if mapping and mapping[field]==c %}selected{% endif %}>{{ c }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <input type="hidden" name="csv_text" value="{{ csv_text|tojson|safe }}">
+        <div class="md3-actions-row">
+          <button type="submit" class="md3-button md3-button-filled">
+            <span class="material-symbols-outlined">playlist_add_check</span>
+            Importieren
+          </button>
+          <a href="{{ url_for('md3_order.overview') }}" class="md3-button md3-button-text">Abbrechen</a>
+        </div>
+      </form>
+
+      {% if preview_rows %}
+      <div class="md3-subsection" style="margin-top:16px;">
+        <h4 class="md3-subtitle-strong">Vorschau (erste 10 Zeilen)</h4>
+        <div class="md3-table-wrapper">
+          <table class="md3-table">
+            <thead>
+              <tr>
+                {% for c in columns %}<th>{{ c }}</th>{% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in preview_rows %}
+              <tr class="md3-row">
+                {% for cell in row %}
+                <td class="md3-cell">{{ cell }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if import_result %}
+      <div class="md3-banner md3-banner-success" style="margin-top:16px;">
+        <span class="material-symbols-outlined">check_circle</span>
+        <div class="md3-banner-content">{{ import_result }}</div>
+        <div class="md3-banner-actions">
+          <a class="md3-button md3-button-tonal" href="{{ url_for('md3_order.overview') }}">Zur Übersicht</a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+  .md3-page-card { background: var(--md-sys-color-surface); border-radius: 16px; box-shadow: var(--md-sys-elevation-level2); padding: 16px; }
+  .md3-header-section { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom: 8px; gap: 12px; }
+  .md3-page-title { display:flex; align-items:center; gap: 12px; }
+  .md3-page-icon { color: var(--md-sys-color-primary); }
+  .md3-actions-row { display:flex; gap: 8px; align-items:center; }
+  .md3-card { background: var(--md-sys-color-surface); border-radius: 16px; box-shadow: var(--md-sys-elevation-level1); }
+  .md3-card-padded { padding: 16px; }
+  .md3-card-title { margin: 0 0 8px; font: var(--md-sys-typescale-title-medium-font); color: var(--md-sys-color-on-surface); }
+  .md3-form-grid { display:grid; grid-template-columns: 1fr; gap: 12px; }
+  .md3-field-label { display:block; margin-bottom:6px; color: var(--md-sys-color-on-surface-variant); font: var(--md-sys-typescale-label-large-font); }
+  .md3-input { height: 40px; border-radius: 12px; border: 1px solid var(--md-sys-color-outline-variant); padding: 8px 10px; background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); }
+  .md3-button { border: none; border-radius: 20px; padding: 8px 14px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; color: var(--md-sys-color-primary); background: transparent; }
+  .md3-button-filled { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
+  .md3-button-tonal { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+  .md3-button-text { background: transparent; color: var(--md-sys-color-primary); }
+  .md3-table-wrapper { overflow:auto; border-radius: 12px; }
+  .md3-table { width:100%; border-collapse:separate; border-spacing:0 8px; }
+  .md3-row { background: var(--md-sys-color-surface); box-shadow: var(--md-sys-elevation-level1); border-radius: 12px; }
+  .md3-cell { padding: 12px 16px; }
+  .md3-banner { display:flex; align-items:center; gap: 12px; padding: 12px 16px; border-radius: 12px; }
+  .md3-banner-success { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
+</style>
+{% endblock %}

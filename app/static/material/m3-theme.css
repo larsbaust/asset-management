@@ -1,0 +1,165 @@
+/**
+ * Asset Management System - Material Design 3 Theme
+ * Generiert am 20.06.2025
+ */
+
+:root {
+  /* Material Design 3 Primary-Farben */
+  --md-sys-color-primary: #006A6A;
+  --md-sys-color-on-primary: #FFFFFF;
+  --md-sys-color-primary-container: #6FF7F7;
+  --md-sys-color-on-primary-container: #002020;
+
+  /* Material Design 3 Sekundärfarben */
+  --md-sys-color-secondary: #4A6363;
+  --md-sys-color-on-secondary: #FFFFFF;
+  --md-sys-color-secondary-container: #CCE8E7;
+  --md-sys-color-on-secondary-container: #051F1F;
+
+  /* Material Design 3 Tertiärfarben */
+  --md-sys-color-tertiary: #4B607C;
+  --md-sys-color-on-tertiary: #FFFFFF;
+  --md-sys-color-tertiary-container: #D3E4FF;
+  --md-sys-color-on-tertiary-container: #041C36;
+
+  /* Material Design 3 Error-Farben */
+  --md-sys-color-error: #BA1A1A;
+  --md-sys-color-on-error: #FFFFFF;
+  --md-sys-color-error-container: #FFDAD6;
+  --md-sys-color-on-error-container: #410002;
+
+  /* Material Design 3 Neutralfarben */
+  --md-sys-color-background: #FAFDFC;
+  --md-sys-color-on-background: #191C1C;
+  --md-sys-color-surface: #FAFDFC;
+  --md-sys-color-on-surface: #191C1C;
+  --md-sys-color-surface-variant: #DAE5E4;
+  --md-sys-color-on-surface-variant: #3F4948;
+  --md-sys-color-outline: #6F7979;
+  --md-sys-color-outline-variant: #BEC9C8;
+
+  /* Material Design 3 Typografie */
+  --md-sys-typescale-headline-large-font-family-name: 'Roboto';
+  --md-sys-typescale-headline-large-font-weight: 400;
+  --md-sys-typescale-headline-large-font-size: 32px;
+  --md-sys-typescale-headline-large-line-height: 40px;
+  --md-sys-typescale-headline-large-letter-spacing: 0px;
+
+  --md-sys-typescale-headline-medium-font-family-name: 'Roboto';
+  --md-sys-typescale-headline-medium-font-weight: 400;
+  --md-sys-typescale-headline-medium-font-size: 28px;
+  --md-sys-typescale-headline-medium-line-height: 36px;
+  --md-sys-typescale-headline-medium-letter-spacing: 0px;
+
+  --md-sys-typescale-headline-small-font-family-name: 'Roboto';
+  --md-sys-typescale-headline-small-font-weight: 400;
+  --md-sys-typescale-headline-small-font-size: 24px;
+  --md-sys-typescale-headline-small-line-height: 32px;
+  --md-sys-typescale-headline-small-letter-spacing: 0px;
+
+  --md-sys-typescale-body-large-font-family-name: 'Roboto';
+  --md-sys-typescale-body-large-font-weight: 400;
+  --md-sys-typescale-body-large-font-size: 16px;
+  --md-sys-typescale-body-large-line-height: 24px;
+  --md-sys-typescale-body-large-letter-spacing: 0.5px;
+
+  --md-sys-typescale-body-medium-font-family-name: 'Roboto';
+  --md-sys-typescale-body-medium-font-weight: 400;
+  --md-sys-typescale-body-medium-font-size: 14px;
+  --md-sys-typescale-body-medium-line-height: 20px;
+  --md-sys-typescale-body-medium-letter-spacing: 0.25px;
+
+  --md-sys-typescale-body-small-font-family-name: 'Roboto';
+  --md-sys-typescale-body-small-font-weight: 400;
+  --md-sys-typescale-body-small-font-size: 12px;
+  --md-sys-typescale-body-small-line-height: 16px;
+  --md-sys-typescale-body-small-letter-spacing: 0.4px;
+
+  --md-sys-typescale-label-large-font-family-name: 'Roboto';
+  --md-sys-typescale-label-large-font-weight: 500;
+  --md-sys-typescale-label-large-font-size: 14px;
+  --md-sys-typescale-label-large-line-height: 20px;
+  --md-sys-typescale-label-large-letter-spacing: 0.1px;
+
+  --md-sys-typescale-label-medium-font-family-name: 'Roboto';
+  --md-sys-typescale-label-medium-font-weight: 500;
+  --md-sys-typescale-label-medium-font-size: 12px;
+  --md-sys-typescale-label-medium-line-height: 16px;
+  --md-sys-typescale-label-medium-letter-spacing: 0.5px;
+
+  --md-sys-typescale-label-small-font-family-name: 'Roboto';
+  --md-sys-typescale-label-small-font-weight: 500;
+  --md-sys-typescale-label-small-font-size: 11px;
+  --md-sys-typescale-label-small-line-height: 16px;
+  --md-sys-typescale-label-small-letter-spacing: 0.5px;
+}
+
+/* Material Design 3 Komponenten-Klassen (Hilfsfunktionen) */
+
+/* M3 Typografie-Klassen zur einfachen Anwendung */
+.md-headline-large {
+  font-family: var(--md-sys-typescale-headline-large-font-family-name);
+  font-weight: var(--md-sys-typescale-headline-large-font-weight);
+  font-size: var(--md-sys-typescale-headline-large-font-size);
+  line-height: var(--md-sys-typescale-headline-large-line-height);
+  letter-spacing: var(--md-sys-typescale-headline-large-letter-spacing);
+}
+
+.md-headline-medium {
+  font-family: var(--md-sys-typescale-headline-medium-font-family-name);
+  font-weight: var(--md-sys-typescale-headline-medium-font-weight);
+  font-size: var(--md-sys-typescale-headline-medium-font-size);
+  line-height: var(--md-sys-typescale-headline-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-headline-medium-letter-spacing);
+}
+
+.md-headline-small {
+  font-family: var(--md-sys-typescale-headline-small-font-family-name);
+  font-weight: var(--md-sys-typescale-headline-small-font-weight);
+  font-size: var(--md-sys-typescale-headline-small-font-size);
+  line-height: var(--md-sys-typescale-headline-small-line-height);
+  letter-spacing: var(--md-sys-typescale-headline-small-letter-spacing);
+}
+
+.md-body-large {
+  font-family: var(--md-sys-typescale-body-large-font-family-name);
+  font-weight: var(--md-sys-typescale-body-large-font-weight);
+  font-size: var(--md-sys-typescale-body-large-font-size);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  letter-spacing: var(--md-sys-typescale-body-large-letter-spacing);
+}
+
+/* Hilfsfunktionen zur Integration mit Bulma während der Migrationsphase */
+.is-primary {
+  background-color: var(--md-sys-color-primary) !important;
+  color: var(--md-sys-color-on-primary) !important;
+}
+
+.is-primary-container {
+  background-color: var(--md-sys-color-primary-container) !important;
+  color: var(--md-sys-color-on-primary-container) !important;
+}
+
+.is-secondary {
+  background-color: var(--md-sys-color-secondary) !important;
+  color: var(--md-sys-color-on-secondary) !important;
+}
+
+.is-secondary-container {
+  background-color: var(--md-sys-color-secondary-container) !important;
+  color: var(--md-sys-color-on-secondary-container) !important;
+}
+
+.is-error {
+  background-color: var(--md-sys-color-error) !important;
+  color: var(--md-sys-color-on-error) !important;
+}
+
+/* Chart.js-Anpassungen für M3-Farbthema */
+:root {
+  --chart-primary: var(--md-sys-color-primary);
+  --chart-secondary: var(--md-sys-color-secondary);
+  --chart-tertiary: var(--md-sys-color-tertiary);
+  --chart-error: var(--md-sys-color-error);
+  --chart-background: var(--md-sys-color-surface);
+}

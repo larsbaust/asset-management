@@ -1,0 +1,552 @@
+{% extends "md3/base.html" %}
+
+{% block title %}Inventurberichte{% endblock %}
+
+{% block content %}
+<!-- MD3 Navigation Bar -->
+{% include 'md3-nav.html' %}
+
+<div class="md3-container">
+    <div class="md3-page-card">
+    <!-- Header Section -->
+    <div class="md3-header-section">
+        <div class="md3-page-header">
+            <div class="md3-page-title">
+                <span class="material-symbols-outlined md3-page-icon">assessment</span>
+                <h1>Inventurberichte</h1>
+            </div>
+            <p class="md3-page-subtitle">Übersicht und Analyse abgeschlossener Inventuren</p>
+        </div>
+    </div>
+
+    <!-- Reports Grid -->
+    {% set sessions_list = completed_sessions if completed_sessions is defined and completed_sessions else (sessions if sessions is defined else []) %}
+    <div class="md3-reports-grid">
+        {% if sessions_list %}
+            {% for session in sessions_list %}
+            <div class="md3-report-card" data-session-id="{{ session.id }}"
+                 data-found="{{ session_summaries[session.id].found if session_summaries and session.id in session_summaries else 0 }}"
+                 data-missing="{{ session_summaries[session.id].missing if session_summaries and session.id in session_summaries else 0 }}"
+                 data-damaged="{{ session_summaries[session.id].damaged if session_summaries and session.id in session_summaries else 0 }}">
+                <div class="md3-card-header">
+                    <div class="md3-card-title-section">
+                        <h3 class="md3-card-title">{{ session.name }}</h3>
+                        <div class="md3-card-subtitle">
+                            <span class="md3-chip md3-chip-completed">
+                                <span class="material-symbols-outlined">check_circle</span>
+                                Abgeschlossen
+                            </span>
+                        </div>
+                    </div>
+                    <div class="md3-card-actions">
+                        <button class="md3-icon-button" onclick="downloadReport('{{ session.id }}')" title="Bericht herunterladen">
+                            <span class="material-symbols-outlined">download</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="md3-card-content">
+                    <!-- Two-column content: info left, chart+stats right -->
+                    <div class="md3-card-body-grid">
+                        <div class="md3-left-pane">
+                            <!-- Variant A: 2×2 Info Tiles -->
+                            <div class="md3-tiles-grid">
+                                <div class="md3-tile">
+                                    <div class="md3-tile-head">
+                                        <span class="material-symbols-outlined">location_on</span>
+                                        <span class="md3-tile-label">Standort</span>
+                                    </div>
+                                    <div class="md3-tile-value">{{ session.location_obj.name if session.location_obj else 'Alle Standorte' }}</div>
+                                </div>
+
+                                <div class="md3-tile">
+                                    <div class="md3-tile-head">
+                                        <span class="material-symbols-outlined">calendar_today</span>
+                                        <span class="md3-tile-label">Zeitraum</span>
+                                    </div>
+                                    <div class="md3-tile-value">{{ session.start_date.strftime('%d.%m.%Y') }} - {{ session.end_date.strftime('%d.%m.%Y') }}</div>
+                                </div>
+
+                                <div class="md3-tile">
+                                    <div class="md3-tile-head">
+                                        <span class="material-symbols-outlined">schedule</span>
+                                        <span class="md3-tile-label">Abgeschlossen am</span>
+                                    </div>
+                                    <div class="md3-tile-value">{{ session.completed_at.strftime('%d.%m.%Y %H:%M') if session.completed_at else '-' }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="md3-mini-chart-stack">
+                            <div class="md3-mini-chart">
+                                <div class="md3-mini-center"></div>
+                                <canvas id="chart-session-{{ session.id }}"></canvas>
+                            </div>
+                            {% if session_summaries and session.id in session_summaries %}
+                            {% set summary = session_summaries[session.id] %}
+                            <div class="md3-mini-stats">
+                                <div class="md3-mini-stat">
+                                    <span class="md3-mini-dot md3-dot-primary"></span>
+                                    <span class="md3-mini-label">Gefunden</span>
+                                    <span class="md3-mini-value">{{ summary.found }}</span>
+                                </div>
+                                <div class="md3-mini-stat">
+                                    <span class="md3-mini-dot md3-dot-error"></span>
+                                    <span class="md3-mini-label">Fehlend</span>
+                                    <span class="md3-mini-value">{{ summary.missing }}</span>
+                                </div>
+                                <div class="md3-mini-stat">
+                                    <span class="md3-mini-dot md3-dot-tertiary"></span>
+                                    <span class="md3-mini-label">Beschädigt</span>
+                                    <span class="md3-mini-value">{{ summary.damaged }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="md3-card-footer">
+                    <a class="md3-button md3-button-text" href="{{ url_for('md3_inventory.md3_report_detail', id=session.id) }}">
+                        <span class="material-symbols-outlined">visibility</span>
+                        Details anzeigen
+                    </a>
+                    <a class="md3-button md3-button-filled" href="{{ url_for('md3_inventory.md3_report_detail', id=session.id) }}">
+                        <span class="material-symbols-outlined">analytics</span>
+                        Bericht öffnen
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <!-- Empty State -->
+            <div class="md3-empty-state">
+                <div class="md3-empty-icon">
+                    <span class="material-symbols-outlined">assessment</span>
+                </div>
+                <h3 class="md3-empty-title">Keine Berichte verfügbar</h3>
+                <p class="md3-empty-subtitle">Es wurden noch keine Inventuren abgeschlossen. Schließen Sie eine Inventur ab, um hier Berichte zu sehen.</p>
+                <a class="md3-button md3-button-filled" href="{{ url_for('md3_inventory.planning') }}">
+                    <span class="material-symbols-outlined">add</span>
+                    Neue Inventur planen
+                </a>
+            </div>
+        {% endif %}
+    </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Resolve MD3 token colors so Chart.js doesn't render black
+function mdColor(varName, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    return v || fallback;
+}
+
+function downloadReport(sessionId) {
+    // TODO: Implement report download functionality
+    console.log('Download report for session:', sessionId);
+    // This could generate a PDF or Excel export
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const reportCards = document.querySelectorAll('.md3-report-card');
+
+    // Initialize mini charts
+    reportCards.forEach(card => {
+        const found = Number(card.dataset.found || 0);
+        const missing = Number(card.dataset.missing || 0);
+        const damaged = Number(card.dataset.damaged || 0);
+        const total = found + missing + damaged;
+        const canvas = card.querySelector('canvas[id^="chart-session-"]');
+        if (!canvas || total === 0) return;
+        const centerEl = card.querySelector('.md3-mini-center');
+        if (centerEl) centerEl.textContent = total;
+        const ctx = canvas.getContext('2d');
+        const C_PRIMARY = mdColor('--md-sys-color-primary', '#6750A4');
+        const C_ERROR = mdColor('--md-sys-color-error', '#B3261E');
+        const C_TERTIARY = mdColor('--md-sys-color-tertiary', '#7D5260');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Gefunden', 'Fehlend', 'Beschädigt'],
+                datasets: [{
+                    data: [found, missing, damaged],
+                    backgroundColor: [
+                        C_PRIMARY,
+                        C_ERROR,
+                        C_TERTIARY
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                cutout: '76%'
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+
+{% block head %}
+<style>
+/* MD3 Reports Overview Styles */
+.md3-container {
+    margin-top: var(--md-sys-spacing-6);
+}
+
+.md3-page-card {
+    background: var(--md-sys-color-surface);
+    border-radius: var(--md-sys-shape-corner-large);
+    box-shadow: var(--md-sys-elevation-1);
+    padding: var(--md-sys-spacing-6);
+}
+
+.md3-reports-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+    gap: 96px;
+    margin-top: var(--md-sys-spacing-4);
+    align-items: start;
+    justify-content: center;
+}
+
+.md3-report-card {
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: var(--md-sys-shape-corner-large);
+    box-shadow: var(--md-sys-elevation-2);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    transition: all 0.2s var(--md-sys-motion-easing-standard);
+    overflow: hidden;
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+}
+
+.md3-card-header {
+    display: block; /* allow centering */
+    position: relative; /* for actions absolute positioning */
+    text-align: center;
+    padding: var(--md-sys-spacing-5) var(--md-sys-spacing-6);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-card-actions { display: flex; align-items: center; gap: var(--md-sys-spacing-1); position: absolute; top: var(--md-sys-spacing-4); right: var(--md-sys-spacing-4); }
+.md3-icon-button { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; border-radius: 20px; cursor: pointer; }
+.md3-icon-button:hover { background: var(--md-sys-color-surface-variant); }
+.md3-icon-button .material-symbols-outlined { font-size: 22px; color: var(--md-sys-color-on-surface); }
+
+.md3-card-title-section { display: flex; flex-direction: column; gap: var(--md-sys-spacing-1); align-items: center; }
+.md3-card-title {
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-headline-small-font);
+    font-weight: 700; /* kräftiger */
+    margin: 0;
+}
+
+.md3-card-subtitle { margin-top: var(--md-sys-spacing-2); }
+
+.md3-chip-completed {
+    background: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+    padding: var(--md-sys-spacing-1) var(--md-sys-spacing-2);
+    border-radius: var(--md-sys-shape-corner-small);
+    font: var(--md-sys-typescale-label-small-font);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--md-sys-spacing-1);
+}
+
+.md3-chip-completed .material-symbols-outlined {
+    font-size: 16px;
+}
+
+.md3-card-content {
+    padding: var(--md-sys-spacing-5) var(--md-sys-spacing-6);
+    flex: 1 1 auto; /* push footer to bottom */
+}
+
+.md3-card-body-grid {
+    display: grid;
+    grid-template-columns: 1fr 180px;
+    column-gap: var(--md-sys-spacing-8); /* noch mehr Abstand links/rechts */
+    row-gap: var(--md-sys-spacing-6);
+    align-items: start;
+}
+
+.md3-mini-chart { width: 72px; height: 72px; position: relative; }
+.md3-mini-chart canvas { width: 100% !important; height: 100% !important; display: block; }
+.md3-mini-center { position: absolute; inset: 0; display: grid; place-items: center; font: var(--md-sys-typescale-title-small-font); color: var(--md-sys-color-on-surface); }
+
+.md3-mini-chart-stack { display: grid; grid-template-columns: 72px 1fr; column-gap: var(--md-sys-spacing-4); align-items: center; }
+.md3-mini-stats { display: grid; grid-auto-rows: minmax(20px, auto); gap: var(--md-sys-spacing-3); }
+
+.md3-mini-stat {
+    display: grid;
+    grid-template-columns: 10px 1fr auto;
+    gap: var(--md-sys-spacing-2);
+    align-items: center;
+}
+
+.md3-mini-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    display: inline-block;
+}
+
+.md3-dot-primary { background: var(--md-sys-color-primary); }
+.md3-dot-error { background: var(--md-sys-color-error); }
+.md3-dot-tertiary { background: var(--md-sys-color-tertiary); }
+
+.md3-mini-label {
+    color: var(--md-sys-color-on-surface-variant);
+    font: var(--md-sys-typescale-body-small-font);
+}
+
+.md3-mini-value {
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-label-large-font);
+    justify-self: end;
+}
+
+.md3-info-grid { display: grid; grid-template-columns: 1fr; row-gap: var(--md-sys-spacing-3); margin-bottom: var(--md-sys-spacing-4); }
+
+.md3-info-item { display: grid; grid-template-columns: 20px 1fr; column-gap: var(--md-sys-spacing-3); align-items: start; }
+.md3-info-item + .md3-info-item { border-top: 1px solid var(--md-sys-color-outline-variant); padding-top: var(--md-sys-spacing-2); }
+.md3-info-item .material-symbols-outlined {
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 18px;
+    line-height: 1;
+}
+.md3-info-content { display: grid; row-gap: 2px; }
+
+.md3-info-label {
+    color: var(--md-sys-color-on-surface-variant);
+    font: var(--md-sys-typescale-label-medium-font);
+    letter-spacing: 0.3px;
+}
+
+.md3-info-value {
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-body-large-font);
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    line-height: 1.35;
+}
+
+/* New: compact chips row and definition layout */
+.md3-left-pane { display: grid; row-gap: var(--md-sys-spacing-4); }
+.md3-tiles-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--md-sys-spacing-6); /* noch mehr Abstand zwischen Tiles */
+}
+.md3-tile {
+    background: var(--md-sys-color-surface-container-high);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: var(--md-sys-shape-corner-medium);
+    padding: var(--md-sys-spacing-5);
+    min-height: 96px;
+    display: grid;
+    align-content: start;
+    row-gap: var(--md-sys-spacing-2);
+}
+.md3-tile-head { display: inline-flex; align-items: center; gap: 8px; }
+.md3-tile-head .material-symbols-outlined { font-size: 18px; color: var(--md-sys-color-on-surface-variant); }
+.md3-tile-label { color: var(--md-sys-color-on-surface-variant); font: var(--md-sys-typescale-label-large-font); letter-spacing: .2px; }
+.md3-tile-value {
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-title-small-font);
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.md3-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--md-sys-spacing-2);
+}
+.md3-chip.md3-chip-tonal {
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+    border-radius: 16px;
+    padding: 6px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font: var(--md-sys-typescale-label-large-font);
+}
+.md3-chip-sm { padding: 4px 8px; font: var(--md-sys-typescale-label-medium-font); }
+.md3-chip .material-symbols-outlined { font-size: 18px; }
+
+.md3-section-divider {
+    height: 1px;
+    background: var(--md-sys-color-outline-variant);
+    opacity: 0.65;
+}
+
+.md3-details-grid {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    row-gap: 8px;
+    column-gap: var(--md-sys-spacing-4);
+}
+.md3-detail-row { display: contents; }
+.md3-detail-label {
+    color: var(--md-sys-color-on-surface-variant);
+    font: var(--md-sys-typescale-label-large-font);
+}
+.md3-detail-value {
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-body-large-font);
+    font-weight: 500;
+}
+
+.md3-stats-section {
+    margin-top: var(--md-sys-spacing-4);
+    padding-top: var(--md-sys-spacing-4);
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--md-sys-spacing-2);
+}
+
+.md3-stat-card {
+    display: flex;
+    align-items: center;
+    gap: var(--md-sys-spacing-2);
+    padding: var(--md-sys-spacing-2);
+    background: var(--md-sys-color-surface-container-highest);
+    border-radius: var(--md-sys-shape-corner-medium);
+}
+
+.md3-stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--md-sys-shape-corner-small);
+    background: var(--md-sys-color-primary-container);
+}
+
+.md3-stat-icon .material-symbols-outlined {
+    color: var(--md-sys-color-on-primary-container);
+    font-size: 18px;
+}
+
+.md3-stat-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.md3-stat-value {
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-title-medium-font);
+    font-weight: 600;
+}
+
+.md3-stat-label {
+    color: var(--md-sys-color-on-surface-variant);
+    font: var(--md-sys-typescale-body-small-font);
+}
+
+.md3-card-footer {
+    display: flex;
+    justify-content: space-between; /* secondary left, primary right */
+    align-items: center;
+    gap: var(--md-sys-spacing-3);
+    padding: var(--md-sys-spacing-4) var(--md-sys-spacing-6);
+    background: var(--md-sys-color-surface-container-highest);
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+    margin-top: auto; /* ensure footer stays at bottom */
+}
+
+/* Footer button refinements */
+.md3-card-footer .md3-button-text { padding: 8px 12px; }
+.md3-card-footer .md3-button-filled { padding: 10px 20px; }
+
+.md3-empty-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--md-sys-spacing-8);
+    text-align: center;
+}
+
+.md3-empty-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--md-sys-shape-corner-large);
+    background: var(--md-sys-color-surface-container-highest);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--md-sys-spacing-4);
+}
+
+.md3-empty-icon .material-symbols-outlined {
+    font-size: 32px;
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-empty-title {
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-headline-small-font);
+    margin: 0 0 var(--md-sys-spacing-2) 0;
+}
+
+.md3-empty-subtitle {
+    color: var(--md-sys-color-on-surface-variant);
+    font: var(--md-sys-typescale-body-medium-font);
+    margin: 0 0 var(--md-sys-spacing-4) 0;
+    max-width: 400px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .md3-page-card { padding: var(--md-sys-spacing-4); }
+    .md3-reports-grid {
+        grid-template-columns: 1fr;
+    }
+    .md3-info-grid { grid-template-columns: 1fr; }
+    .md3-tiles-grid { grid-template-columns: 1fr; }
+    .md3-details-grid { grid-template-columns: 1fr; }
+    .md3-card-body-grid { grid-template-columns: 1fr; row-gap: var(--md-sys-spacing-3); }
+    .md3-mini-chart-stack { grid-template-columns: 1fr; justify-items: center; }
+    .md3-mini-chart {
+        width: 72px;
+        height: 72px;
+        margin: 0 auto;
+    }
+    .md3-card-footer {
+        flex-direction: column;
+        gap: var(--md-sys-spacing-2);
+    }
+    .md3-card-footer .md3-button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Enforce clear multi-column grid on larger screens */
+@media (min-width: 1000px) {
+    .md3-reports-grid { grid-template-columns: repeat(2, minmax(520px, 1fr)); column-gap: 96px; }
+}
+@media (min-width: 1440px) {
+    .md3-reports-grid { grid-template-columns: repeat(2, minmax(520px, 1fr)); column-gap: 96px; }
+}
+</style>
+{% endblock %}

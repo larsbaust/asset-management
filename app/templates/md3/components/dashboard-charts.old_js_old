@@ -1,0 +1,286 @@
+// Dashboard Charts - Initialisierung für Chart.js
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM geladen, initialisiere Dashboard Charts...');
+  initializeDashboardCharts();
+});
+
+// Hauptfunktion zur Chart-Initialisierung
+function initializeDashboardCharts() {
+  console.log('Starte Dashboard Chart Initialisierung...');
+  
+  // Material Design 3 Farben für Charts
+  const md3Colors = {
+    primary: 'var(--md-sys-color-primary)',
+    onPrimary: 'var(--md-sys-color-on-primary)',
+    primaryContainer: 'var(--md-sys-color-primary-container)',
+    onPrimaryContainer: 'var(--md-sys-color-on-primary-container)',
+    secondary: 'var(--md-sys-color-secondary)',
+    tertiary: 'var(--md-sys-color-tertiary)',
+    outline: 'var(--md-sys-color-outline)',
+    surface: 'var(--md-sys-color-surface)'
+  };
+  
+  // Material Design 3 Typografie für Charts
+  const md3Typography = {
+    titleMedium: {
+      family: "'Roboto', sans-serif",
+      size: 16,
+      weight: 500
+    },
+    labelMedium: {
+      family: "'Roboto', sans-serif",
+      size: 14,
+      weight: 400
+    },
+    bodySmall: {
+      family: "'Roboto', sans-serif",
+      size: 12,
+      weight: 400
+    }
+  };
+  
+  // 1. Kostenverteilungs-Chart initialisieren
+  initCostDistributionChart();
+  
+  // 2. Wertentwicklung-Chart initialisieren
+  initValueDevelopmentChart();
+  
+  // Kostenverteilungs-Chart laden
+  function initCostDistributionChart() {
+    console.log('Initialisiere Kostenverteilung Chart...');
+    const costCanvas = document.getElementById('costChart');
+    if (!costCanvas) {
+      console.error('FEHLER: Kostenverteilung Canvas #costChart nicht gefunden!');
+      return;
+    }
+    
+    // Daten vom Backend laden
+    fetch('/api/dashboard/cost-distribution')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Netzwerkantwort nicht OK: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Prüfen ob die API leere Daten zurückgibt
+        if (!data?.cost_distribution?.labels?.length) {
+          throw new Error('Keine Daten vorhanden');
+        }
+        return data;
+      })
+      .catch(error => {
+        console.warn('Fallback zu Test-Daten:', error);
+        // Fallback zu lokalen Testdaten
+        try {
+          const fallbackElement = document.getElementById('cost-chart-fallback-data');
+          if (fallbackElement) {
+            return JSON.parse(fallbackElement.textContent);
+          } else {
+            throw new Error('Fallback-Element nicht gefunden');
+          }
+        } catch (e) {
+          console.error('Fehler beim Laden der Fallback-Daten:', e);
+          return {
+            cost_distribution: {
+              labels: ['Anschaffung', 'Wartung', 'Lizenzen', 'Reparatur', 'Betriebskosten', 'Schulung'],
+              data: [45, 25, 15, 10, 8, 12]
+            }
+          };
+        }
+      })
+      .then(data => {
+        if (!data) return;
+        
+        // Palette aus Material Design 3
+        const palette = [
+          md3Colors.primary,
+          md3Colors.secondary,
+          md3Colors.tertiary,
+          'var(--md-ref-palette-neutral60)',
+          'var(--md-ref-palette-neutral50)',
+          'var(--md-ref-palette-tertiary70)'
+        ];
+        
+        // Chart-Konfiguration
+        new Chart(costCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: data.cost_distribution.labels,
+            datasets: [{
+              data: data.cost_distribution.data,
+              backgroundColor: palette,
+              borderWidth: 0,
+              borderRadius: 4,
+              spacing: 2,
+              hoverOffset: 12
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  padding: 16,
+                  usePointStyle: true,
+                  pointStyle: 'rectRounded',
+                  font: md3Typography.bodySmall
+                }
+              },
+              tooltip: {
+                padding: 12,
+                bodyFont: md3Typography.bodySmall,
+                titleFont: md3Typography.labelMedium,
+                cornerRadius: 8
+              }
+            }
+          }
+        });
+        
+        console.log('Kostenverteilungs-Chart erfolgreich geladen');
+      });
+  }
+  
+  // Wertentwicklung-Chart laden
+  function initValueDevelopmentChart() {
+    console.log('Initialisiere Wertentwicklung Chart...');
+    
+    // Überprüfe, ob das Canvas existiert
+    const valueCanvas = document.getElementById('valueChart');
+    if (!valueCanvas) {
+      console.error('FEHLER: Wertentwicklung Canvas #valueChart nicht gefunden!');
+      // Versuche, alle Canvas-Elemente zu finden, um zu debuggen
+      const allCanvasElements = document.querySelectorAll('canvas');
+      console.log(`Gefundene Canvas-Elemente: ${allCanvasElements.length}`);
+      allCanvasElements.forEach((canvas, index) => {
+        console.log(`Canvas ${index}: id=${canvas.id}, width=${canvas.width}, height=${canvas.height}`);
+      });
+      return;
+    }
+    
+    console.log('Wertentwicklung Canvas gefunden:', valueCanvas);
+    
+    // Element bereit machen
+    const container = document.getElementById('value-chart-container');
+    if (container) {
+      container.style.minHeight = '300px';
+    }
+    
+    // Versuche zuerst, Daten vom Backend zu laden
+    console.log('Lade Wertentwicklungs-Daten vom Backend...');
+    fetch('/api/dashboard/value-development')
+      .then(response => {
+        console.log('API Response Status:', response.status);
+        if (!response.ok) {
+          throw new Error(`Netzwerkantwort war nicht ok: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Value development data loaded:', data);
+        if (!data.value_development) {
+          throw new Error('API-Antwort enthält keine value_development Daten');
+        }
+        createValueChart(valueCanvas, data.value_development);
+      })
+      .catch(error => {
+        console.warn('API-Fehler, verwende Fallback-Daten für Wertentwicklung:', error);
+        // Fallback: Daten aus dem versteckten JSON-Element laden
+        const fallbackElement = document.getElementById('value-chart-fallback-data');
+        if (!fallbackElement) {
+          console.error('Fallback-Element #value-chart-fallback-data nicht gefunden!');
+          return;
+        }
+        
+        try {
+          console.log('Parse Fallback-Daten:', fallbackElement.textContent.substring(0, 50) + '...');
+          const fallbackData = JSON.parse(fallbackElement.textContent);
+          if (!fallbackData.value_development) {
+            console.error('Fallback-Daten enthalten keine value_development Daten!');
+            return;
+          }
+          createValueChart(valueCanvas, fallbackData.value_development);
+        } catch (e) {
+          console.error('Fehler beim Parsen der Fallback-Daten:', e);
+        }
+      });
+  }
+  
+  // Chart erstellen Funktion
+  function createValueChart(canvas, chartData) {
+    if (!canvas || !chartData) {
+      console.error('Canvas oder Daten fehlen für Wertentwicklung-Chart!');
+      return;
+    }
+    
+    console.log('Erstelle Wertentwicklung-Chart mit Daten:', chartData);
+    
+    new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: chartData.labels,
+        datasets: [{
+          label: 'Gesamtwert',
+          data: chartData.data,
+          borderColor: md3Colors.primary,
+          borderWidth: 2,
+          backgroundColor: md3Colors.primaryContainer,
+          pointBackgroundColor: md3Colors.primary,
+          pointBorderColor: md3Colors.onPrimary,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.3,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              font: md3Typography.bodySmall,
+              padding: 16,
+              usePointStyle: true,
+              pointStyle: 'rectRounded'
+            }
+          },
+          tooltip: {
+            titleFont: md3Typography.labelMedium,
+            bodyFont: md3Typography.bodySmall,
+            padding: 12,
+            cornerRadius: 8
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: md3Colors.outline + '40', // 25% Transparenz
+              tickLength: 0
+            },
+            ticks: {
+              font: md3Typography.bodySmall,
+              padding: 8
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              font: md3Typography.bodySmall,
+              padding: 8
+            }
+          }
+        }
+      }
+    });
+    
+    console.log('Wertentwicklung-Chart erfolgreich erstellt!');
+  }
+}

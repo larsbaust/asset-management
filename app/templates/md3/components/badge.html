@@ -1,0 +1,115 @@
+{# MD3 Badge Component 
+   Usage: 
+   {% set text = 'Badge Text' %}       # Text to display in badge
+   {% set type = 'error' %}           # Optional: primary, secondary, error, neutral, success, warning (default: primary)
+   {% set size = 'large' %}           # Optional: small, medium, large (default: medium)
+   {% set rounded = true %}           # Optional: true/false (default: true)
+   {% set outlined = false %}          # Optional: true/false (default: false)
+   {% include 'md3/components/badge.html' %}
+#}
+
+{# Set default values if not provided #}
+{% set type = type|default('primary') %}
+{% set size = size|default('medium') %}
+{% set rounded = rounded|default(true) %}
+{% set outlined = outlined|default(false) %}
+
+{# Map type to MD3 token colors #}
+{% set color_map = {
+  'primary': {
+    'bg': 'var(--md-sys-color-primary-container)',
+    'text': 'var(--md-sys-color-on-primary-container)'
+  },
+  'secondary': {
+    'bg': 'var(--md-sys-color-secondary-container)',
+    'text': 'var(--md-sys-color-on-secondary-container)'
+  },
+  'error': {
+    'bg': 'var(--md-sys-color-error-container)',
+    'text': 'var(--md-sys-color-on-error-container)'
+  },
+  'neutral': {
+    'bg': 'var(--md-sys-color-surface-variant)',
+    'text': 'var(--md-sys-color-on-surface-variant)'
+  },
+  'success': {
+    'bg': 'var(--md-sys-color-tertiary-container)',
+    'text': 'var(--md-sys-color-on-tertiary-container)'
+  },
+  'warning': {
+    'bg': '#FDC626',
+    'text': 'var(--md-sys-color-surface)'
+  }
+} %}
+
+{# Map size to MD3 badge sizes #}
+{% set size_map = {
+  'small': {
+    'padding': 'var(--md-sys-spacing-0) var(--md-sys-spacing-1)',
+    'font': 'var(--md-sys-typescale-label-small-font-family-name)',
+    'font-size': 'var(--md-sys-typescale-label-small-font-size)',
+    'font-weight': 'var(--md-sys-typescale-label-small-font-weight)',
+    'letter-spacing': 'var(--md-sys-typescale-label-small-letter-spacing)',
+    'line-height': 'var(--md-sys-typescale-label-small-line-height)',
+    'border-radius': 'var(--md-sys-shape-corner-small)'
+  },
+  'medium': {
+    'padding': 'var(--md-sys-spacing-05) var(--md-sys-spacing-2)',
+    'font': 'var(--md-sys-typescale-label-medium-font-family-name)',
+    'font-size': 'var(--md-sys-typescale-label-medium-font-size)',
+    'font-weight': 'var(--md-sys-typescale-label-medium-font-weight)',
+    'letter-spacing': 'var(--md-sys-typescale-label-medium-letter-spacing)',
+    'line-height': 'var(--md-sys-typescale-label-medium-line-height)',
+    'border-radius': 'var(--md-sys-shape-corner-medium)'
+  },
+  'large': {
+    'padding': 'var(--md-sys-spacing-1) var(--md-sys-spacing-3)',
+    'font': 'var(--md-sys-typescale-label-large-font-family-name)',
+    'font-size': 'var(--md-sys-typescale-label-large-font-size)',
+    'font-weight': 'var(--md-sys-typescale-label-large-font-weight)',
+    'letter-spacing': 'var(--md-sys-typescale-label-large-letter-spacing)',
+    'line-height': 'var(--md-sys-typescale-label-large-line-height)',
+    'border-radius': 'var(--md-sys-shape-corner-large)'
+  }
+} %}
+
+{# Vorberechnung des vollständigen Style-Strings #}
+{% set badge_styles = 'display: inline-block; ' %}
+
+{% if outlined %}
+  {% set badge_styles = badge_styles ~ 'background-color: transparent; ' %}
+  {% set badge_styles = badge_styles ~ 'color: ' ~ color_map[type].bg ~ '; ' %}
+{% else %}
+  {% set badge_styles = badge_styles ~ 'background-color: ' ~ color_map[type].bg ~ '; ' %}
+  {% set badge_styles = badge_styles ~ 'color: ' ~ color_map[type].text ~ '; ' %}
+{% endif %}
+
+{% set badge_styles = badge_styles ~ 'padding: ' ~ size_map[size].padding ~ '; ' %}
+{% set badge_styles = badge_styles ~ 'font-family: ' ~ size_map[size].font ~ '; ' %}
+{% set badge_styles = badge_styles ~ 'font-size: ' ~ size_map[size]['font-size'] ~ '; ' %}
+{% set badge_styles = badge_styles ~ 'font-weight: ' ~ size_map[size]['font-weight'] ~ '; ' %}
+{% set badge_styles = badge_styles ~ 'letter-spacing: ' ~ size_map[size]['letter-spacing'] ~ '; ' %}
+{% set badge_styles = badge_styles ~ 'line-height: ' ~ size_map[size]['line-height'] ~ '; ' %}
+
+{% if rounded %}
+  {% set badge_styles = badge_styles ~ 'border-radius: ' ~ size_map[size]['border-radius'] ~ '; ' %}
+{% else %}
+  {% set badge_styles = badge_styles ~ 'border-radius: 0; ' %}
+{% endif %}
+
+{% if outlined %}
+  {% set badge_styles = badge_styles ~ 'border: 1px solid ' ~ color_map[type].bg ~ '; ' %}
+{% endif %}
+
+<span class="md-badge {{ type }} {{ size }}" {% if badge_styles %}style="{{ badge_styles }}"{% endif %}>
+  {{ text }}
+</span>
+
+<style>
+  /* MD3 Badge Styles */
+  .md-badge {
+    display: inline-block;
+    white-space: nowrap;
+    text-align: center;
+  }
+</style>

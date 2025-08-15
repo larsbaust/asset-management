@@ -1,0 +1,100 @@
+{# MD3 Table Component 
+   Usage: 
+   Erst Inhalte in einer Variable definieren:
+   {% set table_content %}
+     <tr>
+       <td>Zelle 1</td>
+       <td>Zelle 2</td>
+     </tr>
+     <!-- Weitere Zeilen -->
+   {% endset %}
+   
+   Dann die Komponente einbinden:
+   {% set headers = ['Spalte 1', 'Spalte 2'] %}  # Array der Spaltenüberschriften
+   {% set responsive = true %}                   # Optional: true/false (default: true)
+   {% set hover = true %}                        # Optional: true/false (default: true)
+   {% set compact = false %}                     # Optional: true/false (default: false)
+   {% set zebra = false %}                       # Optional: true/false (default: false)
+   {% include 'md3/components/table.html' %}
+#}
+
+{# Set default values if not provided #}
+{% set responsive = responsive|default(true) %}
+{% set hover = hover|default(true) %}
+{% set compact = compact|default(false) %}
+{% set zebra = zebra|default(false) %}
+{% set table_content = table_content|default('') %}
+
+<div class="md-table-container" {% if responsive %}style="overflow-x: auto;"{% endif %}>
+  <table class="md-table
+    {% if hover %}md-table-hover{% endif %}
+    {% if compact %}md-table-compact{% endif %}
+    {% if zebra %}md-table-zebra{% endif %}
+  ">
+    {% if headers %}
+      <thead>
+        <tr>
+          {% for header in headers %}
+            <th scope="col">{{ header }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+    {% endif %}
+    
+    <tbody>
+      {{ table_content }}
+    </tbody>
+  </table>
+</div>
+
+<style>
+  /* MD3 Table Styles */
+  .md-table-container {
+    background-color: var(--md-sys-color-surface);
+    border-radius: var(--md-sys-shape-corner-medium);
+    box-shadow: var(--md-sys-elevation-level1);
+  }
+  
+  .md-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--md-sys-typescale-body-medium-font-family-name);
+    color: var(--md-sys-color-on-surface);
+  }
+  
+  .md-table th {
+    font-family: var(--md-sys-typescale-title-small-font-family-name);
+    font-size: var(--md-sys-typescale-title-small-font-size);
+    font-weight: var(--md-sys-typescale-title-small-font-weight);
+    letter-spacing: var(--md-sys-typescale-title-small-letter-spacing);
+    text-align: left;
+    padding: var(--md-sys-spacing-3) var(--md-sys-spacing-3);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface-variant);
+  }
+  
+  .md-table td {
+    padding: var(--md-sys-spacing-3) var(--md-sys-spacing-3);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    font-size: var(--md-sys-typescale-body-medium-font-size);
+    font-weight: var(--md-sys-typescale-body-medium-font-weight);
+    letter-spacing: var(--md-sys-typescale-body-medium-letter-spacing);
+  }
+  
+  .md-table-hover tbody tr:hover {
+    background-color: var(--md-sys-color-surface-variant);
+  }
+  
+  .md-table-zebra tbody tr:nth-child(odd) {
+    background-color: var(--md-sys-color-surface-1);
+  }
+  
+  .md-table-compact th,
+  .md-table-compact td {
+    padding: var(--md-sys-spacing-1) var(--md-sys-spacing-2);
+  }
+  
+  .md-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+</style>

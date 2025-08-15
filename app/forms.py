@@ -99,6 +99,10 @@ class LocationForm(FlaskForm):
     image = FileField('Standort-Bild', validators=[Optional(), FileAllowed(['jpg', 'jpeg', 'png', 'gif'], 'Nur Bilder erlaubt!')])
     latitude = FloatField('Breitengrad', validators=[Optional()])
     longitude = FloatField('Längengrad', validators=[Optional()])
+    # Google Reviews & Navigation Fields
+    google_rating = FloatField('Google Bewertung (1.0-5.0)', validators=[Optional(), NumberRange(min=1.0, max=5.0)])
+    google_reviews_count = IntegerField('Anzahl Google Bewertungen', validators=[Optional(), NumberRange(min=0)])
+    google_maps_url = StringField('Google Maps URL', validators=[Optional(), Length(max=500)])
     submit = SubmitField('Speichern')
 
 class LoanForm(FlaskForm):

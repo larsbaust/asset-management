@@ -1,0 +1,762 @@
+<!-- Material Design 3 Navigation Rail (Entwurf für Integration) -->
+
+<!-- Material Symbols und Roboto Font nach Material Web Empfehlung -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=swap" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  /* MD3 Typescale CSS-Variablen nach Material Web Standards */
+  :root {
+    /* Grundlegende M3-Typografie-Variablen (aus @material/web) */
+    --md-sys-typescale-label-small-font-family-name: Roboto;
+    --md-sys-typescale-label-small-font-weight: 500;
+    --md-sys-typescale-label-small-font-size: 11px;
+    --md-sys-typescale-label-small-line-height: 16px;
+    --md-sys-typescale-label-small-letter-spacing: 0.5px;
+    
+    --md-sys-typescale-label-medium-font-family-name: Roboto;
+    --md-sys-typescale-label-medium-font-weight: 500;
+    --md-sys-typescale-label-medium-font-size: 12px;
+    --md-sys-typescale-label-medium-line-height: 16px;
+    --md-sys-typescale-label-medium-letter-spacing: 0.5px;
+    
+    --md-sys-typescale-body-medium-font-family-name: Roboto;
+    --md-sys-typescale-body-medium-font-weight: 400;
+    --md-sys-typescale-body-medium-font-size: 14px;
+    --md-sys-typescale-body-medium-line-height: 20px;
+    --md-sys-typescale-body-medium-letter-spacing: 0.25px;
+    
+    --md-sys-typescale-headline-small-font-family-name: Roboto;
+    --md-sys-typescale-headline-small-font-weight: 500;
+    --md-sys-typescale-headline-small-font-size: 16px;
+    --md-sys-typescale-headline-small-line-height: 24px;
+    --md-sys-typescale-headline-small-letter-spacing: 0.25px;
+    
+    /* Offizielle MD3 Navigation Rail Farben */
+    --md-sys-color-secondary-container: #E8DEF8;
+    --md-sys-color-secondary: #625B71;
+    --md-sys-color-on-surface-variant: #49454F;
+    --md-sys-color-on-secondary-container: #1D192B;
+    --md-sys-color-on-surface: #1F1F1F;
+    --md-sys-color-error: #B3261E;
+    --md-sys-color-on-error: #FFFFFF;
+  }
+
+  /* Material Design 3 Navigation Rail Custom Styles */
+  .md-nav-rail-container {
+    background-color: #f3eaff; /* Helles Lila wie im Screenshot */
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    font-family: var(--md-sys-typescale-body-large-font-family-name, 'Roboto');
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.14), 0px 0px 2px rgba(0, 0, 0, 0.12);
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    transition: width 0.3s ease;
+    min-width: 80px;
+    max-width: 80px;
+    width: 80px; /* Standard-Breite für Expanded - entspricht MD3 Dokumentation */
+  }
+  
+  /* Offizielle MD3 Spec für Collapsed state width - überarbeitet */
+  .md-nav-rail-container.collapsed {
+    min-width: 56px;
+    max-width: 56px;
+    width: 56px; /* Nav rail collapsed container width - exakt laut MD3 Spezifikation */
+    transition: width 0.3s ease;
+  }
+  
+  /* Labels im normalen und eingeklappten Zustand - nach MD3 Screenshots angepasst */
+  .md-nav-rail-label {
+    opacity: 1;
+    visibility: visible;
+    font-size: 12px; /* MD3 Typographie für Labels */
+    line-height: 16px;
+    font-weight: 500; /* Medium */
+    letter-spacing: 0.1px;
+    color: #49454f; /* Dunkelgrau für Text */
+    white-space: nowrap;
+    margin-top: 4px;
+    text-align: center;
+  }
+  
+  /* Anpassung der Labels im collapsed state - wie MD3-Screenshot */
+  .md-nav-rail-container.collapsed .md-nav-rail-label {
+    opacity: 1;
+    visibility: visible;
+    width: auto;
+    margin-top: 4px;
+    font-size: 10px; /* Noch kleinere Schrift im collapsed-Zustand */
+    text-align: center;
+  }
+  
+  /* Anpassung der Navigation Items im collapsed Zustand */
+  .md-nav-rail-container.collapsed .md-nav-rail-item {
+    flex-direction: column; /* Vertikal ausrichten im collapsed Zustand */
+    justify-content: center;
+    align-items: center;
+    padding: 8px 4px;
+    width: 56px; /* Exakte Breite wie im MD3-Screenshot */
+    height: auto; /* Höhe automatisch anpassen */
+  }
+  
+  .md-nav-rail-container.collapsed .md-nav-rail-icon {
+    margin-right: 0; /* Kein Abstand zum Label (da jetzt vertikal) */
+    margin-bottom: 4px; /* Abstand zum Label darunter */
+  }
+  
+  /* Icons im normalen und eingeklappten Zustand - gemäß MD3 Spec */
+  .md-nav-rail-icon {
+    transition: margin 0.3s cubic-bezier(0.2, 0, 0, 1);
+    font-size: 24px; /* Standardgröße für Icons laut Material Design */
+    color: var(--md-sys-color-on-surface-variant, #49454f); /* Standard-Inaktivfarbe */
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  
+  /* Aktives Icon - gefüllt und mit Primärfarbe */
+  .md-nav-rail-item.active .md-nav-rail-icon {
+    color: var(--md-sys-color-on-secondary-container, #1d192b); /* Auf aktivem Hintergrund */
+    font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  }
+  
+  /* Icon-Anpassung im eingeklappten Zustand - nur Abstand anpassen */
+  .md-nav-rail-container.collapsed .md-nav-rail-icon {
+    margin: 0;
+  }
+  
+  /* Navigation/* Nav Rail Item Container - Pill/Chip-Design nach MD3 */
+  .md-nav-rail-item {
+    display: flex;
+    flex-direction: row; /* Horizontal Layout */
+    align-items: center;
+    justify-content: flex-start;
+    padding: 8px 16px;
+    margin: 4px 0;
+    width: calc(100% - 16px); /* Abzüglich des Abstands */
+    text-decoration: none;
+    color: var(--md-sys-color-on-surface-variant, #49454f);
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+    overflow: hidden;
+    cursor: pointer;
+    border-radius: 16px; /* Abgerundete Ecken für Pills */
+    height: 32px;
+    background-color: transparent;
+  }
+  
+  /* Abgerundete Chips im ausgeklappten Zustand */
+  .md-nav-rail-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 8px 12px;
+    background-color: transparent;
+  }
+  
+  /* Aktiver Zustand im ausgeklappten Modus - Chip-Hintergrund gemäß Android-Spec */
+  .md-nav-rail-item.active {
+    background-color: var(--md-sys-color-secondary-container, #e8def8);
+    position: relative;
+  }
+  
+  /* Active Item Indicator - now using official MD3 secondary-container color */
+  .md-nav-rail-item.active::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 32px;
+    background-color: var(--md-sys-color-secondary-container, #E8DEF8);
+    border-radius: 16px;
+    z-index: -1;
+  }
+  
+  /* Ripple-Effekt gemäß MD3 Spec - wird via Opacity gesteuert */
+  .md-nav-rail-item:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 16px;
+    background-color: var(--md-sys-color-primary, #6750a4);
+    opacity: 0;
+    transition: opacity 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+  
+  /* Hover-Effekt für Items mit MD3-konformem Ripple */
+  .md-nav-rail-item:hover:not(.active):after {
+    opacity: 0.08; /* 8% Opacity für Hover-State */
+  }
+  
+  .md-nav-rail-item:active:not(.active):after {
+    opacity: 0.12; /* 12% Opacity für Press-State */
+  }
+  
+  /* Im kollabierten Zustand */
+  .md-nav-rail-container.collapsed .md-nav-rail-item {
+    justify-content: center;
+    padding: 8px;
+    margin: 4px auto;
+    width: calc(100% - 16px);
+    border-radius: 50%;
+  }
+  
+  /* Label und Icon Ausrichtung - horizontales Layout nach MD3 */
+  .md-nav-rail-icon {
+    font-size: 24px;
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+  }
+  
+  .md-nav-rail-container.collapsed .md-nav-rail-icon {
+    margin-right: 0; /* Kein rechter Abstand im kollabierten Zustand */
+  }
+  
+  .md-nav-rail-header {
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .md-nav-rail-logo {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6750a4; /* Lila Primärfarbe aus Screenshot */
+  }
+  
+  .md-nav-rail-logo .material-symbols-outlined {
+    font-size: 28px;
+    font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 40;
+  }
+  
+  .md-nav-rail-items {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    align-items: center;
+    overflow-y: auto;
+    flex-grow: 1;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .md-nav-rail-items li {
+    list-style-type: none;
+    width: 100%;
+    text-align: center;
+  }
+  
+  .md-nav-rail-item:hover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--md-sys-color-on-surface, #1F1F1F);
+    opacity: var(--md-sys-state-hover-state-layer-opacity, 0.08);
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  
+  .md-nav-rail-item.active {
+    /* Active state styling - MD3 pill background */
+    background-color: var(--md-sys-color-secondary-container, rgba(103, 80, 164, 0.1));
+    color: var(--md-sys-color-on-secondary-container, #1D192B);
+  }
+  
+  .md-nav-rail-item.active .md-nav-rail-icon {
+    /* Active icon color */
+    color: var(--md-sys-color-on-secondary-container, #1D192B);
+  }
+  
+  .md-nav-rail-item.active .md-nav-rail-label {
+    /* Active label color */
+    color: var(--md-sys-color-on-secondary-container, #1D192B);
+  }
+  
+  /* Offizielle MD3 Navigation Rail Icon Styling */
+  .md-nav-rail-icon {
+    font-size: var(--md-nav-rail-icon-size, 24px);
+    width: var(--md-nav-rail-icon-size, 24px);
+    height: var(--md-nav-rail-icon-size, 24px);
+    display: block;
+    /* Offizielle MD3 Nav rail item inactive icon color */
+    color: var(--md-sys-color-on-surface-variant, #444746);
+    transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
+  }
+  
+  /* Offizielle MD3 Nav rail item active icon color */
+  .md-nav-rail-item.active .md-nav-rail-icon {
+    color: var(--md-sys-color-on-secondary-container, #4A4458);
+    font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  }
+  
+  /* Text-Label-Styling nach offizieller MD3 Navigation Rail Spezifikation */
+  .md-nav-rail-label {
+    font-family: var(--md-nav-rail-label-font, 'Google Sans Text, Roboto, sans-serif');
+    font-size: var(--md-nav-rail-label-size, 11px); /* Kleinere Schrift wie im MD3-Screenshot */
+    font-weight: var(--md-nav-rail-label-weight, 500);
+    line-height: var(--md-nav-rail-label-line-height, 16px); /* px statt pt */
+    letter-spacing: var(--md-nav-rail-label-tracking, 0.1px); /* px statt pt */
+    /* Offizielle MD3 Nav rail item inactive label text color */
+    color: var(--md-sys-color-on-surface-variant, #49454F);
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+    margin-top: 4px;
+    text-align: center;
+    text-transform: none; /* Material Web verwendet keine Textumwandlung für Navigation */
+  }
+  
+  /* Aktives Label - offizielle MD3 Nav rail item active label text color */
+  .md-nav-rail-item.active .md-nav-rail-label {
+    color: var(--md-sys-color-secondary, #625B71);
+    font-weight: 600; /* Etwas stärker hervorgehoben */
+  }
+  
+  .collapsed .md-nav-rail-label {
+    display: none;
+  }
+  
+  .md-nav-rail-fab-container {
+    margin: 12px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+
+  /* FAB-Button gemäß MD3 Spec */
+  .md-nav-rail-fab {
+    background-color: var(--md-sys-color-secondary-container, #E8DEF8);
+    color: var(--md-sys-color-on-secondary-container, #1D192B);
+    border: none;
+    border-radius: 16px;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 16px auto;
+    cursor: pointer;
+    /* MD3 Standard elevation */
+    box-shadow: var(--md-sys-elevation-level3, 0px 4px 8px rgba(0, 0, 0, 0.14), 0px 1px 7px rgba(0, 0, 0, 0.12), 0px 3px 5px rgba(0, 0, 0, 0.2));
+    transition: all 0.2s;
+  }
+  
+  .md-nav-rail-fab:hover {
+    background-color: var(--md-sys-color-secondary-container-hover, #DFD3F7);
+    box-shadow: var(--md-sys-elevation-level4, 0px 8px 10px rgba(0, 0, 0, 0.14), 0px 3px 14px rgba(0, 0, 0, 0.12), 0px 5px 5px rgba(0, 0, 0, 0.2));
+  }
+  
+  /* MD3 Ripple-Effekt für FAB */
+  .md-nav-rail-fab:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--md-sys-color-on-primary-container, #381e72);
+    opacity: 0;
+    transition: opacity 0.2s cubic-bezier(0.2, 0, 0, 1);
+    border-radius: 16px;
+  }
+  
+  .md-nav-rail-fab .material-symbols-outlined {
+    font-size: 24px;
+    font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  }
+  
+  /* FAB Hover und Active States gemäß MD3 */
+  .md-nav-rail-fab:hover:after {
+    opacity: 0.08; /* 8% Overlay für Hover */
+  }
+  
+  .md-nav-rail-fab:active:after {
+    opacity: 0.12; /* 12% Overlay für Press State */
+  }
+  
+  .md-nav-rail-fab:hover {
+    box-shadow: var(--md-sys-elevation-level3, 0px 4px 8px 3px rgba(0, 0, 0, 0.15), 0px 1px 3px rgba(0, 0, 0, 0.30));
+    transform: translateY(-1px); /* Leichte Anhebung beim Hover */
+  }
+  
+  /* FAB im kollabierten Zustand */
+  .md-nav-rail-container.collapsed .md-nav-rail-fab {
+    width: 40px; 
+    height: 40px;
+    border-radius: 12px;
+  }
+  
+  .md-nav-rail-container.collapsed .md-nav-rail-fab .material-symbols-outlined {
+    font-size: 20px;
+  }
+  
+  .md-nav-rail-fab:active {
+    background-color: var(--md-sys-color-primary-container);
+    filter: brightness(0.95);
+  }
+  
+  .md-nav-rail-fab .material-symbols-outlined {
+    font-size: 24px;
+    font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  }
+  
+  .md-nav-rail-badge {
+    background-color: var(--md-sys-color-error);
+    color: var(--md-sys-color-on-error);
+    font-family: var(--md-sys-typescale-label-small-font-family-name);
+    font-weight: var(--md-sys-typescale-label-small-font-weight);
+    font-size: var(--md-sys-typescale-label-small-font-size);
+    height: 16px;
+    min-width: 16px;
+    border-radius: 8px;
+    padding: 0 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+  
+  .md-nav-rail-divider {
+    height: 1px;
+    width: 48px;
+    background-color: var(--md-sys-color-outline-variant);
+    margin: 8px 0;
+  }
+  
+  /* Responsive adjustments for Navigation Rail */
+  @media (max-width: 1023px) {
+    .md-nav-rail-container {
+      display: none;
+    }
+  }
+  
+  /* Main content style to accommodate the navigation rail */
+  .md-content {
+    margin-left: 80px; /* Same as nav rail width */
+    padding: 16px;
+    transition: margin-left 0.3s ease;
+  }
+  
+  /* Adjust content when nav rail is collapsed */
+  .md-nav-rail-container.collapsed + .md-content {
+    margin-left: 56px;
+  }
+  
+  /* Badge Styling */
+  .md-nav-rail-badge {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    background-color: #ba1a1a; /* Rot für Badges */
+    color: white;
+    border-radius: 8px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 500;
+    min-width: 16px;
+    text-align: center;
+  }
+  
+  /* Badge im kollabierten Zustand */
+  .md-nav-rail-container.collapsed .md-nav-rail-badge {
+    right: 4px;
+    top: 2px;
+  }
+  
+  @media (max-width: 1023px) {
+    .md-rail-layout {
+      padding-left: 0;
+    }
+  }
+  
+  .md-nav-rail-toggle {
+    position: absolute;
+    right: -12px; /* Positionierung am rechten Rand, leicht überlappend */
+    top: 50%;    /* Mittig an der Höhe */
+    transform: translateY(-50%);  /* Perfekte vertikale Zentrierung */
+    width: 24px;
+    height: 24px;
+    background-color: #e8def8; /* Helleres Lila wie beim Hover */
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6750a4; /* Lila Primärfarbe */
+    transition: all 0.3s ease;
+    z-index: 10; /* Sicherstellen, dass der Button immer über anderen Elementen liegt */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.14);
+  }
+  
+  .md-nav-rail-toggle:hover {
+    background-color: #d0bcff; /* Noch helleres Lila beim Hover */
+  }
+  
+  .md-nav-rail-toggle .material-symbols-outlined {
+    font-size: 18px;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+    transition: transform 0.3s ease;
+  }
+  
+  /* Im kollabierten Zustand dreht sich das Icon um */
+  .md-nav-rail-container.collapsed .md-nav-rail-toggle .material-symbols-outlined {
+    transform: rotate(180deg);
+  }
+  
+  /* Position des Toggle-Buttons im kollabierten Zustand */
+  .md-nav-rail-container.collapsed .md-nav-rail-toggle {
+    right: -12px; /* Konsistente Position, auch wenn kollabiert */
+  }
+</style>
+
+<!-- MD3 Navigation Rail -->
+<div class="md-nav-rail-container" id="mdNavRail">
+  <div class="md-nav-rail-header">
+    <div class="md-nav-rail-logo">
+      <span class="material-symbols-outlined">inventory_2</span>
+    </div>
+  </div>
+  
+  <!-- FAB-Button im oberen Bereich (Schema 1 aus dem Screenshot) -->
+  <div class="md-nav-rail-fab-container">
+    <button class="md-nav-rail-fab" aria-label="Neuer Asset">
+      <span class="material-symbols-outlined">add</span>
+    </button>
+  </div>
+  
+  <ul class="md-nav-rail-items">
+    <!-- Dashboard -->
+    <li>
+      <a href="{{ url_for('main.index') }}" class="md-nav-rail-item active">
+        <span class="material-symbols-outlined md-nav-rail-icon">dashboard</span>
+        <span class="md-nav-rail-label">Dashboard</span>
+      </a>
+    </li>
+    
+    <!-- Assets -->
+    <li>
+      <a href="{{ url_for('main.assets') }}" class="md-nav-rail-item">
+        <span class="material-symbols-outlined md-nav-rail-icon">inventory_2</span>
+        <span class="md-nav-rail-label">Assets</span>
+      </a>
+    </li>
+    
+    <!-- Locations -->
+    <li>
+      <a href="#" class="md-nav-rail-item">
+        <span class="material-symbols-outlined md-nav-rail-icon">location_on</span>
+        <span class="md-nav-rail-label">Standorte</span>
+      </a>
+    </li>
+    
+    <!-- Inventory -->
+    <li>
+      <a href="#" class="md-nav-rail-item">
+        <span class="material-symbols-outlined md-nav-rail-icon">fact_check</span>
+        <span class="md-nav-rail-label">Inventur</span>
+      </a>
+    </li>
+    
+    <!-- Orders -->
+    <li>
+      <a href="{{ url_for('order.order_overview') }}" class="md-nav-rail-item">
+        <span class="material-symbols-outlined md-nav-rail-icon">shopping_cart</span>
+        <span class="md-nav-rail-label">Bestellungen</span>
+        <span class="md-nav-rail-badge">3</span>
+      </a>
+    </li>
+    
+    <div class="md-nav-rail-divider"></div>
+    
+    <!-- Admin -->
+    <li>
+      <a href="{{ url_for('admin.user_management') }}" class="md-nav-rail-item">
+        <span class="material-symbols-outlined md-nav-rail-icon">admin_panel_settings</span>
+        <span class="md-nav-rail-label">Admin</span>
+      </a>
+    </li>
+    
+    <!-- Settings -->
+    <li>
+      <a href="{{ url_for('admin.backup_restore') }}" class="md-nav-rail-item">
+        <span class="material-symbols-outlined md-nav-rail-icon">settings</span>
+        <span class="md-nav-rail-label">Einstellungen</span>
+      </a>
+    </li>
+  </ul>
+  
+  <!-- Toggle Button für collapsed-Modus gemäß MD3-Spezifikation -->
+  <button id="mdNavToggleBtn" class="md-nav-rail-toggle" aria-label="Navigation ein-/ausklappen" title="Navigation ein-/ausklappen">
+    <span class="material-symbols-outlined">chevron_right</span>
+  </button>
+</div>
+
+<!-- Demo-Bereich für die Navigation Rail -->
+<div class="md-content">
+  <div class="md-content-header">
+    <h1>Material Design 3 Navigation Rail</h1>
+    <p>Dies ist eine Demo-Seite für die Material Design 3 Navigation Rail-Komponente.</p>
+    
+    <div class="md-demo-controls">
+      <button id="toggleCollapsedBtn" class="md-button md-button-filled">
+        Navigation Rail umschalten
+      </button>
+    </div>
+  </div>
+  
+  <div class="md-demo-content">
+    <p>Klicken Sie auf die verschiedenen Navigationselemente, um die Interaktion zu testen. Die Seite ist mit einer Material Design 3 Navigation Rail ausgestattet.</p>
+    
+    <div class="md-section-box">
+      <h3>MD3-Navigation Rail Funktionen</h3>
+      <ul>
+        <li>Übereinstimmendes Farbschema gemäß Material Design 3</li>
+        <li>Kollabierbare Navigation (56px im kollabierten Zustand)</li>
+        <li>Icons mit aktivem Zustand und Badges</li>
+        <li>FAB-Button für schnelle Aktionen</li>
+        <li>Responsive Design für verschiedene Bildschirmgrößen</li>
+      </ul>
+      <p>Um zwischen der erweiterten und kollabierten Navigation umzuschalten, können Sie:</p>
+      <ol>
+        <li>Den kleinen Toggle-Button an der rechten Seite der Navigation Rail klicken</li>
+        <li>Den Button "Navigation Rail umschalten" oben auf dieser Seite verwenden</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Material Web inspirierte Navigation Rail Funktionalität
+  document.addEventListener('DOMContentLoaded', function() {
+    const navRailContainer = document.getElementById('mdNavRail');
+    const toggleBtn = document.getElementById('mdNavToggleBtn');
+    const demoToggleBtn = document.getElementById('toggleCollapsedBtn');
+    const navItems = document.querySelectorAll('.md-nav-rail-item');
+    
+    // Material Web verwendet standardmäßig aria-* Attribute für Barrierefreiheit
+    navRailContainer.setAttribute('role', 'navigation');
+    navRailContainer.setAttribute('aria-label', 'Hauptnavigation');
+    
+    // Initialen Zustand aus localStorage laden
+    const isCollapsed = localStorage.getItem('mdNavRailCollapsed') === 'true';
+    console.debug('Navigation Rail initial collapsed state:', isCollapsed);
+        
+    // Aria-Attribute für Toggle Button hinzufügen
+    toggleBtn.setAttribute('aria-expanded', !isCollapsed);
+    toggleBtn.setAttribute('aria-controls', 'mdNavRail');
+    toggleBtn.setAttribute('aria-label', isCollapsed ? 'Navigation ausklappen' : 'Navigation einklappen');
+    
+    // Zustandsfunktion zum Umschalten der Navigation Rail mit verbesserten Aria-Attributen
+    function toggleCollapsedState() {
+      const currentState = navRailContainer.classList.contains('collapsed');
+      const newState = !currentState;
+      
+      if (newState) {
+        navRailContainer.classList.add('collapsed');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        toggleBtn.setAttribute('aria-label', 'Navigation ausklappen');
+      } else {
+        navRailContainer.classList.remove('collapsed');
+        toggleBtn.setAttribute('aria-expanded', 'true');
+        toggleBtn.setAttribute('aria-label', 'Navigation einklappen');
+      }
+      
+      // Status im localStorage speichern mit performance-orientiertem Throttling
+      window.requestAnimationFrame(() => {
+        localStorage.setItem('mdNavRailCollapsed', newState);
+        console.debug('Navigation Rail new collapsed state:', newState);
+      });
+    }
+    
+    // Initialen Zustand anwenden
+    if (isCollapsed) {
+      navRailContainer.classList.add('collapsed');
+      toggleBtn.setAttribute('aria-expanded', 'false');
+    }
+    
+    // Toggle-Button Event Listener mit Keyboard Support
+    toggleBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      toggleCollapsedState();
+    });
+    
+    toggleBtn.addEventListener('keydown', function(e) {
+      // Enter oder Space aktiviert Button (Material Web Pattern)
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleCollapsedState();
+      }
+    });
+    
+    // Demo Toggle Button (falls vorhanden)
+    if (demoToggleBtn) {
+      demoToggleBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        toggleCollapsedState();
+      });
+    }
+    
+    // Aktiven Navigation Rail Item basierend auf URL markieren
+    const currentPath = window.location.pathname;
+    
+    navItems.forEach(item => {
+      const link = item.getAttribute('href');
+      // Wenn der Link auf Seite vorhanden und mit aktuellem Pfad übereinstimmt
+      if (link && currentPath.includes(link) && link !== '#') {
+        item.classList.add('active');
+        item.setAttribute('aria-current', 'page'); // Material Web Pattern
+      }
+      
+      // Platzhalter-Links verhindern
+      if (link === '#') {
+        item.addEventListener('click', function(e) {
+          e.preventDefault();
+        });
+      }
+      
+      // Click-Handler für alle Navigation-Items
+      item.addEventListener('click', function(e) {
+        // Wenn es ein Platzhalter ist, haben wir das bereits oben verhindert
+        if (this.getAttribute('href') !== '#') {
+          // Alle aktiven Status entfernen
+          navItems.forEach(i => i.classList.remove('active'));
+          // Dem geklickten Item aktiven Status zuweisen
+          this.classList.add('active');
+        }
+      });
+    });
+    
+    // FAB-Button Click-Handler
+    const fabButton = document.querySelector('.md-nav-rail-fab');
+    if (fabButton) {
+      fabButton.addEventListener('click', function() {
+        console.log('FAB clicked - add new asset');
+        // Hier könnte ein Modal geöffnet werden o.ä.
+        alert('Neuen Asset anlegen - Diese Funktion wird in der finalen Version implementiert.');
+      });
+    }
+  });
+</script>

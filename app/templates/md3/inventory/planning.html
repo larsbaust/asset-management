@@ -1,0 +1,977 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<!-- Include MD3 Navigation -->
+{% include 'md3-nav.html' %}
+
+<!-- MD3 Modal CSS -->
+<style>
+/* MD3 Modal Overlay Styles */
+.md3-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.md3-modal {
+  background: var(--md-sys-color-surface, #FFFBFE);
+  border-radius: 28px;
+  box-shadow: 0 24px 38px 3px rgba(0, 0, 0, 0.14),
+              0 9px 46px 8px rgba(0, 0, 0, 0.12),
+              0 11px 15px -7px rgba(0, 0, 0, 0.20);
+  max-width: 560px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.md3-modal-large {
+  max-width: 720px;
+}
+
+.md3-modal-header {
+  padding: 24px 24px 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: none;
+}
+
+.md3-modal-title {
+  font-family: var(--md-sys-typescale-headline-small-font-family-name, 'Roboto');
+  font-size: var(--md-sys-typescale-headline-small-font-size, 24px);
+  font-weight: var(--md-sys-typescale-headline-small-font-weight, 400);
+  line-height: var(--md-sys-typescale-headline-small-line-height, 32px);
+  color: var(--md-sys-color-on-surface, #1C1B1F);
+  margin: 0;
+}
+
+.md3-modal-content {
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.md3-modal-actions {
+  padding: 0 24px 24px 24px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* MD3 Form Styles */
+.md3-form-field {
+  margin-bottom: 24px;
+}
+
+.md3-form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.md3-form-row .md3-form-field {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.md3-form-label {
+  display: block;
+  font-family: var(--md-sys-typescale-body-small-font-family-name, 'Roboto');
+  font-size: var(--md-sys-typescale-body-small-font-size, 12px);
+  font-weight: var(--md-sys-typescale-body-small-font-weight, 400);
+  color: var(--md-sys-color-on-surface-variant, #49454F);
+  margin-bottom: 8px;
+}
+
+.md3-form-input,
+.md3-form-select,
+.md3-form-textarea {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--md-sys-color-outline, #79747E);
+  border-radius: 4px;
+  font-family: var(--md-sys-typescale-body-large-font-family-name, 'Roboto');
+  font-size: var(--md-sys-typescale-body-large-font-size, 16px);
+  background: var(--md-sys-color-surface, #FFFBFE);
+  color: var(--md-sys-color-on-surface, #1C1B1F);
+  box-sizing: border-box;
+}
+
+.md3-form-input:focus,
+.md3-form-select:focus,
+.md3-form-textarea:focus {
+  outline: none;
+  border-color: var(--md-sys-color-primary, #6750A4);
+  border-width: 2px;
+}
+
+.md3-checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.md3-checkbox {
+  width: 18px;
+  height: 18px;
+}
+
+.md3-checkbox-label {
+  font-family: var(--md-sys-typescale-body-medium-font-family-name, 'Roboto');
+  font-size: var(--md-sys-typescale-body-medium-font-size, 14px);
+  color: var(--md-sys-color-on-surface, #1C1B1F);
+}
+
+/* MD3 Session Cards Styles */
+.md3-sessions-container {
+  margin-top: 32px;
+}
+
+.md3-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.md3-sessions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 24px;
+}
+
+.md3-session-card {
+  background: var(--md-sys-color-surface, #FFFBFE);
+  border-radius: 16px;
+  border: 1px solid var(--md-sys-color-outline-variant, #CAC4D0);
+  padding: 0;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.md3-session-card:hover {
+  box-shadow: 0 4px 8px 3px rgba(0, 0, 0, 0.15),
+              0 1px 3px rgba(0, 0, 0, 0.30);
+  transform: translateY(-2px);
+}
+
+.md3-session-card-header {
+  padding: 20px 20px 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant, #CAC4D0);
+}
+
+.md3-session-info {
+  flex: 1;
+  margin-right: 16px;
+}
+
+.md3-session-title {
+  font-family: var(--md-sys-typescale-title-medium-font-family-name, 'Roboto');
+  font-size: var(--md-sys-typescale-title-medium-font-size, 16px);
+  font-weight: var(--md-sys-typescale-title-medium-font-weight, 500);
+  color: var(--md-sys-color-on-surface, #1C1B1F);
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+}
+
+.md3-session-description {
+  font-family: var(--md-sys-typescale-body-medium-font-family-name, 'Roboto');
+  font-size: var(--md-sys-typescale-body-medium-font-size, 14px);
+  color: var(--md-sys-color-on-surface-variant, #49454F);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.md3-session-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.md3-session-card-content {
+  padding: 20px;
+}
+
+.md3-session-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.md3-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-family: var(--md-sys-typescale-label-medium-font-family-name, 'Roboto');
+  font-size: var(--md-sys-typescale-label-medium-font-size, 12px);
+  font-weight: var(--md-sys-typescale-label-medium-font-weight, 500);
+}
+
+.md3-status-badge .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.md3-status-planned {
+  background: var(--md-sys-color-secondary-container, #E8DEF8);
+  color: var(--md-sys-color-on-secondary-container, #1D192B);
+}
+
+.md3-status-in_progress,
+.md3-status-active {
+  background: var(--md-sys-color-tertiary-container, #FFD8E4);
+  color: var(--md-sys-color-on-tertiary-container, #31111D);
+}
+
+.md3-status-completed {
+  background: var(--md-sys-color-primary-container, #EADDFF);
+  color: var(--md-sys-color-on-primary-container, #21005D);
+}
+
+.md3-location-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--md-sys-color-surface-variant, #E7E0EC);
+  color: var(--md-sys-color-on-surface-variant, #49454F);
+  border-radius: 16px;
+  font-family: var(--md-sys-typescale-label-medium-font-family-name, 'Roboto');
+  font-size: var(--md-sys-typescale-label-medium-font-size, 12px);
+  font-weight: var(--md-sys-typescale-label-medium-font-weight, 500);
+}
+
+.md3-location-chip .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.md3-progress-section {
+  margin-bottom: 20px;
+}
+
+.md3-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.md3-progress-label {
+  font-family: var(--md-sys-typescale-body-medium-font-family-name, 'Roboto');
+  font-size: var(--md-sys-typescale-body-medium-font-size, 14px);
+  color: var(--md-sys-color-on-surface, #1C1B1F);
+  font-weight: 500;
+}
+
+.md3-progress-percentage {
+  font-family: var(--md-sys-typescale-label-medium-font-family-name, 'Roboto');
+  font-size: var(--md-sys-typescale-label-medium-font-size, 12px);
+  color: var(--md-sys-color-primary, #6750A4);
+  font-weight: 600;
+}
+
+.md3-progress-bar-modern {
+  height: 8px;
+  background: var(--md-sys-color-surface-variant, #E7E0EC);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.md3-progress-fill-modern {
+  height: 100%;
+  background: linear-gradient(90deg, var(--md-sys-color-primary, #6750A4), var(--md-sys-color-tertiary, #7D5260));
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.md3-session-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.md3-user-info,
+.md3-date-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--md-sys-typescale-body-small-font-family-name, 'Roboto');
+  font-size: var(--md-sys-typescale-body-small-font-size, 12px);
+  color: var(--md-sys-color-on-surface-variant, #49454F);
+}
+
+.md3-user-info .material-symbols-outlined,
+.md3-date-info .material-symbols-outlined {
+  font-size: 16px;
+  opacity: 0.8;
+}
+
+.md3-icon-button-primary {
+  background: var(--md-sys-color-primary-container, #EADDFF);
+  color: var(--md-sys-color-on-primary-container, #21005D);
+}
+
+.md3-icon-button-primary:hover {
+  background: var(--md-sys-color-primary, #6750A4);
+  color: var(--md-sys-color-on-primary, #FFFFFF);
+}
+
+.md3-icon-button-error {
+  background: var(--md-sys-color-error-container, #F9DEDC);
+  color: var(--md-sys-color-on-error-container, #410E0B);
+}
+
+.md3-icon-button-error:hover {
+  background: var(--md-sys-color-error, #B3261E);
+  color: var(--md-sys-color-on-error, #FFFFFF);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .md3-sessions-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .md3-session-meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .md3-session-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+</style>
+
+<!-- Main Content with MD3 styling -->
+<div class="md3-main-content" style="margin-top: 80px; padding: 24px;">
+<div class="md3-page-container">
+  <!-- MD3 Page Header -->
+  <div class="md3-page-header">
+    <div class="md3-header-content">
+      <h1 class="md3-headline-large">
+        <span class="material-symbols-outlined md3-icon-large">checklist</span>
+        Inventurplanung
+      </h1>
+      <p class="md3-body-large">Verwalten Sie Ihre Inventursitzungen und planen Sie neue Inventuren</p>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="md3-header-actions">
+      <button class="md3-button md3-button-filled" onclick="openNewInventoryModal()">
+        <span class="material-symbols-outlined">add</span>
+        Neue Inventur
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="md3-stats-grid">
+    <div class="md3-stat-card">
+      <div class="md3-stat-icon">
+        <span class="material-symbols-outlined">schedule</span>
+      </div>
+      <div class="md3-stat-content">
+        <div class="md3-stat-value">{{ sessions|selectattr('status', 'equalto', 'planned')|list|length }}</div>
+        <div class="md3-stat-label">Geplant</div>
+      </div>
+    </div>
+    
+    <div class="md3-stat-card">
+      <div class="md3-stat-icon">
+        <span class="material-symbols-outlined">play_circle</span>
+      </div>
+      <div class="md3-stat-content">
+        <div class="md3-stat-value">{{ sessions|selectattr('status', 'equalto', 'in_progress')|list|length }}</div>
+        <div class="md3-stat-label">Laufend</div>
+      </div>
+    </div>
+    
+    <div class="md3-stat-card">
+      <div class="md3-stat-icon">
+        <span class="material-symbols-outlined">check_circle</span>
+      </div>
+      <div class="md3-stat-content">
+        <div class="md3-stat-value">{{ sessions|selectattr('status', 'equalto', 'completed')|list|length }}</div>
+        <div class="md3-stat-label">Abgeschlossen</div>
+      </div>
+    </div>
+    
+    <div class="md3-stat-card">
+      <div class="md3-stat-icon">
+        <span class="material-symbols-outlined">inventory</span>
+      </div>
+      <div class="md3-stat-content">
+        <div class="md3-stat-value">{{ sessions|length }}</div>
+        <div class="md3-stat-label">Gesamt</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inventur Sessions Cards -->
+  <div class="md3-sessions-container">
+    {% if sessions %}
+    <div class="md3-section-header">
+      <h3 class="md3-headline-small">Inventursitzungen</h3>
+      <button class="md3-icon-button" onclick="refreshTable()" title="Aktualisieren">
+        <span class="material-symbols-outlined">refresh</span>
+      </button>
+    </div>
+    
+    <div class="md3-sessions-grid">
+      {% for session in sessions %}
+      <div class="md3-session-card" onclick="continueExecution({{ session.id }})" style="cursor: pointer;">
+        <!-- Card Header -->
+        <div class="md3-session-card-header">
+          <div class="md3-session-info">
+            <h4 class="md3-session-title">{{ session.name }}</h4>
+            {% if session.description %}
+            <p class="md3-session-description">{{ session.description[:80] }}{% if session.description|length > 80 %}...{% endif %}</p>
+            {% endif %}
+          </div>
+          <div class="md3-session-actions" onclick="event.stopPropagation();">
+            {% if session.status == 'planned' %}
+            <a href="{{ url_for('md3_inventory.planning_detail', id=session.id) }}" 
+               class="md3-icon-button md3-icon-button-primary" 
+               title="Inventur starten (Detailansicht)">
+              <span class="material-symbols-outlined">play_arrow</span>
+            </a>
+            {% endif %}
+            
+            {% if session.status in ['planned', 'in_progress', 'active'] %}
+            <button class="md3-icon-button md3-icon-button-error" 
+                    onclick="cancelSession({{ session.id }})"
+                    title="Inventur abbrechen">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+            {% endif %}
+          </div>
+        </div>
+        
+        <!-- Card Content -->
+        <div class="md3-session-card-content">
+          <!-- Status and Location Row -->
+          <div class="md3-session-meta-row">
+            <div class="md3-status-badge md3-status-{{ session.status }}">
+              {% if session.status == 'planned' %}
+              <span class="material-symbols-outlined">schedule</span>
+              <span>Geplant</span>
+              {% elif session.status == 'in_progress' or session.status == 'active' %}
+              <span class="material-symbols-outlined">play_circle</span>
+              <span>Laufend</span>
+              {% elif session.status == 'completed' %}
+              <span class="material-symbols-outlined">check_circle</span>
+              <span>Abgeschlossen</span>
+              {% else %}
+              <span class="material-symbols-outlined">help</span>
+              <span>Unbekannt</span>
+              {% endif %}
+            </div>
+            
+            <div class="md3-location-chip">
+              <span class="material-symbols-outlined">location_on</span>
+              <span>{{ session.location.name if session.location else 'Alle Standorte' }}</span>
+            </div>
+          </div>
+          
+          <!-- Progress Bar -->
+          <div class="md3-progress-section">
+            <div class="md3-progress-header">
+              <span class="md3-progress-label">Fortschritt</span>
+              <span class="md3-progress-percentage">{{ "%.1f"|format(session.progress|default(0)) }}%</span>
+            </div>
+            <div class="md3-progress-bar-modern">
+              <div class="md3-progress-fill-modern" data-progress="{{ session.progress|default(0) }}"></div>
+            </div>
+          </div>
+          
+          <!-- Footer Info -->
+          <div class="md3-session-footer">
+            <div class="md3-user-info">
+              <span class="material-symbols-outlined">person</span>
+              <span>{{ session.created_by.username if session.created_by else 'Unbekannt' }}</span>
+            </div>
+            <div class="md3-date-info">
+              <span class="material-symbols-outlined">calendar_today</span>
+              <span>{{ session.created_at.strftime('%d.%m.%Y') if session.created_at else 'Unbekannt' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="md3-empty-state">
+      <div class="md3-empty-icon">
+        <span class="material-symbols-outlined">inventory</span>
+      </div>
+      <h3 class="md3-headline-small">Keine Inventuren gefunden</h3>
+      <p class="md3-body-medium">Erstellen Sie Ihre erste Inventur, um zu beginnen.</p>
+      <button class="md3-button md3-button-filled" onclick="openNewInventoryModal()">
+        <span class="material-symbols-outlined">add</span>
+        Neue Inventur erstellen
+      </button>
+    </div>
+    {% endif %}
+    </div>
+  </div>
+</div>
+</div> <!-- End MD3 Main Content -->
+
+<!-- MD3 Modal für Neue Inventur -->
+<div class="md3-modal-overlay" id="newInventoryModal" style="display: none;">
+  <div class="md3-modal md3-modal-large">
+    <div class="md3-modal-header">
+      <h2 class="md3-modal-title">Neue Inventur planen</h2>
+      <button class="md3-icon-button" onclick="closeNewInventoryModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    
+    <div class="md3-modal-content">
+      <form id="newInventoryForm" method="POST" action="{{ url_for('md3_inventory.planning_new') }}">
+        
+        <div class="md3-form-field">
+          <label class="md3-form-label">Name der Inventur</label>
+          <input type="text" name="name" class="md3-form-input" required>
+        </div>
+        
+        <div class="md3-form-row">
+          <div class="md3-form-field">
+            <label class="md3-form-label">Startdatum</label>
+            <input type="date" name="start_date" class="md3-form-input" required>
+          </div>
+          
+          <div class="md3-form-field">
+            <label class="md3-form-label">Enddatum</label>
+            <input type="date" name="end_date" class="md3-form-input">
+          </div>
+        </div>
+        
+        <div class="md3-form-field">
+          <label class="md3-form-label">Beschreibung</label>
+          <textarea name="description" class="md3-form-textarea" rows="3"></textarea>
+        </div>
+        
+        <div class="md3-form-field">
+          <label class="md3-form-label">Standort</label>
+          <select name="location_id" class="md3-form-select">
+            <option value="">Alle Standorte</option>
+            {% for location in locations %}
+            <option value="{{ location.id }}">{{ location.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="md3-form-field">
+          <label class="md3-checkbox-container">
+            <input type="checkbox" name="include_all_assets" class="md3-checkbox" checked>
+            <span class="md3-checkbox-checkmark"></span>
+            <span class="md3-checkbox-label">Alle Assets einbeziehen</span>
+          </label>
+        </div>
+      </form>
+    </div>
+    
+    <div class="md3-modal-actions">
+      <button type="button" class="md3-button md3-button-text" onclick="closeNewInventoryModal()">
+        Abbrechen
+      </button>
+      <button type="submit" form="newInventoryForm" class="md3-button md3-button-filled">
+        <span class="material-symbols-outlined">save</span>
+        Inventur erstellen
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript for Inventory Planning -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize MD3 components
+  initializeMD3Components();
+  
+  // Initialize progress bars
+  initializeProgressBars();
+  
+  // Add event listeners for action buttons
+  initializeActionButtons();
+});
+
+function refreshTable() {
+  location.reload();
+}
+
+function startSession(sessionId) {
+  if (confirm('Möchten Sie diese Inventur wirklich starten?')) {
+    fetch(`/md3/inventory/api/session/${sessionId}/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showNotification('Inventur wurde gestartet', 'success');
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showNotification('Fehler beim Starten der Inventur: ' + data.error, 'error');
+      }
+    })
+    .catch(error => {
+      showNotification('Fehler beim Starten der Inventur', 'error');
+      console.error('Error:', error);
+    });
+  }
+}
+
+function cancelSession(sessionId) {
+  if (confirm('Möchten Sie diese Inventur wirklich abbrechen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+    // Show loading state
+    const cancelButton = document.querySelector(`[onclick="cancelSession(${sessionId})"]`);
+    if (cancelButton) {
+      cancelButton.disabled = true;
+      cancelButton.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span>';
+    }
+    
+    // Send cancel request to backend
+    fetch(`/inventory/planning/${sessionId}/cancel`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      }
+    })
+    .then(response => {
+      if (response.ok) {
+        return response.text();
+      } else {
+        throw new Error('Fehler beim Abbrechen der Inventur');
+      }
+    })
+    .then(data => {
+      showNotification('Inventur wurde erfolgreich abgebrochen und archiviert', 'success');
+      
+      // Remove the session card from the view with animation
+      const sessionCard = cancelButton.closest('.md3-session-card');
+      if (sessionCard) {
+        sessionCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        sessionCard.style.opacity = '0';
+        sessionCard.style.transform = 'translateY(-20px)';
+        
+        setTimeout(() => {
+          sessionCard.remove();
+          
+          // Check if there are no more sessions
+          const remainingSessions = document.querySelectorAll('.md3-session-card');
+          if (remainingSessions.length === 0) {
+            location.reload(); // Reload to show empty state
+          }
+        }, 300);
+      }
+    })
+    .catch(error => {
+      console.error('Error cancelling session:', error);
+      showNotification('Fehler beim Abbrechen der Inventur', 'error');
+      
+      // Reset button state
+      if (cancelButton) {
+        cancelButton.disabled = false;
+        cancelButton.innerHTML = '<span class="material-symbols-outlined">close</span>';
+      }
+    });
+  }
+}
+
+function getCsrfToken() {
+  return document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+}
+
+function showNotification(message, type = 'info') {
+  // Simple notification implementation
+  const notification = document.createElement('div');
+  notification.className = `md3-notification md3-notification-${type}`;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
+
+function continueExecution(sessionId) {
+  // Navigate to execution view to continue with saved progress
+  console.log('Continuing execution for session:', sessionId);
+  showNotification('Lade gespeicherten Fortschritt...', 'info');
+  window.location.href = `/md3/inventory/planning/${sessionId}`;
+}
+
+function initializeProgressBars() {
+  // Set progress bar widths from data attributes (both old and new styles)
+  const progressBars = document.querySelectorAll('.md3-progress-fill[data-progress], .md3-progress-fill-modern[data-progress]');
+  progressBars.forEach(bar => {
+    const progress = bar.getAttribute('data-progress') || 0;
+    bar.style.width = progress + '%';
+  });
+}
+
+function initializeActionButtons() {
+  // Add event listeners for action buttons
+  const actionButtons = document.querySelectorAll('button[data-action]');
+  actionButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const action = this.getAttribute('data-action');
+      const sessionId = this.getAttribute('data-session-id');
+      
+      if (action === 'start') {
+        startSession(sessionId);
+      } else if (action === 'cancel') {
+        cancelSession(sessionId);
+      }
+    });
+  });
+}
+
+function openNewInventoryModal() {
+  const modal = document.getElementById('newInventoryModal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  
+  // Set default start date to today
+  const startDateInput = modal.querySelector('input[name="start_date"]');
+  const today = new Date().toISOString().split('T')[0];
+  startDateInput.value = today;
+}
+
+function closeNewInventoryModal() {
+  const modal = document.getElementById('newInventoryModal');
+  modal.style.display = 'none';
+  document.body.style.overflow = 'auto';
+  
+  // Reset form
+  document.getElementById('newInventoryForm').reset();
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+  const modal = document.getElementById('newInventoryModal');
+  if (event.target === modal) {
+    closeNewInventoryModal();
+  }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeNewInventoryModal();
+  }
+});
+
+function initializeMD3Components() {
+  // Initialize any MD3 specific components here
+  console.log('MD3 Inventory Planning initialized');
+}
+</script>
+
+<style>
+/* MD3 Inventory Planning Styles */
+.md3-page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.md3-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  gap: 24px;
+}
+
+.md3-header-content h1 {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 8px 0;
+  color: var(--md-sys-color-on-surface);
+}
+
+.md3-header-content p {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.md3-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.md3-stat-card {
+  background: var(--md-sys-color-surface-container);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.md3-stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--md-sys-color-primary-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.md3-stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+  line-height: 1;
+}
+
+.md3-stat-label {
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-top: 4px;
+}
+
+.md3-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.md3-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--md-sys-color-surface-variant);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.md3-progress-fill {
+  height: 100%;
+  background: var(--md-sys-color-primary);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.md3-progress-text {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  min-width: 40px;
+  text-align: right;
+}
+
+.md3-table-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.md3-empty-state {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.md3-empty-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  color: var(--md-sys-color-outline);
+}
+
+.md3-empty-icon .material-symbols-outlined {
+  font-size: 64px;
+}
+
+.md3-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: white;
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
+}
+
+.md3-notification-success {
+  background: var(--md-sys-color-primary);
+}
+
+.md3-notification-error {
+  background: var(--md-sys-color-error);
+}
+
+.md3-notification-info {
+  background: var(--md-sys-color-tertiary);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .md3-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .md3-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .md3-table-container {
+    overflow-x: auto;
+  }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,418 @@
+.md3-calendar-container {
+  background-color: var(--md-sys-color-surface);
+  border-radius: 28px;
+  box-shadow: var(--md-sys-elevation-1);
+  margin: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 180px);
+  min-height: 600px;
+}
+
+/* Header-Bereich mit Titel und Navigation */
+.md3-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  background-color: var(--md-sys-color-surface-container-highest);
+}
+
+.md3-calendar-title {
+  font-family: var(--md-sys-typescale-title-large-font-family-name);
+  font-size: var(--md-sys-typescale-title-large-font-size);
+  font-weight: var(--md-sys-typescale-title-large-font-weight);
+  color: var(--md-sys-color-on-surface);
+  display: flex;
+  align-items: center;
+}
+
+/* Moderne Symbolleiste im Google-Stil */
+.md3-calendar-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Navigationsschaltflächen mit Material Design 3 Styling */
+.md3-calendar-nav-button {
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  color: var(--md-sys-color-on-surface-variant);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.md3-calendar-nav-button:hover {
+  background-color: var(--md-sys-color-surface-variant);
+}
+
+/* Ansichtsauswahl (Tag, Woche, Monat, Jahr) mit Material Design 3 Chip-Stil */
+.md3-calendar-view-selector {
+  display: flex;
+  gap: 1px;
+  border-radius: 20px;
+  background-color: var(--md-sys-color-surface-container-low);
+  padding: 2px;
+  margin: 0 16px;
+}
+
+.md3-calendar-view-button {
+  border: none;
+  background: transparent;
+  border-radius: 16px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-family: var(--md-sys-typescale-label-large-font-family-name);
+  font-size: var(--md-sys-typescale-label-large-font-size);
+  font-weight: var(--md-sys-typescale-label-large-font-weight);
+  color: var(--md-sys-color-on-surface-variant);
+  transition: all 0.2s;
+}
+
+.md3-calendar-view-button.active {
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+/* Heute-Button mit Material Design 3 Button-Stil */
+.md3-calendar-today {
+  border: none;
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-radius: 20px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-family: var(--md-sys-typescale-label-large-font-family-name);
+  font-size: var(--md-sys-typescale-label-large-font-size);
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.md3-calendar-today:hover {
+  background-color: var(--md-sys-color-primary-container);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+/* Kalender-Grid-Container mit Scrollfunktion */
+.md3-calendar-grid-container {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background-color: var(--md-sys-color-surface-container);
+}
+
+/* Kalender-Grid mit moderner Darstellung */
+.md3-calendar-grid {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  width: 100%;
+  height: 100%;
+  background-color: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Wochentagsüberschriften */
+.md3-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  position: sticky;
+  top: 0;
+  background-color: var(--md-sys-color-surface-container-high);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  z-index: 10;
+}
+
+.md3-calendar-weekday {
+  padding: 12px 8px;
+  text-align: center;
+  font-family: var(--md-sys-typescale-title-small-font-family-name);
+  font-size: var(--md-sys-typescale-title-small-font-size);
+  font-weight: var(--md-sys-typescale-title-small-font-weight);
+  color: var(--md-sys-color-on-surface-variant);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+/* Kalenderzellen für Tage */
+/* Kalender-Körper */
+.md3-calendar-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Kalender-Zeile */
+.md3-calendar-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  min-height: 100px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-calendar-row:last-child {
+  border-bottom: none;
+}
+
+/* Kalenderzellen für Tage */
+.md3-calendar-cell {
+  border-right: 1px solid var(--md-sys-color-outline-variant);
+  min-height: 100px;
+  padding: 4px;
+  position: relative;
+  transition: background-color 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+
+.md3-calendar-cell:last-child {
+  border-right: none;
+}
+
+.md3-calendar-cell:hover {
+  background-color: var(--md-sys-color-surface-container-high);
+  cursor: pointer;
+}
+
+/* Heutiger Tag hervorheben */
+.md3-calendar-cell.today-cell {
+  background-color: var(--md-sys-color-primary-container-lowest);
+}
+
+.md3-calendar-day.today .md3-day-number {
+  color: var(--md-sys-color-primary);
+  font-weight: 700;
+  background-color: var(--md-sys-color-primary-container-low);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+/* Tage anderer Monate abschwächen */
+.md3-calendar-cell.prev-month, .md3-calendar-cell.next-month {
+  background-color: var(--md-sys-color-surface-container-lowest);
+}
+
+/* Tagesnummer */
+.md3-day-number {
+  padding: 4px;
+  font-family: var(--md-sys-typescale-body-medium-font-family-name);
+  font-size: var(--md-sys-typescale-body-medium-font-size);
+  font-weight: var(--md-sys-typescale-body-medium-font-weight);
+  color: var(--md-sys-color-on-surface);
+}
+
+.prev-month.md3-day-number, .next-month.md3-day-number {
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: 0.6;
+}
+
+/* Container für Ereignisse eines Tages */
+.md3-day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 4px 4px 4px;
+  overflow: hidden;
+}
+
+/* Einzelnes Ereignis im Google Calendar-Stil */
+.md3-calendar-event {
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: var(--md-sys-typescale-body-small-font-family-name);
+  font-size: var(--md-sys-typescale-body-small-font-size);
+  font-weight: var(--md-sys-typescale-body-small-font-weight);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  display: flex;
+  align-items: center;
+}
+
+.md3-calendar-event:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+/* Ereignistypen mit Google Calendar-ähnlichen Farben */
+.md3-calendar-event.important {
+  background-color: #00A389; /* Google Calendar Grün */
+  color: #ffffff;
+}
+
+.md3-calendar-event.info {
+  background-color: #4285F4; /* Google Calendar Blau */
+  color: #ffffff;
+}
+
+.md3-calendar-event.warning {
+  background-color: #EA4335; /* Google Calendar Rot */
+  color: #ffffff;
+}
+
+/* Kleine Symbole innerhalb der Ereignisse */
+.md3-event-icon {
+  margin-right: 4px;
+  font-size: 12px;
+}
+
+/* Zähler für zusätzliche Ereignisse */
+.md3-more-events {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background-color: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  border-radius: 12px;
+  padding: 1px 6px;
+  font-family: var(--md-sys-typescale-label-small-font-family-name);
+  font-size: var(--md-sys-typescale-label-small-font-size);
+  font-weight: var(--md-sys-typescale-label-small-font-weight);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+/* Dialog-Hintergrund */
+.md3-dialog-scrim {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.32);
+  display: none;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+/* Google Calendar-ähnlicher Ereignisdialog */
+.md3-event-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: var(--md-sys-color-surface-container-highest);
+  border-radius: 28px;
+  min-width: 320px;
+  max-width: 480px;
+  box-shadow: var(--md-sys-elevation-4);
+  display: none;
+  z-index: 1001;
+  overflow: hidden;
+}
+
+/* Dialog-Header mit Titel */
+.md3-dialog-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--md-sys-color-surface-container-high);
+}
+
+.md3-dialog-title {
+  font-family: var(--md-sys-typescale-title-large-font-family-name);
+  font-size: var(--md-sys-typescale-title-large-font-size);
+  font-weight: var(--md-sys-typescale-title-large-font-weight);
+  color: var(--md-sys-color-on-surface);
+}
+
+/* Schließen-Button im Dialog */
+.md3-dialog-close-button {
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  color: var(--md-sys-color-on-surface-variant);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.md3-dialog-close-button:hover {
+  background-color: var(--md-sys-color-surface-variant);
+}
+
+/* Dialog-Inhalt */
+.md3-dialog-content {
+  padding: 16px 24px 24px;
+  font-family: var(--md-sys-typescale-body-medium-font-family-name);
+  font-size: var(--md-sys-typescale-body-medium-font-size);
+  font-weight: var(--md-sys-typescale-body-medium-font-weight);
+  color: var(--md-sys-color-on-surface);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+/* Floating Action Button (FAB) für neue Termine */
+.md3-floating-button {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  box-shadow: var(--md-sys-elevation-3);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transition: all 0.2s ease;
+}
+
+.md3-floating-button:hover {
+  box-shadow: var(--md-sys-elevation-4);
+  transform: translateY(-2px);
+}
+
+/* Farblegende für Ereignistypen */
+.md3-calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px 24px;
+  background-color: var(--md-sys-color-surface-container-highest);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--md-sys-typescale-body-small-font-family-name);
+  font-size: var(--md-sys-typescale-body-small-font-size);
+  font-weight: var(--md-sys-typescale-body-small-font-weight);
+  color: var(--md-sys-color-on-surface);
+}
+
+.md3-legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}

@@ -1,0 +1,157 @@
+{# MD3 Status/Statistik Karte 
+   Speziell für Dashboard-Statistiken mit großer Zahl und Status-Badge
+   
+   Usage: 
+   {% set value = '125' %}             # Der anzuzeigende Wert (Zahl/Text)
+   {% set badge_text = 'Aktiv' %}      # Text im Badge
+   {% set badge_type = 'success' %}    # Optional: primary, secondary, error, neutral, success, warning
+   {% set animate = true %}            # Optional: Animation beim Laden (default: true)
+   {% set animation_duration = 1000 %} # Optional: Dauer der Animation in ms (default: 1000)
+   {% set id = 'count-active' %}       # Optional: ID für das Element (für Animation/JS)
+   {% set icon = 'check_circle' %}     # Optional: Material Symbols Icon (default: none)
+   {% include 'md3/components/stat-card.html' %}
+#}
+
+{# Set default values if not provided #}
+{% set badge_type = badge_type|default('primary') %}
+{% set animate = animate|default(true) %}
+{% set animation_duration = animation_duration|default(1000) %}
+{% set id = id|default('stat-' ~ range(1000, 9999) | random) %}
+{% set icon = icon|default('') %}
+
+{# Badge-Farben gemäß MD3-Farbsystem #}
+{% set color_map = {
+  'primary': '--md-sys-color-primary',
+  'secondary': '--md-sys-color-secondary',
+  'error': '--md-sys-color-error',
+  'neutral': '--md-sys-color-outline',
+  'success': '--md-sys-color-tertiary',
+  'warning': '--md-sys-color-error-container'
+} %}
+
+{% set badge_color = color_map[badge_type] %}
+
+<div class="md-stat-card">
+  <div class="md-stat-container">
+    <div class="md-stat-value" {% if id %}id="{{ id }}"{% endif %}>{{ value }}</div>
+    {% if icon %}
+    <div class="md-stat-icon md-stat-icon-{{ badge_type }}">
+      <span class="material-symbols-outlined">{{ icon }}</span>
+    </div>
+    {% endif %}
+  </div>
+  <div class="md-stat-label">
+    <span>{{ badge_text }}</span>
+  </div>
+</div>
+
+<style>
+  .md-stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--md-sys-spacing-3);
+    position: relative;
+    background-color: var(--md-sys-color-surface-container-lowest);
+    border-radius: var(--md-sys-shape-corner-small);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .md-stat-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    gap: var(--md-sys-spacing-2);
+  }
+  
+  .md-stat-value {
+    font-family: var(--md-sys-typescale-display-medium-font-family-name, 'Roboto');
+    font-size: var(--md-sys-typescale-display-medium-font-size, 36px);
+    font-weight: var(--md-sys-typescale-display-medium-font-weight, 700);
+    letter-spacing: var(--md-sys-typescale-display-medium-letter-spacing, -0.25px);
+    line-height: 1.2;
+    color: var(--md-sys-color-on-surface);
+    text-align: center;
+    margin: var(--md-sys-spacing-1) 0;
+  }
+  
+  .md-stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: var(--md-sys-spacing-1);
+  }
+  
+  .md-stat-icon .material-symbols-outlined {
+    font-size: 24px;
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  
+  .md-stat-label {
+    font-family: var(--md-sys-typescale-label-large-font-family, 'Roboto');
+    font-size: var(--md-sys-typescale-label-large-font-size, 14px);
+    font-weight: var(--md-sys-typescale-label-large-font-weight, 500);
+    letter-spacing: var(--md-sys-typescale-label-large-letter-spacing, 0.1px);
+    color: var(--md-sys-color-on-surface-variant);
+    text-align: center;
+    margin-top: var(--md-sys-spacing-2);
+    padding: var(--md-sys-spacing-1) var(--md-sys-spacing-2);
+    border-radius: var(--md-sys-shape-corner-full);
+    background-color: var(--md-sys-color-surface-container-low, rgba(0,0,0,0.05));
+  }
+  
+  .md-stat-card:hover {
+    transform: translateY(-2px);
+  }
+</style>
+
+{% if animate %}
+{% if value|int|string == value|string %}
+  {% set target_value = value|int %}
+{% else %}
+  {% set target_value = 0 %}
+{% endif %}
+<script>
+  // Warte, bis das DOM geladen ist
+  document.addEventListener('DOMContentLoaded', function() {
+    // Hole die Werte aus den Jinja2-Variablen
+    var elementId = "{{ id }}";
+    var targetValue = parseInt("{{ target_value|default(0) }}", 10);
+    var animDuration = parseInt("{{ animation_duration|default(1000) }}", 10);
+    
+    // Prüfe, ob das Element existiert
+    var element = document.getElementById(elementId);
+    if (element) {
+      // Starte die Animation
+      animateValue(element, 0, targetValue, animDuration);
+    }
+  });
+  
+  /**
+   * Animiert einen Wert von start bis end über die angegebene Dauer
+   * @param {HTMLElement} element - Das DOM-Element, dessen Text aktualisiert wird
+   * @param {number} start - Startwert
+   * @param {number} end - Zielwert
+   * @param {number} duration - Dauer in Millisekunden
+   */
+  function animateValue(element, start, end, duration) {
+    var startTimestamp = null;
+    
+    function step(timestamp) {
+      if (!startTimestamp) startTimestamp = timestamp;
+      var progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      var easedProgress = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+      var value = Math.floor(start + (end - start) * easedProgress);
+      
+      element.textContent = value;
+      
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      }
+    }
+    
+    window.requestAnimationFrame(step);
+  }
+</script>
+{% endif %}

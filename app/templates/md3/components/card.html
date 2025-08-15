@@ -1,0 +1,38 @@
+{# MD3 Card Component 
+   Usage: 
+   Erst Inhalt in einer Variable definieren:
+   {% set card_content %}
+     <!-- Card content here -->
+   {% endset %}
+   
+   Dann die Komponente einbinden:
+   {% set title = 'Card Title' %}
+   {% set elevation = 1 %}           # Optional: 0-5 (default: 1)
+   {% set padding = true %}          # Optional: true/false (default: true)
+   {% set full_width = true %}       # Optional: true/false (default: true)
+   {% set margin_bottom = true %}    # Optional: true/false (default: true)
+   {% include 'md3/components/card.html' %}
+#}
+
+{# Set default values if not provided #}
+{% set elevation = elevation|default(1) %}
+{% set padding = padding|default(true) %}
+{% set full_width = full_width|default(true) %}
+{% set margin_bottom = margin_bottom|default(true) %}
+{% set card_content = card_content|default('') %}
+
+{# Vorberechnung des Style-Strings für bessere CSS-Kompatibilität #}
+{% set card_style = '--md-card-elevation: ' ~ elevation %}{% if full_width %}{% set card_style = card_style ~ '; width: 100%' %}{% endif %}{% if margin_bottom %}{% set card_style = card_style ~ '; margin-bottom: var(--md-sys-spacing-4)' %}{% endif %}
+
+<div class="md-card" {% if card_style %}style="{{ card_style }}"{% endif %}>
+    
+    {% if title %}
+    <div class="md-card-header">
+        <h2 class="md-card-title">{{ title }}</h2>
+    </div>
+    {% endif %}
+    
+    <div class="md-card-content" {% if not padding %}style="padding: 0;"{% endif %}>
+        {{ card_content }}
+    </div>
+</div>

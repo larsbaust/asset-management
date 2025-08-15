@@ -1,0 +1,895 @@
+{% extends "md3/base.html" %}
+
+{% block title %}Inventurbericht - {{ session.name }}{% endblock %}
+
+{% block content %}
+<!-- MD3 Navigation Bar -->
+{% include 'md3-nav.html' %}
+
+<div class="md3-container">
+    <div class="md3-page-card">
+    <!-- Header Section -->
+    <div class="md3-header-section">
+        <div class="md3-breadcrumb">
+            <a href="{{ url_for('main.dashboard') }}" class="md3-breadcrumb-item">
+                <span class="material-symbols-outlined">home</span>
+                Dashboard
+            </a>
+            <span class="md3-breadcrumb-separator">/</span>
+            <a href="{{ url_for('md3_inventory.md3_reports') }}" class="md3-breadcrumb-item">Inventurberichte</a>
+            <span class="md3-breadcrumb-separator">/</span>
+            <span class="md3-breadcrumb-item md3-breadcrumb-current">{{ session.name }}</span>
+        </div>
+        
+        <div class="md3-page-header">
+            <div class="md3-page-title">
+                <span class="material-symbols-outlined md3-page-icon">analytics</span>
+                <h1>{{ session.name }}</h1>
+            </div>
+            <div class="md3-page-actions">
+                <button class="md3-button md3-button-outlined" onclick="window.print()">
+                    <span class="material-symbols-outlined">print</span>
+                    Drucken
+                </button>
+                <button class="md3-button md3-button-filled" onclick="downloadReport()">
+                    <span class="material-symbols-outlined">download</span>
+                    Export
+                </button>
+            </div>
+        </div>
+        
+        <!-- Session Info Card -->
+        <div class="md3-session-info-card">
+            <div class="md3-info-grid">
+                <div class="md3-info-item">
+                    <span class="material-symbols-outlined">location_on</span>
+                    <div class="md3-info-content">
+                        <span class="md3-info-label">Standort</span>
+                        <span class="md3-info-value">{{ session.location_obj.name if session.location_obj else 'Alle Standorte' }}</span>
+                    </div>
+                </div>
+                
+                <div class="md3-info-item">
+                    <span class="material-symbols-outlined">calendar_today</span>
+                    <div class="md3-info-content">
+                        <span class="md3-info-label">Zeitraum</span>
+                        <span class="md3-info-value">{{ session.start_date.strftime('%d.%m.%Y') }} - {{ session.end_date.strftime('%d.%m.%Y') }}</span>
+                    </div>
+                </div>
+                
+                <div class="md3-info-item">
+                    <span class="material-symbols-outlined">schedule</span>
+                    <div class="md3-info-content">
+                        <span class="md3-info-label">Abgeschlossen am</span>
+                        <span class="md3-info-value">{{ session.completed_at.strftime('%d.%m.%Y %H:%M') if session.completed_at else session.end_date.strftime('%d.%m.%Y') }}</span>
+                    </div>
+                </div>
+                
+                <div class="md3-info-item">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    <div class="md3-info-content">
+                        <span class="md3-info-label">Status</span>
+                        <span class="md3-chip md3-chip-completed">
+                            <span class="material-symbols-outlined">check_circle</span>
+                            Abgeschlossen
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="md3-charts-section">
+        <div class="md3-charts-grid">
+            <!-- Status Distribution Chart -->
+            <div class="md3-chart-card">
+                <div class="md3-chart-header">
+                    <h3 class="md3-chart-title">Status-Verteilung</h3>
+                    <span class="md3-chart-subtitle">Übersicht der Asset-Status</span>
+                </div>
+                <div class="md3-chart-container">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Category Distribution Chart -->
+            <div class="md3-chart-card">
+                <div class="md3-chart-header">
+                    <h3 class="md3-chart-title">Kategorien-Verteilung</h3>
+                    <span class="md3-chart-subtitle">Assets nach Kategorien</span>
+                </div>
+                <div class="md3-chart-container">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Location Distribution Chart -->
+            <div class="md3-chart-card">
+                <div class="md3-chart-header">
+                    <h3 class="md3-chart-title">Standort-Verteilung</h3>
+                    <span class="md3-chart-subtitle">Assets nach Standorten</span>
+                </div>
+                <div class="md3-chart-container">
+                    <canvas id="locationChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Timeline Chart -->
+            <div class="md3-chart-card md3-chart-card-wide">
+                <div class="md3-chart-header">
+                    <h3 class="md3-chart-title">Inventur-Verlauf</h3>
+                    <span class="md3-chart-subtitle">Zeitlicher Verlauf der Inventur</span>
+                </div>
+                <div class="md3-chart-container">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asset Table Section -->
+    <div class="md3-asset-table-section">
+        <div class="md3-table-card">
+            <div class="md3-table-header">
+                <div class="md3-table-title-section">
+                    <h3 class="md3-table-title">Asset-Übersicht</h3>
+                    <span class="md3-table-subtitle">Detaillierte Auflistung aller inventarisierten Assets</span>
+                </div>
+                <div class="md3-table-controls">
+                    <div class="md3-switch-container">
+                        <label class="md3-switch">
+                            <input type="checkbox" id="showDetailedView" checked>
+                            <span class="md3-switch-track">
+                                <span class="md3-switch-thumb"></span>
+                            </span>
+                            <span class="md3-switch-label">Detailansicht</span>
+                        </label>
+                    </div>
+                    <button class="md3-icon-button" onclick="exportAssetTable()" title="Tabelle exportieren">
+                        <span class="material-symbols-outlined">file_download</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="md3-table-container">
+                <table class="md3-table" id="assetTable">
+                    <thead>
+                        <tr>
+                            <th class="md3-table-header-cell">
+                                <span class="material-symbols-outlined">expand_more</span>
+                            </th>
+                            <th class="md3-table-header-cell">Asset</th>
+                            <th class="md3-table-header-cell">Artikelnummer</th>
+                            <th class="md3-table-header-cell">Erwartet</th>
+                            <th class="md3-table-header-cell">Gezählt</th>
+                            <th class="md3-table-header-cell">Abweichung</th>
+                            <th class="md3-table-header-cell">Status</th>
+                            <th class="md3-table-header-cell">Standorte</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assetTableBody">
+                        <!-- Table content will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Hidden data for JavaScript -->
+<script type="application/json" id="chartData">{{ chart_data|tojson|safe }}</script>
+<script type="application/json" id="assetData">{{ asset_list|tojson|safe }}</script>
+
+<!-- JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Global variables
+let chartData = {};
+let assetList = [];
+
+// Embed report meta as JSON to avoid inline template tokens in JS
+</script>
+<script id="report-meta" type="application/json">{{ {
+    'id': session.id,
+    'name': session.name,
+    'location': session.location_obj.name if session.location_obj else 'Alle Standorte',
+    'start': session.start_date.strftime('%Y-%m-%d'),
+    'end': session.end_date.strftime('%Y-%m-%d')
+} | tojson | safe }}</script>
+<script>
+// Color helpers: resolve MD3 CSS variables to concrete colors for Chart.js
+function mdColor(varName, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    return v || fallback;
+}
+
+function computeTheme() {
+    return {
+        primary: mdColor('--md-sys-color-primary', '#6750A4'),
+        onPrimary: mdColor('--md-sys-color-on-primary', '#FFFFFF'),
+        primaryContainer: mdColor('--md-sys-color-primary-container', '#EADDFF'),
+        secondary: mdColor('--md-sys-color-secondary', '#625B71'),
+        secondaryContainer: mdColor('--md-sys-color-secondary-container', '#E8DEF8'),
+        tertiary: mdColor('--md-sys-color-tertiary', '#7D5260'),
+        error: mdColor('--md-sys-color-error', '#B3261E')
+    };
+}
+
+let THEME = null;
+
+const reportMeta = JSON.parse(document.getElementById('report-meta').textContent);
+
+// Initialize everything when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        // Load data from hidden script tags (defensive against older tuple return)
+        const parsedChart = JSON.parse(document.getElementById('chartData').textContent);
+        chartData = Array.isArray(parsedChart) ? parsedChart[0] : parsedChart;
+        assetList = JSON.parse(document.getElementById('assetData').textContent);
+        
+        // Resolve theme colors once
+        THEME = computeTheme();
+
+        // Initialize charts
+        initializeCharts();
+        
+        // Initialize asset table
+        initializeAssetTable();
+        
+        // Initialize controls
+        initializeControls();
+        
+    } catch (error) {
+        console.error('Error initializing report detail:', error);
+    }
+});
+
+// Initialize all charts
+function initializeCharts() {
+    initializeStatusChart();
+    initializeCategoryChart();
+    initializeLocationChart();
+    initializeTimelineChart();
+}
+
+// Status Chart (Doughnut)
+function initializeStatusChart() {
+    const ctx = document.getElementById('statusChart').getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: chartData.status.labels,
+            datasets: [{
+                data: chartData.status.data,
+                backgroundColor: [THEME.primary, THEME.error, THEME.tertiary],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Category Chart (Bar)
+function initializeCategoryChart() {
+    const ctx = document.getElementById('categoryChart').getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: chartData.category.labels,
+            datasets: [{
+                data: chartData.category.data,
+                backgroundColor: THEME.primaryContainer,
+                borderColor: THEME.primary,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Location Chart (Horizontal Bar)
+function initializeLocationChart() {
+    const ctx = document.getElementById('locationChart').getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: chartData.location.labels,
+            datasets: [{
+                data: chartData.location.data,
+                backgroundColor: THEME.secondaryContainer,
+                borderColor: THEME.secondary,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Timeline Chart (Line)
+function initializeTimelineChart() {
+    const ctx = document.getElementById('timelineChart').getContext('2d');
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: chartData.timeline.labels,
+            datasets: [{
+                label: 'Inventur-Fortschritt',
+                data: chartData.timeline.data,
+                borderColor: THEME.primary,
+                backgroundColor: THEME.primaryContainer,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Initialize Asset Table
+function initializeAssetTable() {
+    const tbody = document.getElementById('assetTableBody');
+    
+    // Group assets by name and article number
+    const groupedAssets = {};
+    
+    assetList.forEach(asset => {
+        const key = `${asset.item.asset.name}_${asset.item.asset.article_number || 'no-article'}`;
+        
+        if (!groupedAssets[key]) {
+            groupedAssets[key] = {
+                name: asset.item.asset.name,
+                article_number: asset.item.asset.article_number || '-',
+                expected: 0,
+                counted: 0,
+                items: []
+            };
+        }
+        
+        groupedAssets[key].expected += asset.item.expected_quantity || 0;
+        groupedAssets[key].counted += asset.item.counted_quantity || 0;
+        groupedAssets[key].items.push(asset);
+    });
+    
+    // Render grouped rows
+    Object.values(groupedAssets).forEach(group => {
+        const discrepancy = Math.abs(group.expected - group.counted);
+        const status = discrepancy > 0 ? 'Abweichung' : 'OK';
+        
+        // Collect unique locations
+        const locations = [...new Set(group.items.map(item => 
+            item.item.actual_location || item.item.expected_location || 'Unbekannt'
+        ))];
+        
+        const row = document.createElement('tr');
+        row.className = 'md3-table-row group-row';
+        row.innerHTML = `
+            <td class="md3-table-cell">
+                <button class="md3-icon-button toggle-details" data-group="${group.name}_${group.article_number}">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+            </td>
+            <td class="md3-table-cell">${group.name}</td>
+            <td class="md3-table-cell">${group.article_number}</td>
+            <td class="md3-table-cell">${group.expected}</td>
+            <td class="md3-table-cell">${group.counted}</td>
+            <td class="md3-table-cell">
+                <span class="md3-chip ${discrepancy > 0 ? 'md3-chip-error' : 'md3-chip-success'}">
+                    ${discrepancy > 0 ? `+${discrepancy}` : '0'}
+                </span>
+            </td>
+            <td class="md3-table-cell">
+                <span class="md3-chip ${status === 'OK' ? 'md3-chip-success' : 'md3-chip-warning'}">
+                    ${status}
+                </span>
+            </td>
+            <td class="md3-table-cell">${locations.join(', ')}</td>
+        `;
+        
+        tbody.appendChild(row);
+        
+        // Add detail row (initially hidden)
+        const detailRow = document.createElement('tr');
+        detailRow.className = 'md3-table-detail-row';
+        detailRow.style.display = 'none';
+        detailRow.innerHTML = `
+            <td colspan="8" class="md3-table-detail-cell">
+                <div class="md3-detail-container" id="detail-${group.name}_${group.article_number}">
+                    <!-- Details will be populated when expanded -->
+                </div>
+            </td>
+        `;
+        
+        tbody.appendChild(detailRow);
+    });
+    
+    // Add event listeners for expand/collapse
+    document.querySelectorAll('.toggle-details').forEach(button => {
+        button.addEventListener('click', function() {
+            const groupKey = this.dataset.group;
+            const detailRow = this.closest('tr').nextElementSibling;
+            const icon = this.querySelector('.material-symbols-outlined');
+            
+            if (detailRow.style.display === 'none') {
+                detailRow.style.display = 'table-row';
+                icon.textContent = 'expand_less';
+                
+                // Populate details if not already done
+                const detailContainer = document.getElementById(`detail-${groupKey}`);
+                if (detailContainer.children.length === 0) {
+                    populateDetails(groupKey, detailContainer);
+                }
+            } else {
+                detailRow.style.display = 'none';
+                icon.textContent = 'expand_more';
+            }
+        });
+    });
+}
+
+// Populate detail view for a group
+function populateDetails(groupKey, container) {
+    const [name, articleNumber] = groupKey.split('_');
+    const groupItems = assetList.filter(asset => 
+        asset.item.asset.name === name && 
+        (asset.item.asset.article_number || 'no-article') === articleNumber
+    );
+    
+    const detailTable = document.createElement('table');
+    detailTable.className = 'md3-detail-table';
+    detailTable.innerHTML = `
+        <thead>
+            <tr>
+                <th>Seriennummer</th>
+                <th>Erwartet</th>
+                <th>Gezählt</th>
+                <th>Erwarteter Standort</th>
+                <th>Tatsächlicher Standort</th>
+                <th>Zustand</th>
+                <th>Notizen</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${groupItems.map(asset => `
+                <tr>
+                    <td>${asset.item.asset.serial_number || '-'}</td>
+                    <td>${asset.item.expected_quantity || 0}</td>
+                    <td>${asset.item.counted_quantity || 0}</td>
+                    <td>${asset.item.expected_location || '-'}</td>
+                    <td>${asset.item.actual_location || '-'}</td>
+                    <td>
+                        <span class="md3-chip md3-chip-${getConditionClass(asset.item.condition)}">
+                            ${asset.item.condition || 'OK'}
+                        </span>
+                    </td>
+                    <td>${asset.item.condition_notes || '-'}</td>
+                </tr>
+            `).join('')}
+        </tbody>
+    `;
+    
+    container.appendChild(detailTable);
+}
+
+// Helper function for condition styling
+function getConditionClass(condition) {
+    switch (condition) {
+        case 'damaged':
+        case 'repair_needed':
+            return 'error';
+        case 'good':
+            return 'success';
+        default:
+            return 'neutral';
+    }
+}
+
+// Initialize controls
+function initializeControls() {
+    const detailToggle = document.getElementById('showDetailedView');
+    
+    detailToggle.addEventListener('change', function() {
+        const detailRows = document.querySelectorAll('.md3-table-detail-row');
+        detailRows.forEach(row => {
+            if (this.checked) {
+                // Show all expanded details
+                row.style.display = row.style.display === 'table-row' ? 'table-row' : 'none';
+            } else {
+                // Hide all details
+                row.style.display = 'none';
+                // Reset expand icons
+                const toggleButton = row.previousElementSibling.querySelector('.toggle-details .material-symbols-outlined');
+                if (toggleButton) {
+                    toggleButton.textContent = 'expand_more';
+                }
+            }
+        });
+    });
+}
+
+// Export functions
+function downloadReport() {
+    try {
+        const payload = {
+            meta: reportMeta,
+            charts: chartData,
+            assets: assetList
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `inventurbericht_${reportMeta.id}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+    } catch (e) {
+        console.error('Download report failed', e);
+    }
+}
+
+function exportAssetTable() {
+    try {
+        const headers = [
+            'Asset', 'Artikelnummer', 'Erwartet', 'Gezählt', 'Erwarteter Standort', 'Tatsächlicher Standort', 'Zustand', 'Notizen'
+        ];
+        const rows = assetList.map(entry => {
+            const itm = entry.item || {};
+            const a = (itm.asset || {});
+            return [
+                (a.name || ''),
+                (a.article_number || ''),
+                (itm.expected_quantity ?? ''),
+                (itm.counted_quantity ?? ''),
+                (itm.expected_location || ''),
+                (itm.actual_location || ''),
+                (itm.condition || ''),
+                (itm.condition_notes || '')
+            ];
+        });
+        const csv = [headers].concat(rows)
+            .map(r => r.map(v => {
+                const s = String(v).replaceAll('"', '""');
+                return `"${s}"`;
+            }).join(','))
+            .join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `inventur_assets_${reportMeta.id}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+    } catch (e) {
+        console.error('Export asset table failed', e);
+    }
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* MD3 Report Detail Styles */
+.md3-container {
+    margin-top: var(--md-sys-spacing-6);
+}
+
+.md3-page-card {
+    background: var(--md-sys-color-surface);
+    border-radius: var(--md-sys-shape-corner-large);
+    box-shadow: var(--md-sys-elevation-1);
+    padding: var(--md-sys-spacing-6);
+}
+
+.md3-session-info-card {
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: var(--md-sys-shape-corner-large);
+    padding: var(--md-sys-spacing-4);
+    margin-top: var(--md-sys-spacing-4);
+    box-shadow: var(--md-sys-elevation-1);
+}
+
+.md3-charts-section {
+    margin-top: var(--md-sys-spacing-6);
+}
+
+.md3-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--md-sys-spacing-4);
+}
+
+.md3-chart-card {
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: var(--md-sys-shape-corner-large);
+    padding: var(--md-sys-spacing-4);
+    box-shadow: var(--md-sys-elevation-1);
+}
+
+.md3-chart-card-wide {
+    grid-column: 1 / -1;
+}
+
+.md3-chart-header {
+    margin-bottom: var(--md-sys-spacing-3);
+}
+
+.md3-chart-title {
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-title-medium-font);
+    margin: 0;
+}
+
+.md3-chart-subtitle {
+    color: var(--md-sys-color-on-surface-variant);
+    font: var(--md-sys-typescale-body-small-font);
+}
+
+.md3-chart-container {
+    height: 300px;
+    position: relative;
+}
+
+.md3-asset-table-section {
+    margin-top: var(--md-sys-spacing-6);
+}
+
+.md3-table-card {
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: var(--md-sys-shape-corner-large);
+    box-shadow: var(--md-sys-elevation-1);
+    overflow: hidden;
+}
+
+.md3-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--md-sys-spacing-4);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-table-title {
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-title-medium-font);
+    margin: 0;
+}
+
+.md3-table-subtitle {
+    color: var(--md-sys-color-on-surface-variant);
+    font: var(--md-sys-typescale-body-small-font);
+}
+
+.md3-table-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--md-sys-spacing-3);
+}
+
+.md3-switch-container {
+    display: flex;
+    align-items: center;
+}
+
+.md3-switch {
+    display: flex;
+    align-items: center;
+    gap: var(--md-sys-spacing-2);
+    cursor: pointer;
+}
+
+.md3-switch input {
+    display: none;
+}
+
+.md3-switch-track {
+    width: 52px;
+    height: 32px;
+    background: var(--md-sys-color-surface-container-highest);
+    border: 2px solid var(--md-sys-color-outline);
+    border-radius: 16px;
+    position: relative;
+    transition: all 0.2s var(--md-sys-motion-easing-standard);
+}
+
+.md3-switch input:checked + .md3-switch-track {
+    background: var(--md-sys-color-primary);
+    border-color: var(--md-sys-color-primary);
+}
+
+.md3-switch-thumb {
+    width: 24px;
+    height: 24px;
+    background: var(--md-sys-color-outline);
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: all 0.2s var(--md-sys-motion-easing-standard);
+}
+
+.md3-switch input:checked + .md3-switch-track .md3-switch-thumb {
+    background: var(--md-sys-color-on-primary);
+    transform: translateX(20px);
+}
+
+.md3-switch-label {
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-body-medium-font);
+}
+
+.md3-table-container {
+    overflow-x: auto;
+}
+
+.md3-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.md3-table-header-cell {
+    background: var(--md-sys-color-surface-container-highest);
+    color: var(--md-sys-color-on-surface-variant);
+    font: var(--md-sys-typescale-title-small-font);
+    padding: var(--md-sys-spacing-3) var(--md-sys-spacing-4);
+    text-align: left;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-table-row {
+    transition: background-color 0.2s var(--md-sys-motion-easing-standard);
+}
+
+.md3-table-row:hover {
+    background: var(--md-sys-color-surface-container-highest);
+}
+
+.md3-table-cell {
+    padding: var(--md-sys-spacing-3) var(--md-sys-spacing-4);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-body-medium-font);
+}
+
+.md3-table-detail-row {
+    background: var(--md-sys-color-surface-container-highest);
+}
+
+.md3-table-detail-cell {
+    padding: 0;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-detail-container {
+    padding: var(--md-sys-spacing-4);
+}
+
+.md3-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.md3-detail-table th,
+.md3-detail-table td {
+    padding: var(--md-sys-spacing-2) var(--md-sys-spacing-3);
+    text-align: left;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-detail-table th {
+    background: var(--md-sys-color-surface-container);
+    color: var(--md-sys-color-on-surface-variant);
+    font-weight: 500;
+}
+
+.md3-chip-success {
+    background: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+}
+
+.md3-chip-warning {
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+}
+
+.md3-chip-error {
+    background: var(--md-sys-color-error-container);
+    color: var(--md-sys-color-on-error-container);
+}
+
+.md3-chip-neutral {
+    background: var(--md-sys-color-surface-container-highest);
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .md3-charts-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .md3-table-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--md-sys-spacing-3);
+    }
+    
+    .md3-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--md-sys-spacing-3);
+    }
+}
+
+/* Print Styles */
+@media print {
+    .md3-page-actions,
+    .md3-table-controls {
+        display: none;
+    }
+    
+    .md3-chart-container {
+        height: 200px;
+    }
+}
+</style>
+{% endblock %}

@@ -399,6 +399,8 @@ class CostEntry(db.Model):
 
 class InventorySession(db.Model):
     """Eine Inventur-Session"""
+    __tablename__ = 'inventory_planning'  # MD3 table name
+    
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     location = db.Column(db.String(100))  # ALT: Standort (wird migriert)
@@ -408,10 +410,17 @@ class InventorySession(db.Model):
     end_date = db.Column(db.DateTime, nullable=False)
     notes = db.Column(db.Text)
     
+    # MISSING ATTRIBUTES - ADD THESE FOR COMPATIBILITY
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = db.Column(db.DateTime, nullable=True)  # When inventory was completed
+    
     # Beziehungen
     items = db.relationship('InventoryItem', back_populates='session', cascade='all, delete-orphan')
     team = db.relationship('InventoryTeam', back_populates='session', uselist=False)
     location_obj = db.relationship('Location')  # Relationship für Standort
+    creator = db.relationship('User', backref='created_inventory_sessions')
 
     def __repr__(self):
         return f'<InventorySession {self.name}>'
@@ -422,7 +431,7 @@ class InventoryTeam(db.Model):
     name = db.Column(db.String(100), nullable=False)
     leader_name = db.Column(db.String(100), nullable=False)
     members = db.Column(db.Text)  # Komma-separierte Liste von Teammitgliedern
-    session_id = db.Column(db.Integer, db.ForeignKey('inventory_session.id'), nullable=False)
+    session_id = db.Column(db.Integer, db.ForeignKey('inventory_planning.id'), nullable=False)
     area = db.Column(db.String(100))  # Zugewiesener Bereich für die Inventur
     
     # Beziehungen
@@ -479,7 +488,7 @@ class AssetLog(db.Model):
 class InventoryItem(db.Model):
     """Ein Item in einer Inventur"""
     id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.Integer, db.ForeignKey('inventory_session.id'), nullable=False)
+    session_id = db.Column(db.Integer, db.ForeignKey('inventory_planning.id'), nullable=False)
     asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
     
     # Status und Mengen
@@ -526,6 +535,11 @@ class Location(db.Model):
     image_url = db.Column(db.String(255))  # Foto/Bild vom Standort (optional)
     latitude = db.Column(db.Float)  # Für Kartenanzeige
     longitude = db.Column(db.Float)
+    # Google-Integration für mobile Navigation und Bewertungen
+    google_place_id = db.Column(db.String(255))  # Google Places ID für Bewertungen
+    google_rating = db.Column(db.Float)  # Google-Bewertung (1.0-5.0)
+    google_reviews_count = db.Column(db.Integer)  # Anzahl der Google-Bewertungen
+    google_maps_url = db.Column(db.String(500))  # Direkte Google Maps URL
     # Inventur-Informationen
     last_inventory_date = db.Column(db.DateTime, nullable=True)
     inventory_status = db.Column(db.String(50), nullable=True)

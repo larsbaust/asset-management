@@ -1,0 +1,164 @@
+/* 
+ * MD3-Kalender mit selektiven Überschreibungen für Bulma/base.html Kompatibilität
+ * Diese Datei enthält CSS mit höherer Spezifität, um Konflikte zu lösen
+ */
+
+/* Base.html und Bulma CSS-Reset für den Kalender-Bereich */
+.md3-calendar-section {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.md3-calendar-container-override {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 1rem !important;
+  margin: 0 !important;
+}
+
+/* Grundlegende Grid-Definitionen mit höherer Spezifität */
+html body .md3-calendar-grid {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 4px !important;
+  margin-top: 1rem !important;
+  width: 100% !important;
+}
+
+/* Wochentage */
+body .md3-calendar-grid .md3-calendar-weekday {
+  padding: 8px !important;
+  text-align: center !important;
+  font-weight: 500 !important;
+  color: var(--md-sys-color-on-surface-variant, #666) !important;
+  background-color: var(--md-sys-color-surface-container-high, #e7e7e7) !important;
+  border-radius: 4px !important;
+  display: block !important; /* Überschreibt mögliche Flex/Grid aus Bulma */
+  box-sizing: border-box !important;
+}
+
+/* Kalendertage */
+body .md3-calendar-grid .md3-calendar-day {
+  padding: 8px !important;
+  text-align: center !important;
+  border-radius: 4px !important;
+  min-height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease !important;
+  box-sizing: border-box !important;
+}
+
+body .md3-calendar-grid .md3-calendar-day:hover {
+  background-color: var(--md-sys-color-surface-container-highest, #f5f5f5) !important;
+}
+
+body .md3-calendar-grid .md3-calendar-day.today {
+  color: var(--md-sys-color-primary, #6750a4) !important;
+  font-weight: 700 !important;
+  border: 1px solid var(--md-sys-color-primary, #6750a4) !important;
+}
+
+/* Kalender-Container Überschreibungen */
+body .section.md3-calendar-section {
+  padding: 1rem !important;
+}
+
+body .container.md3-calendar-container {
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+}
+
+/* Kalender-Wrapper */
+body .md3-calendar-wrapper {
+  padding: 1rem !important;
+  background-color: var(--md-sys-color-surface, #fff) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+
+/* Header-Styles */
+body .md3-calendar-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 1rem !important;
+}
+
+body .md3-calendar-title {
+  font-size: 1.5rem !important;
+  font-weight: 500 !important;
+  color: var(--md-sys-color-on-surface, #1f1f1f) !important;
+  margin: 0 !important;
+}
+
+body .md3-calendar-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+}
+
+body .md3-calendar-nav {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+/* Button-Styles */
+body .md3-icon-button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 20px !important;
+  border: none !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  color: var(--md-sys-color-on-surface-variant, #666) !important;
+}
+
+body .md3-icon-button:hover {
+  background-color: var(--md-sys-color-surface-container-highest, #f5f5f5) !important;
+}
+
+body .md3-button-filled {
+  padding: 0.5rem 1rem !important;
+  border: none !important;
+  border-radius: 20px !important;
+  background-color: var(--md-sys-color-primary, #6750a4) !important;
+  color: var(--md-sys-color-on-primary, #fff) !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+}
+
+/* Debug-Grid */
+body .debug-grid-section {
+  margin-bottom: 2rem !important;
+  padding: 1rem !important;
+  border: 1px solid #ff5722 !important;
+  border-radius: 8px !important;
+}
+
+body .debug-heading {
+  color: #ff5722 !important;
+  margin-top: 0 !important;
+}
+
+body #debug-grid-verification {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 2px !important;
+  border: 2px solid #ff5722 !important;
+  padding: 4px !important;
+  max-width: 600px !important;
+}
+
+body #debug-grid-verification > div {
+  background-color: #e3f2fd !important;
+  border: 1px solid #2196f3 !important;
+  padding: 8px !important;
+  text-align: center !important;
+}

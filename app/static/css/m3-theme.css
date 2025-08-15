@@ -1,0 +1,31 @@
+/* MD3 Theme bridge stylesheet
+   Purpose: prevent 404s and provide base theme hooks.
+*/
+@import url('m3-tokens.css');
+
+:root {
+  /* Optional aliases for convenience */
+  --color-surface: var(--md-sys-color-surface);
+  --color-on-surface: var(--md-sys-color-on-surface);
+  --elevation-1: var(--md-sys-elevation-1);
+}
+
+.md3-container {
+  padding: var(--md-sys-spacing-6, 24px);
+  color: var(--md-sys-color-on-surface);
+}
+
+/* Card defaults */
+.md3-card { 
+  background: var(--md-sys-color-surface-container-low);
+  border-radius: var(--md-sys-shape-corner-large);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+/* Buttons */
+.md3-button { font: var(--md-sys-typescale-label-large-font); }
+.md3-button-filled {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+.md3-button-text { color: var(--md-sys-color-primary); }

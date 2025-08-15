@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Material Design 3 Navigation Rail Preview</title>
+  <!-- Google Fonts: Roboto -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- Material Icons -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  
+  <!-- Material Design 3 Theme -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='material/m3-theme.css') }}">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: var(--md-sys-typescale-body-large-font-family-name);
+      background-color: var(--md-sys-color-surface);
+      color: var(--md-sys-color-on-surface);
+      overflow-x: hidden;
+    }
+
+    /* Top App Bar */
+    .md-top-app-bar {
+      background-color: var(--md-sys-color-surface);
+      color: var(--md-sys-color-on-surface);
+      height: 64px;
+      width: 100%;
+      box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.1);
+      z-index: 90;
+      position: fixed;
+      top: 0;
+      right: 0;
+      left: 80px; /* Account for navigation rail width */
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+    }
+
+    .md-top-app-bar-title {
+      color: var(--md-sys-color-on-surface);
+      font-family: var(--md-sys-typescale-title-large-font-family-name);
+      font-weight: var(--md-sys-typescale-title-large-font-weight);
+      font-size: var(--md-sys-typescale-title-large-font-size);
+      line-height: var(--md-sys-typescale-title-large-line-height);
+    }
+
+    /* Main Content */
+    .md-content {
+      margin-left: 80px; /* Account for navigation rail width */
+      margin-top: 64px;
+      padding: 24px;
+    }
+
+    /* MD3 Cards */
+    .md-card {
+      background-color: var(--md-sys-color-surface-container);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--md-sys-elevation-1);
+    }
+
+    .md-card-title {
+      font-family: var(--md-sys-typescale-headline-small-font-family-name);
+      font-weight: var(--md-sys-typescale-headline-small-font-weight);
+      font-size: var(--md-sys-typescale-headline-small-font-size);
+      line-height: var(--md-sys-typescale-headline-small-line-height);
+      color: var(--md-sys-color-on-surface);
+      margin-top: 0;
+      margin-bottom: 16px;
+    }
+
+    .md-card-content {
+      font-family: var(--md-sys-typescale-body-medium-font-family-name);
+      font-weight: var(--md-sys-typescale-body-medium-font-weight);
+      font-size: var(--md-sys-typescale-body-medium-font-size);
+      line-height: var(--md-sys-typescale-body-medium-line-height);
+      color: var(--md-sys-color-on-surface);
+    }
+
+    /* Grid Layout */
+    .md-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    /* MD3 Button */
+    .md-button {
+      background-color: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+      font-family: var(--md-sys-typescale-label-large-font-family-name);
+      font-weight: var(--md-sys-typescale-label-large-font-weight);
+      font-size: var(--md-sys-typescale-label-large-font-size);
+      line-height: var(--md-sys-typescale-label-large-line-height);
+      letter-spacing: var(--md-sys-typescale-label-large-letter-spacing);
+      padding: 10px 24px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      box-shadow: var(--md-sys-elevation-1);
+      text-transform: capitalize;
+      transition: box-shadow 0.2s;
+    }
+
+    .md-button:hover {
+      box-shadow: var(--md-sys-elevation-2);
+    }
+
+    .md-button-text {
+      background: transparent;
+      color: var(--md-sys-color-primary);
+      box-shadow: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 1023px) {
+      .md-top-app-bar {
+        left: 0;
+      }
+      
+      .md-content {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Import Navigation Rail -->
+  {% include 'md3-nav-rail.html' %}
+
+  <!-- Top App Bar -->
+  <div class="md-top-app-bar">
+    <h1 class="md-top-app-bar-title">Dashboard</h1>
+  </div>
+
+  <!-- Main Content -->
+  <main class="md-content">
+    <h2>Material Design 3 Navigation Rail Demo</h2>
+    <p>Dies ist eine Vorschau der Material Design 3 Navigation Rail für das Asset Management-System.</p>
+
+    <div class="md-grid">
+      <!-- Card 1 -->
+      <div class="md-card">
+        <h3 class="md-card-title">Assets nach Kategorie</h3>
+        <div class="md-card-content">
+          <p>Eine Übersicht der Assets nach Kategorie würde hier angezeigt werden.</p>
+          <button class="md-button">Details</button>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="md-card">
+        <h3 class="md-card-title">Aktuelle Bestellungen</h3>
+        <div class="md-card-content">
+          <p>Die neuesten Bestellungen würden hier angezeigt werden.</p>
+          <button class="md-button md-button-text">Alle anzeigen</button>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="md-card">
+        <h3 class="md-card-title">Inventur-Status</h3>
+        <div class="md-card-content">
+          <p>Der aktuelle Inventur-Status würde hier angezeigt werden.</p>
+          <button class="md-button">Inventur starten</button>
+        </div>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="md-card">
+        <h3 class="md-card-title">Standorte</h3>
+        <div class="md-card-content">
+          <p>Eine Übersicht der Standorte würde hier angezeigt werden.</p>
+          <button class="md-button md-button-text">Alle anzeigen</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Demo-JavaScript für den Seitenwechsel
+    document.addEventListener('DOMContentLoaded', function() {
+      const navItems = document.querySelectorAll('.md-nav-rail-item');
+      const appBarTitle = document.querySelector('.md-top-app-bar-title');
+      
+      // Klick-Listener für Navigation Rail-Items
+      navItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          // Aktuelle Auswahl zurücksetzen
+          navItems.forEach(i => i.classList.remove('active'));
+          
+          // Diesen Eintrag aktivieren
+          this.classList.add('active');
+          
+          // Titel ändern basierend auf dem geklickten Element
+          const label = this.querySelector('.md-nav-rail-label').textContent;
+          appBarTitle.textContent = label;
+        });
+      });
+      
+      // FAB-Button-Aktion
+      const fabButton = document.querySelector('.md-nav-rail-fab');
+      if (fabButton) {
+        fabButton.addEventListener('click', function() {
+          alert('Floating Action Button wurde geklickt! Hier könnte ein Modal oder eine Aktion ausgelöst werden.');
+        });
+      }
+    });
+  </script>
+</body>
+</html>

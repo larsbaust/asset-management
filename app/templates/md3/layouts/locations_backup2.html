@@ -1,0 +1,1281 @@
+{% extends "base.html" %}
+
+{% block title %}Standorte{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+/* MD3 Asset Modal System - Clean Version */
+:root {
+  --md-sys-color-primary: #6750a4;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #eaddff;
+  --md-sys-color-on-primary-container: #21005d;
+  --md-sys-color-surface: #ffffff;
+  --md-sys-color-on-surface: #1c1b1f;
+  --md-sys-color-surface-variant: #f3f0f4;
+  --md-sys-color-on-surface-variant: #49454f;
+  --md-sys-color-outline: #79747e;
+  --md-sys-color-outline-variant: #e0e0e0;
+  --md-sys-elevation-level5: 0 8px 12px rgba(0,0,0,0.15);
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+.md3-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.md3-assets-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.md3-assets-title {
+  font-size: 32px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  margin: 0;
+}
+
+.md3-action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.md3-action-btn {
+  padding: 12px 24px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.md3-action-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.md3-primary-btn {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+.md3-primary-btn:hover {
+  background: var(--md-sys-color-primary);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.md3-secondary-btn {
+  background: var(--md-sys-color-surface-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  border: 1px solid var(--md-sys-color-outline);
+}
+
+.md3-secondary-btn:hover {
+  background: var(--md-sys-color-surface-variant);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.md3-delete-btn {
+  transition: all 0.2s ease;
+}
+
+.md3-delete-btn:hover {
+  background: var(--md-sys-color-error-container);
+  border-radius: 50%;
+}
+
+.md3-delete-btn:hover .material-symbols-outlined {
+  color: var(--md-sys-color-on-error-container) !important;
+}
+
+.md3-checkbox {
+  accent-color: var(--md-sys-color-primary);
+}
+
+.md3-asset-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--md-sys-color-surface);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--md-sys-elevation-level5);
+}
+
+.md3-asset-table th {
+  background: var(--md-sys-color-surface-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  padding: 16px;
+  text-align: left;
+  font-weight: 500;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-asset-table td {
+  padding: 16px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  vertical-align: middle;
+}
+
+.md3-asset-table tr:hover {
+  background: var(--md-sys-color-surface-variant);
+}
+
+.md3-action-icon {
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--md-sys-color-on-surface-variant);
+  transition: all 0.2s ease;
+}
+
+.md3-action-icon:hover {
+  background: var(--md-sys-color-surface-variant);
+  color: var(--md-sys-color-primary);
+}
+
+.md3-status-badge {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-active {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🎉 MD3 Asset Modal System geladen!');
+  
+  // Einzel-Asset-Modal öffnen
+  window.openSingleAssetModal = function(assetData) {
+    console.log('🔍 Öffne Asset-Details-Modal für:', assetData);
+    
+    // Korrekte API-Route verwenden: POST /api/assets/details mit asset_ids Array
+    fetch('/api/assets/details', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+      },
+      body: JSON.stringify({
+        asset_ids: [assetData.assetId]
+      })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success || !data.assets || data.assets.length === 0) {
+          throw new Error('Asset-Daten konnten nicht geladen werden');
+        }
+        
+        const asset = data.assets[0]; // Erstes (und einziges) Asset aus der Antwort
+        console.log('📊 Asset-Daten erhalten:', asset);
+        
+        const modal = document.createElement('div');
+        modal.id = 'single-asset-modal';
+        modal.style.cssText = `
+          position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+          background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center;
+          align-items: center; z-index: 10000; animation: fadeIn 0.3s ease-out;
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+          background: var(--md-sys-color-surface, #ffffff); border-radius: 28px;
+          max-width: 95vw; max-height: 95vh; width: 1000px;
+          box-shadow: var(--md-sys-elevation-level5, 0 8px 12px rgba(0,0,0,0.15));
+          overflow: hidden; animation: slideUp 0.3s ease-out;
+        `;
+        
+        modalContent.innerHTML = `
+          <div style="background: var(--md-sys-color-surface, #ffffff); padding: 16px 24px;
+                      border-bottom: 1px solid var(--md-sys-color-outline-variant, #e0e0e0);
+                      display: flex; justify-content: flex-end; align-items: center;">
+            <button onclick="closeSingleAssetModal()" class="material-symbols-outlined"
+                    style="background: transparent; border: none; border-radius: 50%; width: 40px; height: 40px;
+                           cursor: pointer; font-size: 20px; color: var(--md-sys-color-on-surface-variant, #49454f);">close</button>
+          </div>
+          <div style="padding: 24px;">
+            <h2 style="margin: 0 0 16px 0; color: var(--md-sys-color-on-surface); font-size: 24px; font-weight: 500;">${asset.name}</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div style="padding: 16px; background: #ffffff; border: 1px solid #e0e0e0; border-radius: 16px;">
+                <h4 style="margin: 0 0 8px 0; color: #6750a4; font-size: 14px; font-weight: 500;">Status</h4>
+                <div style="color: #1c1b1f; font-size: 16px;">${asset.status === 'active' ? 'Aktiv' : 'Inaktiv'}</div>
+              </div>
+              <div style="padding: 16px; background: #ffffff; border: 1px solid #e0e0e0; border-radius: 16px;">
+                <h4 style="margin: 0 0 8px 0; color: #6750a4; font-size: 14px; font-weight: 500;">Kategorie</h4>
+                <div style="color: #1c1b1f; font-size: 16px;">${asset.category ? asset.category.name : 'Keine Kategorie'}</div>
+              </div>
+              <div style="padding: 16px; background: #ffffff; border: 1px solid #e0e0e0; border-radius: 16px;">
+                <h4 style="margin: 0 0 8px 0; color: #6750a4; font-size: 14px; font-weight: 500;">Standort</h4>
+                <div style="color: #1c1b1f; font-size: 16px;">${asset.location ? asset.location.name : 'Kein Standort'}</div>
+              </div>
+              <div style="padding: 16px; background: #ffffff; border: 1px solid #e0e0e0; border-radius: 16px;">
+                <h4 style="margin: 0 0 8px 0; color: #6750a4; font-size: 14px; font-weight: 500;">Wert</h4>
+                <div style="color: #1c1b1f; font-size: 16px;">${asset.value ? parseFloat(asset.value).toFixed(2) + ' €' : '0.00 €'}</div>
+              </div>
+            </div>
+            <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+              <button onclick="window.location.href='/assets/${asset.id}/edit'" class="md3-action-btn md3-primary-btn">
+                <span class="material-symbols-outlined" style="font-size: 18px;">edit</span>Bearbeiten
+              </button>
+              <button onclick="window.location.href='/assets/${asset.id}/documents'" class="md3-action-btn md3-secondary-btn">
+              <button onclick="window.location.href='/assets/${asset.id}/documents'" style="
+                background: #ffd8e4; color: #31111d; border: none; padding: 8px 16px; border-radius: 20px;
+                font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <span class="material-symbols-outlined" style="font-size: 18px;">description</span>Dokumente
+              </button>
+            </div>
+          </div>
+        `;
+        
+        modal.appendChild(modalContent);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeSingleAssetModal(); });
+        document.body.appendChild(modal);
+        document.body.style.overflow = 'hidden';
+      })
+      .catch(error => {
+        console.error('❌ Fehler beim Laden der Asset-Details:', error);
+        alert('Asset-Details konnten nicht geladen werden.');
+      });
+  };
+  
+  window.closeSingleAssetModal = function() {
+    const modal = document.getElementById('single-asset-modal');
+    if (modal) {
+      modal.style.animation = 'fadeOut 0.2s ease-in';
+      setTimeout(() => { modal.remove(); document.body.style.overflow = ''; }, 200);
+    }
+  };
+  
+  // Gruppen-Modal öffnen
+  window.openGroupDetailsDialog = function(groupIds, groupName) {
+    console.log('🔍 Öffne Gruppen-Modal für:', groupName, 'IDs:', groupIds);
+    
+    const existingModal = document.getElementById('group-modal');
+    if (existingModal) existingModal.remove();
+    
+    const assetIds = typeof groupIds === 'string' ? groupIds.split(',') : groupIds;
+    
+    const modal = document.createElement('div');
+    modal.id = 'group-modal';
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center;
+      align-items: center; z-index: 10000; animation: fadeIn 0.3s ease-out;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: var(--md-sys-color-surface, #ffffff); border-radius: 28px;
+      max-width: 95vw; max-height: 95vh; width: 1000px;
+      box-shadow: var(--md-sys-elevation-level5, 0 8px 12px rgba(0,0,0,0.15));
+      overflow: hidden; animation: slideUp 0.3s ease-out;
+    `;
+    
+    const testAssets = assetIds.map((id, index) => ({
+      id: id,
+      name: `Asset ${index + 1}`,
+      category: { name: 'Test Kategorie' },
+      status: 'active',
+      location: { name: 'Test Standort' },
+      value: (Math.random() * 1000).toFixed(2)
+    }));
+    
+    modalContent.innerHTML = `
+      <div style="padding: 24px 24px 16px 24px; border-bottom: 1px solid var(--md-sys-color-outline-variant, #e0e0e0);
+                  display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h2 style="margin: 0 0 4px 0; font-size: 24px; font-weight: 500; color: var(--md-sys-color-on-surface, #1c1b1f);">${groupName}</h2>
+          <p style="margin: 0; font-size: 14px; color: var(--md-sys-color-on-surface-variant, #49454f);">${assetIds.length} Assets in dieser Gruppe</p>
+        </div>
+        <button onclick="closeGroupModal()" style="background: transparent; border: none; border-radius: 50%; width: 40px; height: 40px;
+                cursor: pointer; display: flex; align-items: center; justify-content: center;
+                color: var(--md-sys-color-on-surface-variant, #49454f);">
+          <span class="material-symbols-outlined" style="font-size: 20px;">close</span>
+        </button>
+      </div>
+      <div style="padding: 24px; max-height: 60vh; overflow-y: auto;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+          ${testAssets.map(asset => `
+            <div style="background: #ffffff; border: 1px solid #e0e0e0; border-radius: 16px; padding: 16px;
+                        transition: all 0.2s ease; cursor: pointer;"
+                 onclick="openSingleAssetModal({assetId: '${asset.id}', assetName: '${asset.name}'})"
+                 onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.1)'; this.style.transform='translateY(-2px)'"
+                 onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)'">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 500; color: #1c1b1f;">${asset.name}</h3>
+                <span style="background: #eaddff; color: #21005d; padding: 4px 8px; border-radius: 8px;
+                             font-size: 12px; font-weight: 500;">Aktiv</span>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #49454f;">
+                <div><div style="font-weight: 500; margin-bottom: 2px;">Kategorie</div><div>${asset.category.name}</div></div>
+                <div><div style="font-weight: 500; margin-bottom: 2px;">Standort</div><div>${asset.location.name}</div></div>
+                <div><div style="font-weight: 500; margin-bottom: 2px;">Wert</div><div style="font-weight: 500; color: #6750a4;">${asset.value} €</div></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    
+    modal.appendChild(modalContent);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeGroupModal(); });
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+  };
+  
+  window.closeGroupModal = function() {
+    const modal = document.getElementById('group-modal');
+    if (modal) {
+      modal.style.animation = 'fadeOut 0.2s ease-in';
+      setTimeout(() => { modal.remove(); document.body.style.overflow = ''; }, 200);
+    }
+  };
+  
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+      closeSingleAssetModal();
+      closeGroupModal();
+    }
+  });
+
+  // Navigation Button Event Handlers
+  document.querySelectorAll('.md3-nav-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const href = this.getAttribute('data-href');
+      if (href) {
+        window.location.href = href;
+      }
+    });
+  });
+
+  // Master Checkbox - Select/Deselect All
+  const masterCheckbox = document.getElementById('select-all');
+  const assetCheckboxes = document.querySelectorAll('input[name="selected_assets"]');
+  
+  if (masterCheckbox) {
+    masterCheckbox.addEventListener('change', function() {
+      const isChecked = this.checked;
+      assetCheckboxes.forEach(checkbox => {
+        checkbox.checked = isChecked;
+      });
+    });
+  }
+
+  // Update Master Checkbox when individual checkboxes change
+  assetCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const checkedCount = document.querySelectorAll('input[name="selected_assets"]:checked').length;
+      const totalCount = assetCheckboxes.length;
+      
+      if (checkedCount === 0) {
+        masterCheckbox.checked = false;
+        masterCheckbox.indeterminate = false;
+      } else if (checkedCount === totalCount) {
+        masterCheckbox.checked = true;
+        masterCheckbox.indeterminate = false;
+      } else {
+        masterCheckbox.checked = false;
+        masterCheckbox.indeterminate = true;
+      }
+    });
+  });
+
+  // Neues Asset Modal öffnen
+  window.openNewAssetModal = function() {
+    console.log('🆕 Öffne Neues Asset Modal');
+    
+    const modal = document.createElement('div');
+    modal.id = 'new-asset-modal';
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center;
+      align-items: center; z-index: 10000; animation: fadeIn 0.3s ease-out;
+      overflow-y: auto; padding: 20px 0;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: var(--md-sys-color-surface, #ffffff); border-radius: 28px;
+      max-width: 95vw; width: 1200px; max-height: 90vh;
+      box-shadow: var(--md-sys-elevation-level5, 0 8px 12px rgba(0,0,0,0.15));
+      overflow: hidden; animation: slideUp 0.3s ease-out;
+      margin: auto;
+    `;
+    
+    modalContent.innerHTML = `
+      <!-- Modal Header -->
+      <div style="background: var(--md-sys-color-surface, #ffffff); padding: 24px;
+                  border-bottom: 1px solid var(--md-sys-color-outline-variant, #e0e0e0);
+                  display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0; color: var(--md-sys-color-on-surface); font-size: 24px; font-weight: 500;">Neues Asset</h2>
+        <button onclick="closeNewAssetModal()" class="material-symbols-outlined"
+                style="background: transparent; border: none; border-radius: 50%; width: 40px; height: 40px;
+                       cursor: pointer; font-size: 20px; color: var(--md-sys-color-on-surface-variant, #49454f);">close</button>
+      </div>
+      
+      <!-- Modal Content -->
+      <div style="padding: 24px; overflow-y: auto; max-height: calc(90vh - 120px);">
+        <form id="new-asset-form" method="POST" action="{{ url_for('main.add_asset') }}" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <!-- Linke Spalte: Asset Details -->
+            <div>
+              <h3 style="margin: 0 0 16px 0; color: var(--md-sys-color-primary); font-size: 18px; font-weight: 500;">Asset Details</h3>
+              
+              <!-- Bild Upload -->
+              <div class="md3-field" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Bild</label>
+                <div style="border: 2px dashed var(--md-sys-color-outline); border-radius: 12px; padding: 24px; text-align: center; background: var(--md-sys-color-surface-variant);">
+                  <input type="file" name="image" accept="image/*" onchange="updateImagePreview(this)" style="display: none;" id="asset-image-input">
+                  <button type="button" onclick="document.getElementById('asset-image-input').click()" style="background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); border: none; padding: 12px 24px; border-radius: 20px; cursor: pointer;">
+                    <span class="material-symbols-outlined" style="margin-right: 8px;">upload</span>Bild auswählen
+                  </button>
+                  <div id="image-preview-container" style="margin-top: 16px; display: none;">
+                    <img id="image-preview" style="max-width: 200px; max-height: 200px; border-radius: 8px;">
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Name -->
+              <div class="md3-field" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Name *</label>
+                <input type="text" name="name" required style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
+              </div>
+              
+              <!-- Artikelnummer -->
+              <div class="md3-field" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Artikelnummer</label>
+                <input type="text" name="article_number" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
+              </div>
+              
+              <!-- Beschreibung -->
+              <div class="md3-field" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Beschreibung</label>
+                <textarea name="description" rows="3" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px; resize: vertical;"></textarea>
+              </div>
+              
+              <!-- Wert -->
+              <div class="md3-field" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Wert (€)</label>
+                <input type="number" name="value" step="0.01" min="0" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
+              </div>
+            </div>
+            
+            <!-- Rechte Spalte: Zuordnungen -->
+            <div>
+              <h3 style="margin: 0 0 16px 0; color: var(--md-sys-color-primary); font-size: 18px; font-weight: 500;">Zuordnungen</h3>
+              
+              <!-- Kategorie -->
+              <div class="md3-field" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Kategorie</label>
+                <select name="category" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
+                  <option value="">Kategorie auswählen...</option>
+                  {% for category in categories %}
+                  <option value="{{ category.id }}">{{ category.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              
+              <!-- Standort -->
+              <div class="md3-field" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Standort</label>
+                <input type="text" name="location" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
+              </div>
+              
+              <!-- Hersteller -->
+              <div class="md3-field" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Hersteller</label>
+                <select name="manufacturers" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
+                  <option value="">Hersteller auswählen...</option>
+                  {% for manufacturer in manufacturers %}
+                  <option value="{{ manufacturer.id }}">{{ manufacturer.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              
+              <!-- Lieferant -->
+              <div class="md3-field" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Lieferant</label>
+                <select name="suppliers" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
+                  <option value="">Lieferant auswählen...</option>
+                  {% for supplier in suppliers %}
+                  <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              
+              <!-- Zuordnung -->
+              <div class="md3-field" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Zuordnung</label>
+                <select name="assignments" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
+                  <option value="">Zuordnung auswählen...</option>
+                  {% for assignment in assignments %}
+                  <option value="{{ assignment.id }}">{{ assignment.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              
+              <!-- Status -->
+              <div class="md3-field" style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Status</label>
+                <select name="status" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
+                  <option value="active" selected>Aktiv</option>
+                  <option value="inactive">Inaktiv</option>
+                  <option value="on_loan">Ausgeliehen</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Modal Footer -->
+          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--md-sys-color-outline-variant); display: flex; gap: 12px; justify-content: flex-end;">
+            <button type="button" onclick="closeNewAssetModal()" class="md3-action-btn md3-secondary-btn">
+              <span class="material-symbols-outlined" style="margin-right: 8px;">close</span>Abbrechen
+            </button>
+            <button type="submit" class="md3-action-btn md3-primary-btn">
+              <span class="material-symbols-outlined" style="margin-right: 8px;">save</span>Asset erstellen
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+    
+    modal.appendChild(modalContent);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeNewAssetModal(); });
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+  };
+  
+  window.closeNewAssetModal = function() {
+    const modal = document.getElementById('new-asset-modal');
+    if (modal) {
+      modal.style.animation = 'fadeOut 0.3s ease-out';
+      setTimeout(() => {
+        document.body.removeChild(modal);
+        document.body.style.overflow = '';
+      }, 300);
+    }
+  };
+  
+  window.updateImagePreview = function(input) {
+    const preview = document.getElementById('image-preview');
+    const container = document.getElementById('image-preview-container');
+    
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.src = e.target.result;
+        container.style.display = 'block';
+      };
+      reader.readAsDataURL(input.files[0]);
+    } else {
+      container.style.display = 'none';
+    }
+  };
+
+  // Delete Asset Functionality
+  document.querySelectorAll('.md3-delete-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const assetId = this.getAttribute('data-asset-id');
+      const assetName = this.getAttribute('data-asset-name');
+      
+      if (confirm(`Sind Sie sicher, dass Sie das Asset "${assetName}" löschen möchten?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`)) {
+        // Send DELETE request to backend
+        fetch(`/assets/${assetId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+          }
+        })
+        .then(response => {
+          if (response.ok) {
+            // Remove the row from the table
+            this.closest('tr').remove();
+            
+            // Show success message
+            alert(`Asset "${assetName}" wurde erfolgreich gelöscht.`);
+            
+            // Optionally reload the page to update counts
+            // window.location.reload();
+          } else {
+            throw new Error('Fehler beim Löschen');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert(`Fehler beim Löschen des Assets "${assetName}". Bitte versuchen Sie es erneut.`);
+        });
+      }
+    });
+  });
+
+  // Asset bearbeiten Modal öffnen
+  window.openEditAssetModal = function(assetId) {
+    console.log('✏️ Öffne Asset bearbeiten Modal für ID:', assetId);
+    
+    // Lade Asset-Daten vom Server
+    fetch(`/api/assets/details`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+      },
+      body: JSON.stringify({ asset_ids: [assetId] })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.assets && data.assets.length > 0) {
+        const asset = data.assets[0];
+        showEditAssetModal(asset);
+      } else {
+        console.error('Asset nicht gefunden:', data);
+        alert('Asset konnte nicht geladen werden.');
+      }
+    })
+    .catch(error => {
+      console.error('Fehler beim Laden des Assets:', error);
+      alert('Fehler beim Laden des Assets.');
+    });
+  };
+  
+  function showEditAssetModal(asset) {
+    const modal = document.createElement('div');
+    modal.id = 'edit-asset-modal';
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center;
+      align-items: flex-start; z-index: 10000; animation: fadeIn 0.3s ease-out;
+      overflow-y: auto; padding: 20px 0;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: var(--md-sys-color-surface);
+      border-radius: 28px;
+      box-shadow: var(--md-sys-elevation-level5);
+      width: 95vw;
+      max-width: 900px;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: slideUp 0.3s ease-out;
+      margin: 20px auto;
+    `;
+    
+    modalContent.innerHTML = `
+      <div style="padding: 32px;">
+        <!-- Modal Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <h2 style="
+            font-family: var(--md-sys-typescale-headline-small-font-family-name);
+            font-size: var(--md-sys-typescale-headline-small-font-size);
+            font-weight: var(--md-sys-typescale-headline-small-font-weight);
+            color: var(--md-sys-color-on-surface);
+            margin: 0;
+          ">Asset bearbeiten</h2>
+          <button onclick="closeEditAssetModal()" style="
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 20px;
+            color: var(--md-sys-color-on-surface-variant);
+          ">
+            <span class="material-symbols-outlined" style="font-size: 24px;">close</span>
+          </button>
+        </div>
+        
+        <!-- Asset bearbeiten Form -->
+        <form method="POST" action="/assets/edit/${asset.id}" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          
+          <!-- Zwei-Spalten Layout -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+            
+            <!-- Linke Spalte: Asset Details -->
+            <div>
+              <h3 style="
+                font-family: var(--md-sys-typescale-title-medium-font-family-name);
+                font-size: var(--md-sys-typescale-title-medium-font-size);
+                font-weight: var(--md-sys-typescale-title-medium-font-weight);
+                color: var(--md-sys-color-on-surface);
+                margin: 0 0 16px 0;
+              ">Asset Details</h3>
+              
+              <!-- Asset Name -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Name *</label>
+                <input type="text" name="name" value="${asset.name || ''}" required style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+              </div>
+              
+              <!-- Artikelnummer -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Artikelnummer</label>
+                <input type="text" name="article_number" value="${asset.article_number || ''}" style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+              </div>
+              
+              <!-- EAN -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">EAN</label>
+                <input type="text" name="ean" value="${asset.ean || ''}" style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+              </div>
+              
+              <!-- Wert -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Wert (€)</label>
+                <input type="number" name="value" value="${asset.value || ''}" step="0.01" style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+              </div>
+              
+              <!-- Beschreibung -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Beschreibung</label>
+                <textarea name="description" rows="3" style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                  resize: vertical;
+                ">${asset.description || ''}</textarea>
+              </div>
+            </div>
+            
+            <!-- Rechte Spalte: Zuordnungen & Bild -->
+            <div>
+              <h3 style="
+                font-family: var(--md-sys-typescale-title-medium-font-family-name);
+                font-size: var(--md-sys-typescale-title-medium-font-size);
+                font-weight: var(--md-sys-typescale-title-medium-font-weight);
+                color: var(--md-sys-color-on-surface);
+                margin: 0 0 16px 0;
+              ">Zuordnungen</h3>
+              
+              <!-- Kategorie -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Kategorie</label>
+                <select name="category" style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+                  <option value="">Kategorie auswählen...</option>
+                  <option value="Hardware" ${asset.category === 'Hardware' ? 'selected' : ''}>Hardware</option>
+                  <option value="Software" ${asset.category === 'Software' ? 'selected' : ''}>Software</option>
+                  <option value="Lizenz" ${asset.category === 'Lizenz' ? 'selected' : ''}>Lizenz</option>
+                  <option value="Zubehör" ${asset.category === 'Zubehör' ? 'selected' : ''}>Zubehör</option>
+                </select>
+              </div>
+              
+              <!-- Standort -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Standort</label>
+                <select name="location_id" style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+                  <option value="">Standort auswählen...</option>
+                  <option value="1" ${asset.location_id === 1 ? 'selected' : ''}>Büro Hamburg</option>
+                  <option value="2" ${asset.location_id === 2 ? 'selected' : ''}>Lager Berlin</option>
+                  <option value="3" ${asset.location_id === 3 ? 'selected' : ''}>Homeoffice</option>
+                </select>
+              </div>
+              
+              <!-- Status -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Status</label>
+                <select name="status" style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+                  <option value="active" ${asset.status === 'active' ? 'selected' : ''}>Aktiv</option>
+                  <option value="inactive" ${asset.status === 'inactive' ? 'selected' : ''}>Inaktiv</option>
+                  <option value="maintenance" ${asset.status === 'maintenance' ? 'selected' : ''}>Wartung</option>
+                  <option value="retired" ${asset.status === 'retired' ? 'selected' : ''}>Ausgemustert</option>
+                </select>
+              </div>
+              
+              <!-- Asset Bild -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Asset Bild</label>
+                
+                <!-- Aktuelles Bild anzeigen -->
+                ${asset.image_url ? `
+                  <div style="margin-bottom: 12px;">
+                    <img src="${asset.image_url}" alt="${asset.name}" style="
+                      width: 100%;
+                      max-width: 200px;
+                      height: auto;
+                      border-radius: 8px;
+                      border: 1px solid var(--md-sys-color-outline-variant);
+                      object-fit: cover;
+                    ">
+                  </div>
+                ` : ''}
+                
+                <!-- Bild Upload -->
+                <div style="
+                  border: 2px dashed var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  padding: 24px;
+                  text-align: center;
+                  background: var(--md-sys-color-surface-variant);
+                  cursor: pointer;
+                  transition: all 0.2s ease;
+                " onclick="document.getElementById('edit-image-upload').click()">
+                  <span class="material-symbols-outlined" style="
+                    font-size: 48px;
+                    color: var(--md-sys-color-on-surface-variant);
+                    margin-bottom: 8px;
+                    display: block;
+                  ">cloud_upload</span>
+                  <p style="
+                    font-family: var(--md-sys-typescale-body-medium-font-family-name);
+                    font-size: var(--md-sys-typescale-body-medium-font-size);
+                    color: var(--md-sys-color-on-surface-variant);
+                    margin: 0;
+                  ">Neues Bild hochladen</p>
+                  <input type="file" id="edit-image-upload" name="image" accept="image/*" style="display: none;" onchange="updateEditImagePreview(this)">
+                </div>
+                
+                <!-- Bild Vorschau -->
+                <div id="edit-image-preview-container" style="display: none; margin-top: 12px;">
+                  <img id="edit-image-preview" style="
+                    width: 100%;
+                    max-width: 200px;
+                    height: auto;
+                    border-radius: 8px;
+                    border: 1px solid var(--md-sys-color-outline-variant);
+                    object-fit: cover;
+                  ">
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Modal Actions -->
+          <div style="
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding-top: 24px;
+            border-top: 1px solid var(--md-sys-color-outline-variant);
+          ">
+            <button type="button" onclick="closeEditAssetModal()" style="
+              padding: 12px 24px;
+              border: 1px solid var(--md-sys-color-outline);
+              border-radius: 20px;
+              background: var(--md-sys-color-surface);
+              color: var(--md-sys-color-on-surface);
+              font-family: var(--md-sys-typescale-label-large-font-family-name);
+              font-size: var(--md-sys-typescale-label-large-font-size);
+              font-weight: var(--md-sys-typescale-label-large-font-weight);
+              cursor: pointer;
+              transition: all 0.2s ease;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            ">
+              <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
+              Abbrechen
+            </button>
+            <button type="submit" style="
+              padding: 12px 24px;
+              border: none;
+              border-radius: 20px;
+              background: var(--md-sys-color-primary);
+              color: var(--md-sys-color-on-primary);
+              font-family: var(--md-sys-typescale-label-large-font-family-name);
+              font-size: var(--md-sys-typescale-label-large-font-size);
+              font-weight: var(--md-sys-typescale-label-large-font-weight);
+              cursor: pointer;
+              transition: all 0.2s ease;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            ">
+              <span class="material-symbols-outlined" style="font-size: 18px;">save</span>
+              Asset aktualisieren
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+    
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // Click outside to close
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) {
+        closeEditAssetModal();
+      }
+    });
+    
+    // ESC key to close
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeEditAssetModal();
+      }
+    });
+  }
+  
+  window.closeEditAssetModal = function() {
+    const modal = document.getElementById('edit-asset-modal');
+    if (modal) {
+      modal.style.animation = 'fadeOut 0.3s ease-out';
+      setTimeout(() => {
+        modal.remove();
+      }, 300);
+    }
+  };
+  
+  window.updateEditImagePreview = function(input) {
+    const preview = document.getElementById('edit-image-preview');
+    const container = document.getElementById('edit-image-preview-container');
+    
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.src = e.target.result;
+        container.style.display = 'block';
+      };
+      reader.readAsDataURL(input.files[0]);
+    } else {
+      container.style.display = 'none';
+    }
+  };
+});
+</script>
+{% endblock %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+
+<div class="md3-container" style="margin-top: 80px;">
+  <div class="md3-assets-header">
+    <h1 class="md3-assets-title">Standorte</h1>
+    <div class="md3-action-buttons">
+      <button onclick="openNewAssetModal()" class="md3-action-btn md3-primary-btn">
+        <span class="material-symbols-outlined">add</span>
+        Neuer Standort
+      </button>
+      <button data-href="{{ url_for('main.import_assets') }}" class="md3-action-btn md3-secondary-btn md3-nav-btn">
+        <span class="material-symbols-outlined">upload_file</span>
+        CSV Import
+      </button>
+      <button data-href="{{ url_for('md3_assets', group_duplicates='true' if not group_duplicates else 'false') }}" class="md3-action-btn md3-secondary-btn md3-nav-btn">
+        <span class="material-symbols-outlined">{{ 'group_work' if not group_duplicates else 'splitscreen' }}</span>
+        {{ 'Duplikate gruppieren' if not group_duplicates else 'Alle Assets anzeigen' }}
+      </button>
+    </div>
+  </div>
+
+  {% if locations %}
+  <div class="md3-asset-table-container" style="overflow-x: auto; margin-bottom: 24px; width: 100%; padding: 0;">
+    <table class="md3-asset-table" style="width: 100%; border-collapse: separate; border-spacing: 0; table-layout: auto;">
+
+      <thead>
+        <tr>
+          <!-- Checkbox -->
+          <th style="width: 30px; text-align: center; padding: 8px; vertical-align: middle;">
+            <input type="checkbox" id="select-all" class="md3-checkbox">
+          </th>
+          <!-- Bild -->
+          <th style="width: 40px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Bild
+          </th>
+          <!-- Name -->
+          <th style="width: 120px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Name
+          </th>
+          <!-- Adresse -->
+          <th style="width: 70px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Adresse
+          </th>
+          <!-- Typ -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Typ
+          </th>
+          <!-- Größe -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Größe
+          </th>
+          <!-- Plätze -->
+          <th style="width: 50px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Plätze
+          </th>
+          <!-- Status -->
+          <th style="width: 50px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Status
+          </th>
+          <!-- Assets -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Assets
+          </th>
+          <!-- Kapazität -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Kapazität
+          </th>
+          <!-- Ausstattung -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Ausstattung
+          </th>
+          <!-- Verfügbar -->
+          <th style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Verfügbar
+          </th>
+          <!-- Aktionen -->
+          <th style="width: 100px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant);">
+            Aktionen
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for location in locations %}
+        <tr style="height: 48px;">
+          <!-- Checkbox -->
+          <td style="width: 30px; text-align: center; padding: 8px; vertical-align: middle;">
+            <input type="checkbox" 
+              name="selected_locations"
+              class="location-checkbox md3-checkbox" 
+              value="{{ location.id }}">
+          </td>
+          <!-- Bild -->
+          <td style="width: 40px; text-align: center; padding: 8px; vertical-align: middle;">
+            {% if location.image_url and location.image_url.strip() %}
+            <img src="{{ location.image_url }}" alt="{{ location.name }}" style="width: 24px; height: 24px; object-fit: cover; border-radius: 2px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+            <span class="material-symbols-outlined" style="color: var(--md-sys-color-outline); font-size: 16px; display: none;">location_on</span>
+            {% else %}
+            <span class="material-symbols-outlined" style="color: var(--md-sys-color-outline); font-size: 16px;">location_on</span>
+            {% endif %}
+          </td>
+          <!-- Name -->
+          <td style="width: 120px; padding: 8px; text-align: left; vertical-align: middle; font-size: 14px; line-height: 20px;">
+            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--md-sys-color-on-surface);" title="{{ location.name }}">
+              {{ location.name[:15] }}{{ '...' if location.name|length > 15 else '' }}
+            </div>
+          </td>
+          <!-- Adresse -->
+          <td style="width: 70px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {{ (location.address or '—')[:8] }}{{ '...' if location.address and location.address|length > 8 else '' }}
+          </td>
+          <!-- Typ -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle;">
+            <span style="background: #EADDFF; color: #21005E; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; white-space: nowrap;">
+              {{ location.location_type or 'Büro' }}
+            </span>
+          </td>
+          <!-- Größe -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {{ (location.size or '—')[:6] }}{{ '...' if location.size and location.size|length > 6 else '' }}
+          </td>
+          <!-- Plätze -->
+          <td style="width: 50px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {{ location.seats or '—' }}
+          </td>
+          <!-- Status -->
+          <td style="width: 50px; text-align: center; padding: 8px; vertical-align: middle;">
+            <span style="background: #EADDFF; color: #21005E; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; white-space: nowrap;">
+              {{ 'Aktiv' if location.is_active else 'Inaktiv' }}
+            </span>
+          </td>
+          <!-- Assets -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {{ location.asset_count or '0' }}
+          </td>
+          <!-- Kapazität -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {{ location.capacity or '—' }}
+          </td>
+          <!-- Ausstattung -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle; font-size: 12px; color: var(--md-sys-color-on-surface-variant);">
+            {{ (location.equipment or '—')[:8] }}{{ '...' if location.equipment and location.equipment|length > 8 else '' }}
+          </td>
+          <!-- Verfügbar -->
+          <td style="width: 60px; text-align: center; padding: 8px; vertical-align: middle;">
+            <span style="background: #EADDFF; color: #21005E; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; white-space: nowrap;">
+              {{ 'Ja' if location.available else 'Nein' }}
+            </span>
+          </td>
+          <!-- Aktionen -->
+          <td class="md3-action-menu" style="width: 100px; padding: 8px; vertical-align: middle; display: flex; justify-content: center; align-items: center; gap: 2px;">
+            <button class="md3-action-icon" 
+                    onclick="openLocationModal('{{ location.id }}', '{{ location.name }}')"
+                    title="Standort-Details anzeigen">
+              <span class="material-symbols-outlined" style="font-size: 16px;">visibility</span>
+            </button>
+            <button class="md3-action-icon" 
+                    onclick="editLocation('{{ location.id }}')"
+                    title="Standort bearbeiten">
+              <span class="material-symbols-outlined" style="font-size: 16px;">edit</span>
+            </button>
+            <button class="md3-action-icon" 
+                    onclick="deleteLocation('{{ location.id }}')"
+                    title="Standort löschen">
+              <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align: center; padding: 40px; color: var(--md-sys-color-on-surface-variant);">
+    <div style="font-size: 48px; margin-bottom: 16px;">📍</div>
+    <p>Keine Standorte gefunden</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

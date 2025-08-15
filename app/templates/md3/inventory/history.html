@@ -1,0 +1,483 @@
+{% extends "md3/base.html" %}
+
+{% block title %}Inventur-Historie{% endblock %}
+
+{% block content %}
+<!-- MD3 Navigation Bar -->
+{% include 'md3-nav.html' %}
+
+<div class="md3-container">
+  <!-- Header Section -->
+  <div class="md3-header-section">
+    <div class="md3-breadcrumb">
+      <a href="{{ url_for('md3_inventory.planning') }}">Inventurplanung</a>
+      <span class="material-symbols-outlined">chevron_right</span>
+      <span>Inventur-Historie</span>
+    </div>
+    
+    <h1 class="md3-headline-large">Inventur-Historie</h1>
+    <p class="md3-subtitle">Verwalten Sie Ihre abgeschlossenen und archivierten Inventuren</p>
+  </div>
+
+  {% if sessions %}
+  <!-- History Table -->
+  <div class="md3-history-section">
+    <div class="md3-section-header">
+      <h2 class="md3-headline-medium">Abgeschlossene Inventuren ({{ sessions|length }})</h2>
+      <div class="md3-table-actions">
+        <button class="md3-button md3-button-outlined" onclick="exportHistory()">
+          <span class="material-symbols-outlined">download</span>
+          Alle exportieren
+        </button>
+      </div>
+    </div>
+
+    <div class="md3-table-container">
+      <table class="md3-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Standort</th>
+            <th>Zeitraum</th>
+            <th>Status</th>
+            <th>Assets</th>
+            <th>Ergebnis</th>
+            <th>Abgeschlossen</th>
+            <th>Aktionen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for session in sessions %}
+          <tr class="md3-table-row">
+            <td class="md3-session-name">
+              <div class="md3-session-info">
+                <strong>{{ session.name }}</strong>
+                {% if session.notes %}
+                <div class="md3-session-notes">{{ session.notes }}</div>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              <div class="md3-chip md3-chip-outlined">
+                {{ session.location_obj.name if session.location_obj else 'Alle Standorte' }}
+              </div>
+            </td>
+            <td class="md3-date-range">
+              <div class="md3-date-info">
+                <div class="md3-date-start">{{ session.start_date.strftime('%d.%m.%Y') if session.start_date else '-' }}</div>
+                <div class="md3-date-separator">bis</div>
+                <div class="md3-date-end">{{ session.end_date.strftime('%d.%m.%Y') if session.end_date else '-' }}</div>
+              </div>
+            </td>
+            <td>
+              {% if session.status == 'completed' %}
+              <div class="md3-status-badge md3-status-completed">
+                <span class="material-symbols-outlined">check_circle</span>
+                Abgeschlossen
+              </div>
+              {% elif session.status == 'archived' %}
+              <div class="md3-status-badge md3-status-archived">
+                <span class="material-symbols-outlined">archive</span>
+                Archiviert
+              </div>
+              {% elif session.status == 'cancelled' %}
+              <div class="md3-status-badge md3-status-cancelled">
+                <span class="material-symbols-outlined">cancel</span>
+                Abgebrochen
+              </div>
+              {% else %}
+              <div class="md3-status-badge md3-status-other">
+                <span class="material-symbols-outlined">help</span>
+                {{ session.status|title }}
+              </div>
+              {% endif %}
+            </td>
+            <td class="md3-asset-count">
+              <div class="md3-count-info">
+                <span class="md3-count-number">{{ session.total_assets or 0 }}</span>
+                <span class="md3-count-label">Assets</span>
+              </div>
+            </td>
+            <td class="md3-result-summary">
+              <div class="md3-result-grid">
+                <div class="md3-result-item md3-result-found">
+                  <span class="md3-result-number">{{ session.found_count or 0 }}</span>
+                  <span class="md3-result-label">Gefunden</span>
+                </div>
+                <div class="md3-result-item md3-result-missing">
+                  <span class="md3-result-number">{{ session.missing_count or 0 }}</span>
+                  <span class="md3-result-label">Fehlend</span>
+                </div>
+                <div class="md3-result-item md3-result-damaged">
+                  <span class="md3-result-number">{{ session.damaged_count or 0 }}</span>
+                  <span class="md3-result-label">Beschädigt</span>
+                </div>
+              </div>
+            </td>
+            <td class="md3-completion-date">
+              {{ session.completed_at.strftime('%d.%m.%Y %H:%M') if session.completed_at else '-' }}
+            </td>
+            <td class="md3-actions">
+              <div class="md3-action-buttons">
+                <a class="md3-button md3-button-text" href="{{ url_for('md3_inventory.md3_report_detail', id=session.id) }}" title="Bericht anzeigen">
+                  <span class="material-symbols-outlined">visibility</span>
+                </a>
+                <button class="md3-button md3-button-text" onclick="exportSession('{{ session.id }}')" title="Exportieren">
+                  <span class="material-symbols-outlined">download</span>
+                </button>
+                {% if session.status != 'archived' %}
+                <button class="md3-button md3-button-text" onclick="archiveSession('{{ session.id }}')" title="Archivieren">
+                  <span class="material-symbols-outlined">archive</span>
+                </button>
+                {% endif %}
+                <button class="md3-button md3-button-text md3-button-danger" onclick="deleteSession('{{ session.id }}')" title="Löschen">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <!-- Empty State -->
+  <div class="md3-empty-state">
+    <div class="md3-empty-icon">
+      <span class="material-symbols-outlined">history</span>
+    </div>
+    <h2 class="md3-empty-title">Keine Inventur-Historie vorhanden</h2>
+    <p class="md3-empty-description">
+      Abgeschlossene und archivierte Inventuren werden hier angezeigt.
+    </p>
+    <div class="md3-empty-actions">
+      <a href="{{ url_for('md3_inventory.planning') }}" class="md3-button md3-button-filled">
+        <span class="material-symbols-outlined">add</span>
+        Neue Inventur erstellen
+      </a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.md3-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.md3-header-section {
+  margin-bottom: 48px;
+  padding: 24px;
+  background: var(--md-sys-color-surface-container-lowest);
+  border-radius: 16px;
+}
+
+.md3-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.md3-breadcrumb a {
+  color: var(--md-sys-color-primary);
+  text-decoration: none;
+}
+
+.md3-subtitle {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 1.125rem;
+  margin: 8px 0 0 0;
+  font-weight: 400;
+}
+
+.md3-history-section {
+  background: var(--md-sys-color-surface);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.md3-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-table-container {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.md3-table th,
+.md3-table td {
+  padding: 16px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  vertical-align: middle;
+}
+
+.md3-table th {
+  background: var(--md-sys-color-surface-container-low);
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+}
+
+.md3-table tr:hover {
+  background: var(--md-sys-color-surface-container-lowest);
+}
+
+.md3-session-info strong {
+  display: block;
+  color: var(--md-sys-color-on-surface);
+  font-weight: 500;
+}
+
+.md3-session-notes {
+  font-size: 0.75rem;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-top: 4px;
+}
+
+.md3-date-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.md3-date-separator {
+  font-size: 0.75rem;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.md3-status-completed {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+
+.md3-status-archived {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.md3-status-cancelled {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.md3-status-other {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-count-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.md3-count-number {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+}
+
+.md3-count-label {
+  font-size: 0.75rem;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.md3-result-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.md3-result-found {
+  background: var(--md-sys-color-tertiary-container);
+}
+
+.md3-result-missing {
+  background: var(--md-sys-color-error-container);
+}
+
+.md3-result-damaged {
+  background: var(--md-sys-color-secondary-container);
+}
+
+.md3-result-number {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.md3-result-label {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.md3-action-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.md3-button-danger {
+  color: var(--md-sys-color-error) !important;
+}
+
+.md3-button-danger:hover {
+  background: var(--md-sys-color-error-container) !important;
+  color: var(--md-sys-color-on-error-container) !important;
+}
+
+/* Empty State */
+.md3-empty-state {
+  text-align: center;
+  padding: 64px 24px;
+  background: var(--md-sys-color-surface-container-lowest);
+  border-radius: 16px;
+}
+
+.md3-empty-icon {
+  margin-bottom: 24px;
+}
+
+.md3-empty-icon .material-symbols-outlined {
+  font-size: 4rem;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-empty-title {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--md-sys-color-on-surface);
+  margin-bottom: 16px;
+}
+
+.md3-empty-description {
+  color: var(--md-sys-color-on-surface-variant);
+  margin-bottom: 32px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.md3-empty-actions {
+  display: flex;
+  justify-content: center;
+}
+</style>
+
+<script>
+// View inventory report (fallback, not used by the new anchor link)
+function viewReport(sessionId) {
+  const base = "{{ url_for('md3_inventory.md3_report_detail', id=0) }}";
+  window.location.href = base.replace('/0', `/${sessionId}`);
+}
+
+// Export single session
+function exportSession(sessionId) {
+  window.location.href = `/inventory/sessions/${sessionId}/export`;
+}
+
+// Export all history
+function exportHistory() {
+  window.location.href = `/inventory/history/export`;
+}
+
+// Archive session
+function archiveSession(sessionId) {
+  if (confirm('Möchten Sie diese Inventur wirklich archivieren?')) {
+    fetch(`/inventory/sessions/${sessionId}/archive`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.getElementById('csrf-token')?.value || ''
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert('Fehler beim Archivieren der Inventur');
+      }
+    })
+    .catch(error => {
+      console.error('Error archiving session:', error);
+      alert('Fehler beim Archivieren der Inventur');
+    });
+  }
+}
+
+// Delete session
+function deleteSession(sessionId) {
+  if (confirm('Möchten Sie diese Inventur wirklich dauerhaft löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+    fetch(`/inventory/sessions/${sessionId}/delete`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.getElementById('csrf-token')?.value || ''
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert('Fehler beim Löschen der Inventur');
+      }
+    })
+    .catch(error => {
+      console.error('Error deleting session:', error);
+      alert('Fehler beim Löschen der Inventur');
+    });
+  }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('MD3 Inventory history template loaded');
+});
+</script>
+
+<input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}" id="csrf-token">
+{% endblock %}
