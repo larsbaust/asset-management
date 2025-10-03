@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, FormField, FieldList, IntegerField, BooleanField, HiddenField, SubmitField, TextAreaField, DateField
+from wtforms import StringField, SelectField, FormField, FieldList, IntegerField, BooleanField, HiddenField, SubmitField, TextAreaField, DateField, DecimalField
 from wtforms.validators import DataRequired, NumberRange, Optional
 
 class AssetOrderForm(FlaskForm):
@@ -69,12 +69,14 @@ class OrderEditForm(FlaskForm):
 class WizardStep1Form(FlaskForm):
     supplier_id = SelectField('Lieferant', coerce=int, validators=[DataRequired()])
     location = SelectField('Standort (optional)', coerce=int)
+    budget = DecimalField('Budget (€, optional)', places=2, validators=[Optional()])
     submit = SubmitField('Weiter zu Schritt 2')
     
 class WizardStep2Form(FlaskForm):
     filter_name = StringField('Artikelname')
     filter_category = SelectField('Kategorie', coerce=int, default=0)
     filter_manufacturer = SelectField('Hersteller', coerce=int, default=0)
+    filter_supplier = SelectField('Lieferant', coerce=int, default=0)
     select_all = BooleanField('Alle auswählen')
     template_id = SelectField('Vorlage laden', coerce=int, choices=[(0, '-- Keine Vorlage --')], default=0)
     load_template = SubmitField('Vorlage laden')

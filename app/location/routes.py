@@ -1,5 +1,6 @@
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required
+from flask_wtf.csrf import validate_csrf, ValidationError
 from app.location import location
 from app import db
 from app.models import Location
@@ -52,3 +53,63 @@ def import_locations():
             flash('Bitte eine CSV-Datei auswählen', 'danger')
             
     return render_template('location/import.html')
+
+@location.route('/new', methods=['POST'])
+@login_required
+def new_location():
+    """Neuen Standort erstellen (für MD3 UI)"""
+    try:
+        # CSRF Token validieren
+        try:
+            validate_csrf(request.form.get('csrf_token'))
+        except ValidationError:
+            return jsonify({'success': False, 'error': 'CSRF-Token ungültig'}), 400
+        
+        # Daten aus dem Request extrahieren
+        name = request.form.get('name', '').strip()
+        street = request.form.get('street', '').strip()
+        city = request.form.get('city', '').strip()
+        state = request.form.get('state', '').strip()
+        postal_code = request.form.get('zip_code', '').strip()  # zip_code -> postal_code
+        country = request.form.get('country', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        # Validierung
+        if not name:
+            return jsonify({'success': False, 'error': 'Name ist erforderlich'}), 400
+        
+        # Prüfen ob Standort bereits existiert
+        existing = Location.query.filter_by(name=name).first()
+        if existing:
+            return jsonify({'success': False, 'error': f'Standort "{name}" existiert bereits'}), 400
+        
+        # Neuen Standort erstellen
+        location_obj = Location(
+            name=name,
+            street=street,
+            city=city,
+            state=state,
+            postal_code=postal_code,
+            description=description if description else None
+        )
+        
+        db.session.add(location_obj)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Standort "{name}" erfolgreich erstellt',
+            'location': {
+                'id': location_obj.id,
+                'name': location_obj.name,
+                'street': location_obj.street,
+                'city': location_obj.city,
+                'state': location_obj.state,
+                'postal_code': location_obj.postal_code,
+                'description': location_obj.description
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f'Fehler beim Erstellen: {str(e)}'}), 500

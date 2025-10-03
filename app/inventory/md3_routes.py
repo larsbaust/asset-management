@@ -23,12 +23,18 @@ def planning():
     """
     try:
         # Aktive und geplante Inventuren (matching original logic)
-        active_sessions = InventorySession.query.filter(
+        active_sessions = InventorySession.query.options(
+            joinedload(InventorySession.location),
+            joinedload(InventorySession.created_by)
+        ).filter(
             InventorySession.status.in_(['planned', 'in_progress', 'active'])
         ).order_by(InventorySession.start_date).all()
         
         # Abgeschlossene Inventuren
-        completed_sessions = InventorySession.query.filter_by(
+        completed_sessions = InventorySession.query.options(
+            joinedload(InventorySession.location),
+            joinedload(InventorySession.created_by)
+        ).filter_by(
             status='completed'
         ).order_by(InventorySession.end_date.desc()).limit(5).all()
         
@@ -104,7 +110,8 @@ def planning_new():
             location_id=location_id if location_id and location_id != '' else None,
             start_date=start_date_obj,
             end_date=end_date_obj,
-            status='planned'
+            status='planned',
+            created_by_user_id=current_user.id
         )
         
         db.session.add(session)
@@ -124,12 +131,37 @@ def planning_new():
                     session_id=session.id,
                     asset_id=asset.id,
                     expected_quantity=1,  # Default quantity
-                    expected_location=asset.location.name if asset.location else 'Unbekannt',
+                    expected_location=asset.location_obj.name if asset.location_obj else (asset.location if asset.location else 'Unbekannt'),
                     status='pending'
                 )
                 db.session.add(item)
         
         db.session.commit()
+        
+        # KALENDER-EVENT für Inventur erstellen
+        from app.models import CalendarEvent, EVENT_TYPE_INVENTORY, EVENT_STATUS_PLANNED
+        
+        # Standort-Name für Beschreibung
+        location_name = session.location.name if session.location else 'Kein Standort'
+        event_title = f"Inventur: {session.name}"
+        event_description = f"Inventur am Standort: {location_name}\nStatus: Geplant"
+        
+        if session.notes:
+            event_description += f"\n\nNotizen:\n{session.notes}"
+        
+        calendar_event = CalendarEvent(
+            title=event_title,
+            description=event_description,
+            start_datetime=session.start_date,
+            end_datetime=session.end_date,
+            event_type=EVENT_TYPE_INVENTORY,
+            status=EVENT_STATUS_PLANNED,
+            inventory_session_id=session.id,
+            created_by_id=current_user.id
+        )
+        db.session.add(calendar_event)
+        db.session.commit()
+        current_app.logger.info(f"DEBUG: Kalender-Event #{calendar_event.id} für Inventurplanung #{session.id} erstellt")
         
         flash(f'Inventur "{name}" wurde erfolgreich erstellt', 'success')
         return redirect(url_for('md3_inventory.planning'))
@@ -369,10 +401,30 @@ def save_progress(session_id):
         session = InventorySession.query.get_or_404(session_id)
         current_app.logger.info(f"Session found: {session.name}, status: {session.status}")
         
-        # Step 2: Get JSON data
-        current_app.logger.info(f"Step 2: Getting JSON data")
+        # Step 2: Get data (JSON or Form)
+        current_app.logger.info(f"Step 2: Getting data - Content-Type: {request.content_type}")
+        
+        # Try JSON first, then fallback to form data
         data = request.get_json()
-        current_app.logger.info(f"Received data: {data}")
+        if data:
+            current_app.logger.info(f"Received JSON data: {data}")
+        else:
+            # Process form data - convert to asset dict format
+            current_app.logger.info(f"No JSON data, processing form data...")
+            data = {}
+            for key, value in request.form.items():
+                if key.startswith('counted_quantity_'):
+                    asset_id = key.replace('counted_quantity_', '')
+                    try:
+                        asset_id = int(asset_id)
+                        counted_qty = int(value) if value.isdigit() else 0
+                        data[str(asset_id)] = {
+                            'counted_quantity': counted_qty,
+                            'status': 'completed' if counted_qty > 0 else 'pending'
+                        }
+                    except (ValueError, TypeError):
+                        continue
+            current_app.logger.info(f"Converted form data: {data}")
         
         if not data:
             current_app.logger.error("No data received")
@@ -493,7 +545,7 @@ def complete_inventory(session_id):
         
         if uncounted_count > 0:
             # Get details about uncounted items for better user feedback
-            uncounted_items = uncounted_items_query.join(Asset).limit(10).all()
+            uncounted_items = uncounted_items_query.limit(10).all()
             uncounted_names = [f"• {item.asset.name}" for item in uncounted_items if item.asset]
             
             if uncounted_count > 10:
@@ -716,8 +768,8 @@ def md3_report_detail(id):
                         'article_number': item.asset.article_number,
                         'serial_number': item.asset.serial_number,
                         'location': ({
-                            'name': item.asset.location.name
-                        } if item.asset.location else None)
+                            'name': item.asset.location_obj.name
+                        } if item.asset.location_obj else None)
                     }
                 }
             })
@@ -797,3 +849,35 @@ def prepare_chart_data(session):
             'data': timeline_data
         }
     }
+
+@inventory_bp.route('/api/start/<int:session_id>', methods=['POST'])
+@login_required
+def api_start_inventory(session_id):
+    """API endpoint to start inventory session"""
+    try:
+        session = InventorySession.query.get_or_404(session_id)
+        session.status = 'active'
+        session.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Inventur gestartet'})
+    except Exception as e:
+        current_app.logger.error(f"Error starting inventory session {session_id}: {e}")
+        return jsonify({'success': False, 'message': 'Fehler beim Starten der Inventur'}), 500
+
+@inventory_bp.route('/api/complete/<int:session_id>', methods=['POST'])
+@login_required  
+def api_complete_inventory(session_id):
+    """API endpoint to complete inventory session"""
+    try:
+        session = InventorySession.query.get_or_404(session_id)
+        session.status = 'completed'
+        session.completed_at = datetime.utcnow()
+        session.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Inventur abgeschlossen'})
+    except Exception as e:
+        current_app.logger.error(f"Error completing inventory session {session_id}: {e}")
+        return jsonify({'success': False, 'message': 'Fehler beim Abschließen der Inventur'}), 500
+

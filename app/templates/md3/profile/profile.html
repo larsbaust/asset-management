@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% block styles %}
+  {{ super() }}
+  <style>
+    .md3-page { padding: 24px; padding-top: 80px; }
+    .md3-container { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .title { font: var(--md-sys-typescale-headline-small-font); color: var(--md-sys-color-on-surface); }
+
+    .card { background: var(--md-sys-color-surface); border-radius: 20px; box-shadow: var(--md-sys-elevation-level2); padding: 28px; }
+
+    .profile-overview { display: flex; align-items: flex-start; gap: 32px; flex-wrap: wrap; }
+    .profile-image-container { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 8px; }
+    .profile-image { width: 140px; height: 140px; object-fit: cover; border-radius: 50%; border: 4px solid var(--md-sys-color-primary); cursor: pointer; transition: all 0.25s ease; box-shadow: var(--md-sys-elevation-level2); }
+    .profile-image:hover { transform: scale(1.05); box-shadow: var(--md-sys-elevation-level4); }
+    .profile-image-hint { font: var(--md-sys-typescale-label-medium-font); color: var(--md-sys-color-on-surface-variant); }
+
+    .profile-summary { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 16px; }
+    .profile-name { font: var(--md-sys-typescale-headline-medium-font); color: var(--md-sys-color-on-surface); margin: 0; }
+    .profile-role-chip { align-self: flex-start; padding: 6px 14px; border-radius: 999px; background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); font: var(--md-sys-typescale-label-medium-font); display: inline-flex; align-items: center; gap: 6px; }
+    .profile-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+    .profile-info-card { background: var(--md-sys-color-surface-container-lowest); border-radius: 16px; border: 1px solid var(--md-sys-color-outline-variant); padding: 16px; display: flex; gap: 12px; align-items: flex-start; }
+    .profile-info-icon { color: var(--md-sys-color-primary); font-size: 24px; }
+    .profile-info-label { font: var(--md-sys-typescale-label-medium-font); color: var(--md-sys-color-on-surface-variant); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .profile-info-value { font: var(--md-sys-typescale-body-large-font); color: var(--md-sys-color-on-surface); }
+
+    .profile-actions { margin-top: 24px; display: flex; justify-content: flex-end; }
+    .md3-button { border: none; border-radius: 999px; padding: 12px 28px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; white-space: nowrap; font: var(--md-sys-typescale-label-large-font); }
+    .md3-button .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; font-size: 20px; }
+    .md3-button-filled { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
+    .md3-button-tonal { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+    .md3-button-outlined { background: transparent; color: var(--md-sys-color-primary); border: 1px solid var(--md-sys-color-outline); }
+    .md3-button-text { background: transparent; color: var(--md-sys-color-error); }
+
+    .permissions-section { display: flex; flex-direction: column; gap: 16px; }
+    .permissions-header { display: flex; align-items: center; gap: 8px; font: var(--md-sys-typescale-title-medium-font); color: var(--md-sys-color-on-surface); }
+    .permission-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+    .permission-tile { background: var(--md-sys-color-surface-container-lowest); border: 1px solid var(--md-sys-color-outline-variant); border-radius: 14px; padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .permission-tile:hover { transform: translateY(-2px); box-shadow: var(--md-sys-elevation-level3); }
+    .permission-icon { color: var(--md-sys-color-primary); font-size: 22px; }
+    .permission-name { font: var(--md-sys-typescale-body-large-font); color: var(--md-sys-color-on-surface); margin-bottom: 4px; }
+    .permission-code { font: var(--md-sys-typescale-label-small-font); color: var(--md-sys-color-on-surface-variant); text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .flash-messages { margin-bottom: 16px; }
+    .flash-message { padding: 12px 16px; border-radius: 12px; margin-bottom: 8px; }
+    .flash-success { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
+    .flash-error { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
+    .flash-warning { background: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container); }
+    .flash-info { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+    
+    /* Modal styles */
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; display: none; align-items: center; justify-content: center; }
+    .modal.is-active { display: flex; }
+    .modal-card { background: var(--md-sys-color-surface); border-radius: 16px; max-width: 500px; width: 90%; max-height: 80vh; overflow: hidden; }
+    .modal-card-head { padding: 16px 24px; border-bottom: 1px solid var(--md-sys-color-outline-variant); display: flex; align-items: center; justify-content: space-between; }
+    .modal-card-title { font: var(--md-sys-typescale-title-large-font); color: var(--md-sys-color-on-surface); }
+    .modal-card-body { padding: 24px; max-height: 60vh; overflow-y: auto; }
+    .modal-card-foot { padding: 16px 24px; border-top: 1px solid var(--md-sys-color-outline-variant); display: flex; gap: 8px; justify-content: flex-end; }
+    .delete { background: none; border: none; cursor: pointer; color: var(--md-sys-color-on-surface-variant); }
+    
+    .cropper-image { max-width: 100%; display: block; margin: auto; }
+    .file-input { margin-bottom: 16px; }
+    
+    @media (max-width: 768px) {
+      .profile-overview { flex-direction: column; align-items: center; }
+      .profile-summary { align-items: center; text-align: center; }
+      .profile-role-chip { align-self: center; }
+      .profile-meta-grid { grid-template-columns: 1fr; }
+      .profile-actions { justify-content: center; }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  {% include 'md3-nav.html' %}
+  <div class="md3-page">
+    <div class="md3-container">
+      <div class="header">
+        <div class="title">Mein Profil</div>
+      </div>
+
+      <div class="card">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-messages">
+              {% for category, message in messages %}
+                <div class="flash-message flash-{{ category }}">
+                  {{ message|safe }}
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <div class="profile-overview">
+          <div class="profile-image-container">
+            {% if user.profile_image and image_exists %}
+              <img src="{{ url_for('test_serve_profile_image', filename=user.profile_image) }}?v={{ cache_buster }}" class="profile-image" id="profileImage" alt="Profilbild">
+            {% else %}
+              <img src="https://ui-avatars.com/api/?name={{ avatar_name|urlencode }}&background=6750A4&color=fff&size=140" class="profile-image" id="profileImage" alt="Profilbild">
+            {% endif %}
+            <span class="profile-image-hint">Klicken zum Aktualisieren</span>
+          </div>
+
+          <div class="profile-summary">
+            <h2 class="profile-name">{{ (form.vorname.data ~ ' ' ~ form.nachname.data).strip() }}</h2>
+            {% if current_user.role %}
+              <span class="profile-role-chip">
+                <span class="material-symbols-outlined">workspace_premium</span>
+                {{ current_user.role.name }}
+              </span>
+            {% endif %}
+
+            <div class="profile-meta-grid">
+              <div class="profile-info-card">
+                <span class="material-symbols-outlined profile-info-icon">alternate_email</span>
+                <div>
+                  <div class="profile-info-label">E-Mail</div>
+                  <div class="profile-info-value">{{ form.email.data or '—' }}</div>
+                </div>
+              </div>
+              <div class="profile-info-card">
+                <span class="material-symbols-outlined profile-info-icon">call</span>
+                <div>
+                  <div class="profile-info-label">Telefon</div>
+                  <div class="profile-info-value">{{ form.phone.data or '—' }}</div>
+                </div>
+              </div>
+              <div class="profile-info-card">
+                <span class="material-symbols-outlined profile-info-icon">home</span>
+                <div>
+                  <div class="profile-info-label">Straße</div>
+                  <div class="profile-info-value">{{ form.street.data or '—' }}</div>
+                </div>
+              </div>
+              <div class="profile-info-card">
+                <span class="material-symbols-outlined profile-info-icon">location_city</span>
+                <div>
+                  <div class="profile-info-label">PLZ &amp; Stadt</div>
+                  <div class="profile-info-value">{{ (form.postal_code.data or '—') ~ ' ' ~ (form.city.data or '') }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal für Bildzuschnitt -->
+        <div id="cropperModal" class="modal">
+          <div class="modal-card">
+            <header class="modal-card-head">
+              <p class="modal-card-title">Profilbild zuschneiden</p>
+              <button class="delete" aria-label="close" id="closeCropper">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </header>
+            <section class="modal-card-body">
+              <input type="file" id="modalFileInput" accept="image/*" class="form-input file-input">
+              <img id="cropperImage" src="" class="cropper-image">
+            </section>
+            <footer class="modal-card-foot">
+              <button class="md3-button md3-button-outlined" id="resetCropper">Reset</button>
+              <button class="md3-button md3-button-text" id="deleteImage">
+                <span class="material-symbols-outlined">delete</span>
+                Bild löschen
+              </button>
+              <button class="md3-button md3-button-tonal" id="cancelCropper">Abbrechen</button>
+              <button class="md3-button md3-button-filled" id="saveCropped">
+                <span class="material-symbols-outlined">check</span>
+                Übernehmen
+              </button>
+            </footer>
+          </div>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+          {{ form.hidden_tag() }}
+          <input type="hidden" name="cropped_image_data" id="croppedImageData">
+          <input type="hidden" name="delete_image_flag" id="deleteImageFlag" value="">
+          <input type="hidden" name="md3" value="1">
+
+          <div class="form-hidden-inputs" style="display: none;">
+            {{ form.vorname(type="hidden") }}
+            {{ form.nachname(type="hidden") }}
+            {{ form.email(type="hidden") }}
+            {{ form.street(type="hidden") }}
+            {{ form.postal_code(type="hidden") }}
+            {{ form.city(type="hidden") }}
+            {{ form.phone(type="hidden") }}
+          </div>
+
+          <div class="profile-actions">
+            {{ form.submit(class="md3-button md3-button-filled") }}
+          </div>
+        </form>
+      </div>
+
+      {% if current_user.role and current_user.role.permissions %}
+      <div class="card">
+        <div class="permissions-section">
+          <div class="permissions-header">
+            <span class="material-symbols-outlined">security</span>
+            Deine Rechte
+          </div>
+          <div class="permission-grid">
+            {% for perm in current_user.role.permissions|sort(attribute='description') %}
+              <div class="permission-tile">
+                <span class="material-symbols-outlined permission-icon">check_circle</span>
+                <div>
+                  <div class="permission-name">{{ perm.description or perm.name }}</div>
+                  <div class="permission-code">{{ perm.name }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <script>
+    let cropper;
+    const profileImage = document.getElementById('profileImage');
+    const cropperModal = document.getElementById('cropperModal');
+    const cropperImage = document.getElementById('cropperImage');
+    const closeCropper = document.getElementById('closeCropper');
+    const cancelCropper = document.getElementById('cancelCropper');
+    const saveCropped = document.getElementById('saveCropped');
+
+    if(profileImage && profileImage.id === 'profileImage') {
+      profileImage.onclick = function() {
+        cropperModal.classList.add('is-active');
+        const previewData = document.getElementById('croppedImageData').value;
+        if (previewData && previewData.startsWith('data:image/')) {
+          cropperImage.src = previewData;
+        } else if (profileImage.src) {
+          cropperImage.src = profileImage.src;
+        } else {
+          cropperImage.src = '';
+        }
+        if(cropper) cropper.destroy();
+        cropperImage.onload = function() {
+          if(cropper) cropper.destroy();
+          if (cropperImage.src) {
+            cropper = new Cropper(cropperImage, {
+              aspectRatio: 1,
+              viewMode: 1,
+              background: false,
+              movable: true,
+              zoomable: true,
+              rotatable: false,
+              scalable: false
+            });
+          }
+        };
+      };
+    }
+
+    const modalFileInput = document.getElementById('modalFileInput');
+    if(modalFileInput) {
+      modalFileInput.addEventListener('change', function(e) {
+        if(modalFileInput.files && modalFileInput.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function(evt) {
+            cropperImage.src = evt.target.result;
+            if(cropper) cropper.destroy();
+            cropper = new Cropper(cropperImage, {
+              aspectRatio: 1,
+              viewMode: 1,
+              background: false,
+              movable: true,
+              zoomable: true,
+              rotatable: false,
+              scalable: false
+            });
+          };
+          reader.readAsDataURL(modalFileInput.files[0]);
+        }
+      });
+    }
+
+    function closeModal() {
+      cropperModal.classList.remove('is-active');
+      if (cropper) { cropper.destroy(); cropper = null; }
+    }
+
+    closeCropper.onclick = closeModal;
+    cancelCropper.onclick = closeModal;
+
+    saveCropped.onclick = function() {
+      if (cropper && cropperImage.src && cropperImage.src.startsWith('data:image/')) {
+        const canvas = cropper.getCroppedCanvas({ width: 240, height: 240 });
+        const dataUrl = canvas.toDataURL('image/png');
+        if(profileImage) profileImage.src = dataUrl;
+        document.getElementById('croppedImageData').value = dataUrl;
+        document.getElementById('deleteImageFlag').value = '';
+        closeModal();
+      } else {
+        alert('Bitte lade zuerst ein Bild hoch!');
+      }
+    };
+
+    document.getElementById('resetCropper').onclick = function() {
+      const previewData = document.getElementById('croppedImageData').value;
+      if (previewData && previewData.startsWith('data:image/')) {
+        cropperImage.src = previewData;
+      } else if (profileImage && profileImage.src) {
+        cropperImage.src = profileImage.src;
+      }
+      if(cropper) cropper.destroy();
+    };
+
+    document.getElementById('deleteImage').onclick = function() {
+      if(profileImage) profileImage.src = "https://ui-avatars.com/api/?name={{ user.vorname }}+{{ user.nachname }}&background=6750A4&color=fff&size=120";
+      cropperImage.src = "https://ui-avatars.com/api/?name={{ user.vorname }}+{{ user.nachname }}&background=6750A4&color=fff&size=120";
+      document.getElementById('croppedImageData').value = '';
+      document.getElementById('deleteImageFlag').value = '1';
+      if(cropper) cropper.destroy();
+      closeModal();
+    };
+  </script>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+  .form-field {
+    margin-bottom: var(--md-sys-spacing-4, 16px);
+  }
+  
+  .form-label {
+    color: var(--md-sys-color-on-surface);
+    margin-bottom: var(--md-sys-spacing-2, 8px);
+    display: block;
+    font-weight: 500;
+  }
+  
+  .form-input {
+    width: 100%;
+    padding: var(--md-sys-spacing-3, 12px) var(--md-sys-spacing-4, 16px);
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--md-sys-shape-corner-medium, 8px);
+    background: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+  }
+  
+  .form-input:focus {
+    outline: none;
+    border-color: var(--md-sys-color-primary);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  {% include 'md3-nav.html' %}
+  <div class="md3-page">
+    <div class="md3-container">
+      <h1 class="md3-headline-large">Backup & Wiederherstellung</h1>
+
+      <div class="flash-message flash-info">
+        <span class="material-symbols-outlined">info</span>
+        <div>
+          <strong>Backup-Erinnerung:</strong> Ihr letztes vollständiges Projektbackup stammt vom 17.04.2025. Es empfiehlt sich, regelmäßig Backups zu erstellen, um Datenverlust zu vermeiden.
+        </div>
+      </div>
+
+      <div class="md3-card">
+        <h2 class="md3-headline-small">Backup erstellen</h2>
+        <p style="color: var(--md-sys-color-on-surface-variant); margin-bottom: var(--md-sys-spacing-4, 16px);">Erzeugt ein ZIP-Archiv mit aktueller Datenbank und allen Uploads.</p>
+        <a href="{{ url_for('admin.backup', md3=1) }}" class="md3-button md3-button-filled">
+          <span class="material-symbols-outlined">download</span>
+          Backup jetzt herunterladen
+        </a>
+      </div>
+
+      <div class="md3-card">
+        <h2 class="md3-headline-small">Backup wiederherstellen</h2>
+        {% if has_permission(current_user, 'restore_data') %}
+        <form method="post" enctype="multipart/form-data" action="{{ url_for('admin.restore', md3=1) }}">
+          <input type="hidden" name="md3" value="1">
+          <div class="form-field">
+            <label class="form-label">Backup-ZIP auswählen</label>
+            <input class="form-input" type="file" name="backup_zip" accept=".zip" required>
+          </div>
+          <div class="flash-message flash-warning">
+            <span class="material-symbols-outlined">warning</span>
+            <div>
+              <strong>Warnung:</strong> Das Restore überschreibt die aktuelle Datenbank und alle Uploads unwiderruflich!
+            </div>
+          </div>
+          <button type="submit" class="md3-button md3-button-filled" style="background: var(--md-sys-color-error); color: var(--md-sys-color-on-error);">
+            <span class="material-symbols-outlined">upload</span>
+            Backup wiederherstellen
+          </button>
+        </form>
+        {% else %}
+        <div class="flash-message flash-error">
+          <span class="material-symbols-outlined">error</span>
+          <div>
+            <strong>Keine Berechtigung!</strong> Sie benötigen das Recht 'restore_data', um Backups wiederherzustellen.
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      
+      <div class="md3-card">
+        <h2 class="md3-headline-small">Asset-Daten zurücksetzen</h2>
+        <p style="color: var(--md-sys-color-on-surface-variant); margin-bottom: var(--md-sys-spacing-4, 16px);">Mit dieser Funktion können Sie alle Assets und Bestellungen zurücksetzen, aber Lieferanten, Standorte und Benutzer beibehalten.</p>
+        <div class="flash-message flash-warning">
+          <span class="material-symbols-outlined">warning</span>
+          <div>
+            <strong>Warnung:</strong> Dieser Vorgang löscht alle Assets und Bestellungen unwiderruflich!
+          </div>
+        </div>
+        <a href="{{ url_for('admin.reset_overview', md3=1) }}" class="md3-button md3-button-filled" style="background: var(--md-sys-color-error); color: var(--md-sys-color-on-error);">
+          <span class="material-symbols-outlined">warning</span>
+          Asset-Daten zurücksetzen
+        </a>
+      </div>
+    </div>
+  </div>
+{% endblock %}

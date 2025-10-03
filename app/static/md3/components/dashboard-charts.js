@@ -12,6 +12,26 @@ function initializeDashboardCharts() {
   function getCssVariable(varName) {
     return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
   }
+
+  function hexToRgbString(hex) {
+    if (!hex) {
+      return '';
+    }
+    let normalized = hex.replace('#', '').trim();
+    if (normalized.length === 3) {
+      normalized = normalized.split('').map(char => char + char).join('');
+    }
+    if (normalized.length !== 6) {
+      return '';
+    }
+    const r = parseInt(normalized.slice(0, 2), 16);
+    const g = parseInt(normalized.slice(2, 4), 16);
+    const b = parseInt(normalized.slice(4, 6), 16);
+    if ([r, g, b].some(Number.isNaN)) {
+      return '';
+    }
+    return `${r}, ${g}, ${b}`;
+  }
   
   // MD3-Farbsystem für Charts initialisieren
   const md3Colors = {
@@ -63,16 +83,16 @@ function initializeDashboardCharts() {
   };
   
   // RGB-Werte für transparente Varianten extrahieren
-  const primaryRGB = getCssVariable('--md-sys-color-primary-rgb');
-  const secondaryRGB = getCssVariable('--md-sys-color-secondary-rgb');
-  const tertiaryRGB = getCssVariable('--md-sys-color-tertiary-rgb');
-  const surfaceRGB = getCssVariable('--md-sys-color-surface-rgb');
+  const primaryRGB = getCssVariable('--md-sys-color-primary-rgb') || hexToRgbString(md3Colors.primary);
+  const secondaryRGB = getCssVariable('--md-sys-color-secondary-rgb') || hexToRgbString(md3Colors.secondary);
+  const tertiaryRGB = getCssVariable('--md-sys-color-tertiary-rgb') || hexToRgbString(md3Colors.tertiary);
+  const surfaceRGB = getCssVariable('--md-sys-color-surface-rgb') || hexToRgbString(md3Colors.surface);
   
   // Transparente Farbvarianten für Charts
-  md3Colors.primaryAlpha = `rgba(${primaryRGB}, 0.2)`;
-  md3Colors.secondaryAlpha = `rgba(${secondaryRGB}, 0.2)`;
-  md3Colors.tertiaryAlpha = `rgba(${tertiaryRGB}, 0.2)`;
-  md3Colors.surfaceAlpha = `rgba(${surfaceRGB}, 0.8)`;
+  md3Colors.primaryAlpha = primaryRGB ? `rgba(${primaryRGB}, 0.2)` : `${md3Colors.primary}33`;
+  md3Colors.secondaryAlpha = secondaryRGB ? `rgba(${secondaryRGB}, 0.2)` : `${md3Colors.secondary}33`;
+  md3Colors.tertiaryAlpha = tertiaryRGB ? `rgba(${tertiaryRGB}, 0.2)` : `${md3Colors.tertiary}33`;
+  md3Colors.surfaceAlpha = surfaceRGB ? `rgba(${surfaceRGB}, 0.8)` : `${md3Colors.surface}CC`;
   
   // Chart-Farbpalette mit mehr Farben für Charts mit vielen Segmenten
   md3Colors.chartPalette = [
@@ -234,7 +254,8 @@ function initializeDashboardCharts() {
   };
   
   // Registriere die Plugins
-  Chart.register(md3TooltipPlugin);
+  // Tooltip-Plugin deaktiviert, um Konflikte mit Chart.js Hover-Events zu vermeiden
+  // Chart.register(md3TooltipPlugin);
   Chart.register(md3AnimationPlugin);
   
   // 1. Kostenverteilungs-Chart initialisieren
@@ -244,7 +265,7 @@ function initializeDashboardCharts() {
   initValueDevelopmentChart();
   
   // 3. Assets nach Kategorie und Zuordnung Chart initialisieren
-  initCategoryAssignmentChart();
+  // initCategoryAssignmentChart(); // Deaktiviert - wird jetzt in dashboard.html gehandhabt
   
   // Kostenverteilungs-Chart laden
   function initCostDistributionChart() {
@@ -289,16 +310,21 @@ function initializeDashboardCharts() {
           }
         } catch (e) {
           console.error('Fehler beim Laden der Fallback-Daten:', e);
-          return {
-            cost_distribution: {
-              labels: ['Anschaffung', 'Wartung', 'Lizenzen', 'Reparatur', 'Betriebskosten', 'Schulung'],
-              data: [45, 25, 15, 10, 8, 12]
-            }
-          };
+          return null; // Keine Fallback-Daten mehr
         }
       })
       .then(data => {
-        if (!data) return;
+        // Wenn keine Daten vorhanden, Chart ausblenden
+        if (!data || !data.cost_distribution || !data.cost_distribution.labels || data.cost_distribution.labels.length === 0) {
+          console.log('Keine Kostenverteilungs-Daten - Chart wird ausgeblendet');
+          if (costCanvas) {
+            costCanvas.style.display = 'none';
+          }
+          if (container) {
+            container.style.display = 'none';
+          }
+          return;
+        }
         
         if (container) {
           container.style.opacity = '1'; // Zeige den Chart-Container
@@ -315,28 +341,29 @@ function initializeDashboardCharts() {
             datasets: [{
               data: data.cost_distribution.data,
               backgroundColor: function(context) {
-                // Verwende die getChartColor-Funktion für jedes Segment
                 return md3Colors.getChartColor(context.dataIndex);
               },
               borderColor: md3Colors.surfaceContainer,
               borderWidth: 1,
-              hoverOffset: 10,
               borderRadius: 4,
               spacing: 2,
-              hoverBorderWidth: 2,
-              hoverBorderColor: md3Colors.outline
+              hoverOffset: 0
             }]
           },
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '65%', // Etwas dünnerer Donut für moderneres Aussehen
-            md3Background: false, // Optional: Chart-Hintergrund
+            cutout: '65%',
+            md3Background: false,
+            interaction: {
+              mode: 'nearest',
+              intersect: true
+            },
             layout: {
               padding: {
                 top: parseInt(md3.spacing.sm) || 8,
                 right: parseInt(md3.spacing.sm) || 8,
-                bottom: parseInt(md3.spacing.sm) || 8, 
+                bottom: parseInt(md3.spacing.sm) || 8,
                 left: parseInt(md3.spacing.sm) || 8
               }
             },
@@ -354,22 +381,19 @@ function initializeDashboardCharts() {
                     family: md3.typography.labelMedium.family,
                     size: parseInt(md3.typography.labelMedium.size) || 14,
                     weight: md3.typography.labelMedium.weight || 500
-                  },
-                  bodyFont: {
-                    family: md3.typography.bodySmall.family,
-                    size: parseInt(md3.typography.bodySmall.size) || 12,
-                    weight: md3.typography.bodySmall.weight || 400
-                  },
-                  callbacks: {
-                    label: function(context) {
-                      const label = context.label || '';
-                      const value = context.raw || 0;
-                      const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                      const percentage = Math.round((value / total) * 100);
-                      // Verwende die sichere Euro-Formatierung ohne direktes Euro-Symbol
-                      const formatter = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
-                      return `${label}: ${formatter.format(value)} (${percentage}%)`;
-                    }
+                  }
+                }
+              },
+              tooltip: {
+                enabled: true,
+                callbacks: {
+                  label: function(context) {
+                    const label = context.label || '';
+                    const value = context.raw || 0;
+                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                    const percentage = total ? Math.round((value / total) * 100) : 0;
+                    const formatter = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+                    return `${label}: ${formatter.format(value)} (${percentage}%)`;
                   }
                 }
               }
@@ -475,7 +499,11 @@ function initializeDashboardCharts() {
     // Bereich löschen
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Neuen Chart erstellen mit MD3 Farbpalette
+    // Canvas für normale Anzeige vorbereiten
+    canvas.style.opacity = '1';
+    canvas.style.transform = 'translateY(0)';
+    
+    // Neuen Chart erstellen mit MD3 Farbpalette und erweiterten Animationen
     window.valueChart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -483,10 +511,10 @@ function initializeDashboardCharts() {
         datasets: [{
           label: 'Gesamtwert',
           data: chartData.data,
-          borderColor: md3Colors.tertiary,
+          borderColor: md3Colors.primary,
           borderWidth: 2,
-          backgroundColor: md3Colors.tertiaryContainer + '80', // Mit Transparenz
-          pointBackgroundColor: md3Colors.tertiary,
+          backgroundColor: md3Colors.primaryAlpha, // Sanftere MD3-Fläche
+          pointBackgroundColor: md3Colors.primary,
           pointBorderColor: md3Colors.surface,
           pointRadius: 4,
           pointHoverRadius: 6,
@@ -497,6 +525,14 @@ function initializeDashboardCharts() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        animation: {
+          duration: 1500,
+          easing: 'easeInOutQuart'
+        },
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
         plugins: {
           legend: {
             position: 'bottom',
@@ -511,6 +547,8 @@ function initializeDashboardCharts() {
             }
           },
           tooltip: {
+          enabled: true,
+
             titleFont: {
               family: md3Typography.labelMedium.family,
               size: parseInt(md3Typography.labelMedium.size)
@@ -554,197 +592,18 @@ function initializeDashboardCharts() {
       }
     });
     
-    console.log('Wertentwicklungs-Chart erfolgreich erstellt mit MD3-Design');
+    
+    console.log('Wertentwicklungs-Chart erfolgreich erstellt mit MD3-Design und Animationen');
   }
   
   // Assets nach Kategorie und Zuordnung Chart laden
-  function initCategoryAssignmentChart() {
-    console.log('Initialisiere Assets nach Kategorie und Zuordnung Chart mit MD3 Design...');
-    
-    const categoryCanvas = document.getElementById('categoryAssignmentChart');
-    if (!categoryCanvas) {
-      console.error('FEHLER: Assets Kategorie/Zuordnung Canvas #categoryAssignmentChart nicht gefunden!');
-      return;
-    }
-    
-    console.log('Assets Kategorie/Zuordnung Canvas gefunden:', categoryCanvas);
-    
-    // Container bereit machen
-    const container = document.getElementById('category-assignment-container');
-    if (container) {
-      container.style.minHeight = '300px';
-      // Sanfte Überblendung während des Ladens
-      container.style.transition = 'opacity 0.3s ease-in-out';
-      container.style.opacity = '0.6';
-    }
-    
-    // Versuche zuerst, Daten vom Backend zu laden
-    console.log('Lade Kategorie/Zuordnungs-Daten vom Backend oder aus Fallback...');
-    
-    // Versuche chartData aus dem globalen Kontext zu bekommen
-    let chartDataSource = null;
-    
-    try {
-      // Prüfen, ob chartData im globalen Kontext verfügbar ist
-      if (typeof chartData !== 'undefined' && chartData) {
-        console.log('Verwende globale chartData für Kategorien und Zuordnungen');
-        chartDataSource = chartData;
-      } else {
-        // Alternativ: Versuche, Daten aus einem versteckten Element zu laden
-        const fallbackElement = document.getElementById('category-assignment-chart-fallback-data');
-        if (fallbackElement) {
-          console.log('Verwende Fallback-Daten für Kategorien und Zuordnungen');
-          chartDataSource = JSON.parse(fallbackElement.textContent);
-        }
-      }
-      
-      // Wenn keine Daten gefunden, verwende Dummies
-      if (!chartDataSource) {
-        console.warn('Keine Daten gefunden, verwende Dummy-Daten für Kategorie/Zuordnungs-Chart');
-        chartDataSource = {
-          category_data: {
-            labels: ['Hardware', 'Software', 'Netzwerk', 'Peripherie', 'Sonstiges'],
-            data: [25, 15, 10, 8, 5]
-          },
-          assignment_data: {
-            labels: ['Hardware', 'Software', 'Netzwerk', 'Peripherie', 'Sonstiges'],
-            data: [20, 12, 8, 6, 3]
-          }
-        };
-      }
-      
-      // Chart mit MD3 Styling erstellen
-      createCategoryAssignmentChart(categoryCanvas, chartDataSource);
-      
-    } catch (error) {
-      console.error('Fehler beim Laden der Daten für Kategorie/Zuordnungs-Chart:', error);
-    }
+  async function initCategoryAssignmentChart() {
+    console.log('Category Assignment Chart wird von dashboard.html gehandhabt - überspringe dashboard-charts.js Implementation');
+    return; // Überspringe diese Funktion, da die Chart bereits im main template implementiert ist
   }
   
-  // Chart erstellen Funktion für Kategorie und Zuordnung
-  function createCategoryAssignmentChart(canvas, chartDataSource) {
-    if (!canvas || !chartDataSource) {
-      console.error('Canvas oder Daten fehlen für Kategorie/Zuordnungs-Chart!');
-      return;
-    }
-    
-    console.log('Erstelle Kategorie/Zuordnungs-Chart mit MD3 Design:', chartDataSource);
-    
-    // Container wieder einblenden
-    const container = document.getElementById('category-assignment-container');
-    if (container) {
-      container.style.opacity = '1';
-    }
-    
-    // Verwende Daten aus category_data und assignment_data, falls verfügbar
-    const labels = chartDataSource.category_data?.labels || ['Hardware', 'Software', 'Netzwerk', 'Peripherie', 'Sonstiges'];
-    
-    // Chart mit einheitlichem MD3-Farbschema erstellen
-    new Chart(canvas, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: 'Kategorie',
-            data: chartDataSource.category_data?.data || [25, 15, 10, 8, 5],
-            backgroundColor: md3Colors.tertiaryContainer,
-            borderColor: md3Colors.tertiary,
-            borderWidth: 1,
-            borderRadius: 4,
-            hoverBackgroundColor: md3Colors.tertiary + 'D9' // 85% Opacity
-          },
-          {
-            label: 'Zuordnung',
-            data: chartDataSource.assignment_data?.data || [20, 12, 8, 6, 3],
-            backgroundColor: md3Colors.surfaceVariant,
-            borderColor: md3Colors.outline,
-            borderWidth: 1,
-            borderRadius: 4,
-            hoverBackgroundColor: md3Colors.onSurfaceVariant + '40' // 25% Opacity
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            grid: {
-              display: false,
-              color: md3Colors.outlineVariant + '40'
-            },
-            ticks: {
-              color: md3Colors.onSurfaceVariant
-            },
-            border: {
-              color: md3Colors.outlineVariant
-            }
-          },
-          y: {
-            beginAtZero: true,
-            grid: {
-              color: md3Colors.outlineVariant + '30',
-              tickLength: 0
-            },
-            ticks: {
-              color: md3Colors.onSurfaceVariant,
-              callback: function(value) {
-                return value + ' St.';
-              }
-            },
-            border: {
-              dash: [4, 4]
-            }
-          }
-        },
-        plugins: {
-          legend: {
-            position: 'bottom',
-            align: 'center',
-            labels: {
-              boxWidth: 12,
-              boxHeight: 12,
-              padding: parseInt(md3.spacing.md) || 16,
-              usePointStyle: true,
-              pointStyle: 'rectRounded',
-              font: {
-                family: md3.typography.labelMedium.family,
-                size: parseInt(md3.typography.labelMedium.size) || 14,
-                weight: md3.typography.labelMedium.weight || 500
-              }
-            }
-          },
-          tooltip: {
-            backgroundColor: md3Colors.surfaceContainerHigh,
-            titleColor: md3Colors.onSurface,
-            bodyColor: md3Colors.onSurfaceVariant,
-            padding: parseInt(md3.spacing.md) || 16,
-            cornerRadius: parseInt(md3.shape.corner.md) || 12,
-            titleFont: {
-              family: md3.typography.labelMedium.family,
-              size: parseInt(md3.typography.labelMedium.size) || 14,
-              weight: md3.typography.labelMedium.weight || 500
-            },
-            bodyFont: {
-              family: md3.typography.bodySmall.family,
-              size: parseInt(md3.typography.bodySmall.size) || 12,
-              weight: md3.typography.bodySmall.weight || 400
-            },
-            callbacks: {
-              label: function(context) {
-                const datasetLabel = context.dataset.label;
-                const value = context.raw;
-                return `${datasetLabel}: ${value} Stück`;
-              }
-            }
-          }
-        }
-      }
-    });
-    
-    console.log('Kategorie/Zuordnungs-Chart mit MD3 Design erfolgreich geladen');
-  }
+  // Entfernt: createCategoryAssignmentChart Funktion wird nicht mehr benötigt
+  // Chart wird jetzt direkt in dashboard.html gehandhabt
   
   // Chart erstellen Funktion
   function createValueChart(canvas, chartData) {
@@ -773,20 +632,20 @@ function initializeDashboardCharts() {
     new Chart(canvas, {
       type: 'line',
       data: {
-        labels: chartData.labels,
+        labels: chartData.labels || [],
         datasets: [{
           label: 'Gesamtwert',
-          data: chartData.data,
+          data: chartData.data || [],
           borderColor: md3Colors.primary,
-          borderWidth: 2.5,
           backgroundColor: md3Colors.primaryAlpha,
           pointBackgroundColor: md3Colors.primary,
-          pointBorderColor: md3Colors.onPrimaryContainer,
+          pointBorderColor: md3Colors.surface,
+          pointBorderWidth: 2,
           pointRadius: 4,
-          pointHoverRadius: 6,
+          pointHoverRadius: 4,
           tension: 0.3,  // Sanfte Kurven statt gerader Linien
           fill: true,    // Füllung unter der Linie
-          cubicInterpolationMode: 'monotone',  // Sanftere Kurven für nativeres Aussehen
+          cubicInterpolationMode: 'monotone'  // Sanftere Kurven für nativeres Aussehen
         }]
       },
       options: {
@@ -808,7 +667,7 @@ function initializeDashboardCharts() {
         elements: {
           point: {
             radius: 4,
-            hoverRadius: 6,
+            hoverRadius: 4,
             hitRadius: 8,
             borderWidth: 2
           },
@@ -840,13 +699,13 @@ function initializeDashboardCharts() {
             }
           },
           tooltip: {
+            enabled: true,
             backgroundColor: md3.colors.surfaceContainerHigh || 'var(--md-sys-color-surface-container-high)',
             titleColor: md3.colors.onSurface || 'var(--md-sys-color-on-surface)',
             bodyColor: 'var(--md-sys-color-on-surface-variant)',
             padding: parseInt(md3.spacing.md) || 16,
             cornerRadius: parseInt(md3.shape.corner.md) || 12,
             boxPadding: parseInt(md3.spacing.xs) || 4,
-            titleMarginBottom: parseInt(md3.spacing.sm) || 8,
             titleFont: {
               family: md3.typography.labelMedium.family,
               size: parseInt(md3.typography.labelMedium.size) || 14,
@@ -925,3 +784,8 @@ function initializeDashboardCharts() {
     console.log('Wertentwicklung-Chart mit MD3 Design erfolgreich erstellt!');
   }
 }
+
+
+
+
+

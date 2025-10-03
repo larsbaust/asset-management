@@ -1,282 +1,810 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<!-- MD3 Token und Kalender-spezifische Styles -->
-<link rel="stylesheet" href="{{ url_for('static', filename='css/m3-tokens.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/md3-calendar.css') }}">
-<!-- CSS-Überschreibungen für Kompatibilität mit base.html/Bulma -->
-<link rel="stylesheet" href="{{ url_for('static', filename='css/md3-calendar-override.css') }}">
-<!-- MD3 Kalender-Events Styling -->
-<link rel="stylesheet" href="{{ url_for('static', filename='css/md3-calendar-events.css') }}">
-
-<!-- Kritische Inline-Styles mit höchster Spezifität -->
 <style>
-  /* Grundlegende Container-Reset für Kalender-Sektion */
-  html body .md3-calendar-section.section,
-  html body section.md3-calendar-section {
-    padding: 0 !important;
-    margin: 0 !important;
-    display: block !important;
-    width: 100% !important;
-  }
-  
-  html body .md3-calendar-container-override.container,
-  html body .container.md3-calendar-container-override {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 1rem !important;
-    margin: 0 !important;
-    display: block !important;
-  }
-  
-  /* Extremes Grid-Layout-Override */
-  html body .md3-calendar-grid,
-  #calendar-grid-force {
-    display: grid !important;
-    grid-template-columns: repeat(7, 1fr) !important;
-    gap: 4px !important;
-    margin: 1rem auto !important;
-    width: 100% !important;
-    max-width: 1200px !important;
-  }
-  
-  /* Debug-Grid zur Verifikation mit höchster Spezifität */
-  #debug-grid-verification {
-    display: grid !important;
-    grid-template-columns: repeat(7, 1fr) !important;
-    gap: 4px !important;
-    margin: 1rem auto !important;
-    padding: 10px !important;
-    border: 2px solid #ff6b6b !important;
-    background-color: #fff5f5 !important;
-    border-radius: 8px !important;
-  }
-  
-  #debug-grid-verification > div {
-    padding: 10px !important;
-    text-align: center !important;
-    background-color: #e9ecef !important;
-    border-radius: 4px !important;
-  }
-</style>
-    z-index: 1;
-  }
-  
-  /* Bulma-Überschreibungen (kritisch für Grid-Layout) */
-  body .section.md3-calendar-section {
-    padding: 0 !important;
-    margin: 0 !important;
-    min-height: auto !important;
-  }
-  
-  body .container.md3-calendar-container-override {
-    max-width: 100% !important;
-    width: 100% !important;
-    padding: 1rem !important; /* Ein wenig Padding für besseres Aussehen */
-    margin: 0 !important;
-  }
-  
-  /* Explizite Regeln für Grid-Layout */
-  body .md3-calendar-grid {
-    display: grid !important;
-    grid-template-columns: repeat(7, 1fr) !important;
-    gap: 4px !important;
-    margin: 0 auto !important;
-    max-width: 1200px !important;
-    background-color: var(--md-sys-color-surface-container, #f1f1f1) !important;
-    border: 1px solid var(--md-sys-color-outline-variant, #e0e0e0) !important;
-    border-radius: 16px !important;
-    overflow: hidden !important;
-  }
-  
-  body .md3-calendar-grid .md3-calendar-weekday,
-  body .md3-calendar-grid .md3-calendar-day {
-    padding: 8px !important;
-    text-align: center !important;
-    box-sizing: border-box !important;
-    min-height: 48px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-  
-  body .md3-calendar-grid .md3-calendar-weekday {
-    font-weight: 500 !important;
-    color: var(--md-sys-color-on-surface-variant, #666) !important;
-    background-color: var(--md-sys-color-surface-container-high, #e7e7e7) !important;
-  }
-  
-  body .md3-calendar-grid .md3-calendar-day {
-    position: relative !important;
-    color: var(--md-sys-color-on-surface, #111) !important;
-    cursor: pointer !important;
-    transition: background-color 0.2s ease !important;
-  }
-  
-  body .md3-calendar-grid .md3-calendar-day:hover {
-    background-color: var(--md-sys-color-surface-container-highest, #f5f5f5) !important;
-  }
-  
-  body .md3-calendar-grid .md3-calendar-day.today {
-    color: var(--md-sys-color-primary, #6750a4) !important;
-    font-weight: 700 !important;
-  }
-  
-  /* Verhindert, dass Bulma-Klassen die MD3-Stile überschreiben */
-  body .md3-calendar-wrapper .md3-calendar-header,
-  body .md3-calendar-wrapper .md3-calendar-title,
-  body .md3-calendar-wrapper .md3-calendar-actions {
-    all: revert !important;
-    font-family: 'Roboto', sans-serif !important;
-    box-sizing: border-box !important;
-  }
-  
-  body .md3-calendar-wrapper .md3-calendar-header {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    padding: 16px !important;
-    margin-bottom: 16px !important;
-  }
-  
-  body .md3-calendar-wrapper .md3-calendar-title {
-    font-size: 24px !important;
-    font-weight: 500 !important;
-    color: var(--md-sys-color-on-surface, #1f1f1f) !important;
-    margin: 0 !important;
+  .md3-calendar-container {
+    max-width: 1200px;
+    margin: 8rem auto 2rem auto;
+    padding: 0 1rem;
   }
 
-  /* Debug-Grid (zur Verifizierung) */
-  #debug-grid-verification {
-    display: grid !important;
-    grid-template-columns: repeat(7, 1fr) !important;
-    gap: 2px !important;
-    border: 2px solid #ff5722 !important;
-    margin: 10px auto !important;
-    padding: 4px !important;
-    max-width: 600px !important;
+  /* Modal Styles */
+  .md3-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
   }
-  
-  #debug-grid-verification > div {
-    background-color: #e3f2fd !important;
-    border: 1px solid #2196f3 !important;
-    padding: 8px !important;
-    text-align: center !important;
+
+  .md3-modal.show {
+    opacity: 1;
+    visibility: visible;
   }
-</style>
-{% endblock %}
 
-{% block content %}
-<!-- Override der Bulma-Sektionen mit spezifischen CSS-Klassen -->
-<section class="section md3-calendar-section">
-  <div class="container md3-calendar-container-override">
-    <header class="md-nav-container">
-      {% include 'md3-nav.html' %}
-    </header>
+  .md3-modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+  }
 
-    <div class="md3-calendar-wrapper" style="width: 100% !important; max-width: 1200px !important; margin: 0 auto !important;">
-      
-      <!-- MD3 Kalender mit selektiven CSS-Überschreibungen -->
-      <div class="md3-calendar">
-        <div class="md3-calendar-header" style="display: flex !important; justify-content: space-between !important; align-items: center !important; margin-bottom: 1rem !important; padding: 8px 16px !important;">
-          <div class="md3-calendar-title" style="font-size: 20px !important; font-weight: 500 !important; color: var(--md-sys-color-on-surface, #1d1b16) !important;">Juli 2025</div>
-          <div class="md3-calendar-actions" style="display: flex !important; gap: 8px !important;">
-            <button id="prev-month-btn" class="md3-calendar-prev" style="border: none !important; background-color: var(--md-sys-color-surface-container-high, #ece6f0) !important; color: var(--md-sys-color-on-surface, #1d1b16) !important; border-radius: 20px !important; width: 40px !important; height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; box-shadow: var(--md-sys-elevation-1, 0 1px 2px rgba(0,0,0,0.3)) !important;">
-              <span class="material-symbols-outlined">chevron_left</span>
-            </button>
-            <button id="today-btn" class="md3-calendar-today" style="border: none !important; background-color: var(--md-sys-color-primary-container, #e8ddff) !important; color: var(--md-sys-color-on-primary-container, #22005d) !important; border-radius: 20px !important; padding: 0 16px !important; height: 40px !important; font-weight: 500 !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; box-shadow: var(--md-sys-elevation-1, 0 1px 2px rgba(0,0,0,0.3)) !important;">Heute</button>
-            <button id="next-month-btn" class="md3-calendar-next" style="border: none !important; background-color: var(--md-sys-color-surface-container-high, #ece6f0) !important; color: var(--md-sys-color-on-surface, #1d1b16) !important; border-radius: 20px !important; width: 40px !important; height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; box-shadow: var(--md-sys-elevation-1, 0 1px 2px rgba(0,0,0,0.3)) !important;">
-              <span class="material-symbols-outlined">chevron_right</span>
-            </button>
-          </div>
-        </div>
-        
-        <div class="md3-calendar-grid" id="calendar-grid-force" style="display: grid !important; grid-template-columns: repeat(7, 1fr) !important; gap: 4px !important; margin: 1rem auto !important; width: 100% !important; max-width: 1200px !important;">
-          <!-- Wochentage -->
-          <div class="md3-calendar-weekday" style="padding: 8px !important; text-align: center !important; font-weight: 500 !important; background-color: var(--md-sys-color-surface-container-high, #e7e7e7) !important; border-radius: 4px !important;">MO</div>
-          <div class="md3-calendar-weekday" style="padding: 8px !important; text-align: center !important; font-weight: 500 !important; background-color: var(--md-sys-color-surface-container-high, #e7e7e7) !important; border-radius: 4px !important;">DI</div>
-          <div class="md3-calendar-weekday" style="padding: 8px !important; text-align: center !important; font-weight: 500 !important; background-color: var(--md-sys-color-surface-container-high, #e7e7e7) !important; border-radius: 4px !important;">MI</div>
-          <div class="md3-calendar-weekday" style="padding: 8px !important; text-align: center !important; font-weight: 500 !important; background-color: var(--md-sys-color-surface-container-high, #e7e7e7) !important; border-radius: 4px !important;">DO</div>
-          <div class="md3-calendar-weekday" style="padding: 8px !important; text-align: center !important; font-weight: 500 !important; background-color: var(--md-sys-color-surface-container-high, #e7e7e7) !important; border-radius: 4px !important;">FR</div>
-          <div class="md3-calendar-weekday" style="padding: 8px !important; text-align: center !important; font-weight: 500 !important; background-color: var(--md-sys-color-surface-container-high, #e7e7e7) !important; border-radius: 4px !important;">SA</div>
-          <div class="md3-calendar-weekday" style="padding: 8px !important; text-align: center !important; font-weight: 500 !important; background-color: var(--md-sys-color-surface-container-high, #e7e7e7) !important; border-radius: 4px !important;">SO</div>
-          
-          <!-- Tage des Monats -->
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">1</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">2</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">3</div>
-          <div class="md3-calendar-day today" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; color: var(--md-sys-color-primary, #6750a4) !important; font-weight: 700 !important; border: 1px solid var(--md-sys-color-primary, #6750a4) !important;">4</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">5</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">6</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">7</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">8</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">9</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">10</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">11</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">12</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">13</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">14</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">15</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">16</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">17</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">18</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">19</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">20</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">21</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">22</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">23</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">24</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">25</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">26</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">27</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">28</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">29</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">30</div>
-          <div class="md3-calendar-day" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important;">31</div>
-          <div class="md3-calendar-day other-month" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; color: var(--md-sys-color-outline, #79747e) !important; opacity: 0.6 !important;">1</div>
-          <div class="md3-calendar-day other-month" style="padding: 8px !important; text-align: center !important; border-radius: 4px !important; min-height: 40px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; color: var(--md-sys-color-outline, #79747e) !important; opacity: 0.6 !important;">2</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-{% endblock %}
+  .md3-modal-content {
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: 28px;
+    box-shadow: var(--md-sys-elevation-3);
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow: hidden;
+    position: relative;
+    z-index: 1001;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+  }
 
-{% block scripts %}
-<!-- Kalender-spezifische Skripte -->
-<script src="{{ url_for('static', filename='js/md3-calendar.js') }}"></script>
-<!-- Kalender-Events und Benachrichtigungen -->
-<script src="{{ url_for('static', filename='js/md3-calendar-events.js') }}"></script>
+  .md3-modal.show .md3-modal-content {
+    transform: scale(1);
+  }
 
-<!-- Ripple-Effekt CSS -->
-<style>
+  .md3-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .md3-modal-title {
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+  }
+
+  .md3-modal-close {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 20px;
+    background: var(--md-sys-color-surface-container-high);
+    color: var(--md-sys-color-on-surface);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .md3-modal-close:hover {
+    background: var(--md-sys-color-surface-container-highest);
+  }
+
+  .md3-modal-body {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .md3-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1.5rem 2rem;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .md3-field {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .md3-input, .md3-textarea, .md3-select {
+    background: var(--md-sys-color-surface-container-highest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 12px;
+    padding: 1rem;
+    font-size: 1rem;
+    color: var(--md-sys-color-on-surface);
+    transition: all 0.2s ease;
+  }
+
+  .md3-input:focus, .md3-textarea:focus, .md3-select:focus {
+    outline: none;
+    border-color: var(--md-sys-color-primary);
+    box-shadow: 0 0 0 2px var(--md-sys-color-primary-container);
+  }
+
+  .md3-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface-variant);
+    margin-bottom: 0.5rem;
+  }
+
+  .md3-textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .md3-calendar-card {
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: 28px;
+    padding: 2rem;
+    box-shadow: var(--md-sys-elevation-1);
+    overflow: hidden;
+  }
+
+  .md3-calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .md3-calendar-title {
+    font-size: 2rem;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+  }
+
+  .md3-calendar-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .md3-nav-btn {
+    width: 48px;
+    height: 48px;
+    border: none;
+    border-radius: 24px;
+    background: var(--md-sys-color-surface-container-high);
+    color: var(--md-sys-color-on-surface);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .md3-nav-btn:hover {
+    background: var(--md-sys-color-surface-container-highest);
+    box-shadow: var(--md-sys-elevation-2);
+  }
+
+  .md3-today-btn {
+    padding: 0 1.5rem;
+    height: 48px;
+    border: none;
+    border-radius: 24px;
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .md3-today-btn:hover {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    box-shadow: var(--md-sys-elevation-2);
+  }
+
+  .md3-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: var(--md-sys-color-outline-variant);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .md3-calendar-weekday {
+    background: var(--md-sys-color-surface-container-high);
+    color: var(--md-sys-color-on-surface-variant);
+    padding: 1rem;
+    text-align: center;
+    font-weight: 500;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .md3-calendar-day {
+    background: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+    min-height: 80px;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .md3-calendar-day:hover {
+    background: var(--md-sys-color-surface-container-low);
+  }
+
+  .md3-calendar-day.today {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+  }
+
+  .md3-calendar-day.other-month {
+    background: var(--md-sys-color-surface-variant);
+    color: var(--md-sys-color-on-surface-variant);
+    opacity: 0.6;
+  }
+
+  .md3-calendar-day.selected {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+  }
+
+  .md3-day-number {
+    font-weight: 500;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .md3-day-events {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+  }
+
+  .md3-event {
+    background: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .md3-event.important {
+    background: var(--md-sys-color-error-container);
+    color: var(--md-sys-color-on-error-container);
+  }
+
+  /* Event-Typ: Lieferung (Blau) */
+  .md3-event.delivery {
+    background: #d3e3fd;
+    color: #001d35;
+    border-left: 3px solid #0b57d0;
+  }
+
+  /* Event-Typ: Inventur (Grün) */
+  .md3-event.inventory {
+    background: #ceead6;
+    color: #0d4f28;
+    border-left: 3px solid #1e8e3e;
+  }
+
+  /* Event-Typ: Manuell (Standard) */
+  .md3-event.manual {
+    background: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+    border-left: 3px solid var(--md-sys-color-tertiary);
+  }
+
+  .md3-calendar-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .md3-action-btn {
+    padding: 0 1.5rem;
+    height: 48px;
+    border: none;
+    border-radius: 24px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .md3-action-btn.primary {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+  }
+
+  .md3-action-btn.secondary {
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+  }
+
+  .md3-action-btn:hover {
+    box-shadow: var(--md-sys-elevation-2);
+  }
+
+  /* Ripple effect */
   .ripple {
     position: absolute;
     border-radius: 50%;
     transform: scale(0);
-    background-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.3);
     pointer-events: none;
     animation: ripple-animation 0.6s linear;
   }
-  
-  .md3-calendar-prev .ripple,
-  .md3-calendar-next .ripple {
-    background-color: rgba(0, 0, 0, 0.1);
-  }
-  
+
   @keyframes ripple-animation {
     to {
       transform: scale(2);
       opacity: 0;
     }
   }
-  
-  /* Tastaturzugänglichkeit */
-  .md3-calendar-day:focus {
-    outline: 2px solid var(--md-sys-color-primary, #6750a4);
-    outline-offset: 2px;
-    position: relative;
-    z-index: 1;
+
+  /* Mobile responsiveness */
+  @media (max-width: 768px) {
+    .md3-calendar-container {
+      padding: 0 0.5rem;
+      margin: 1rem auto;
+    }
+
+    .md3-calendar-card {
+      padding: 1rem;
+      border-radius: 16px;
+    }
+
+    .md3-calendar-title {
+      font-size: 1.5rem;
+    }
+
+    .md3-calendar-day {
+      min-height: 60px;
+      padding: 0.25rem;
+    }
+
+    .md3-day-number {
+      font-size: 0.875rem;
+    }
+
+    .md3-event {
+      font-size: 0.625rem;
+      padding: 1px 4px;
+    }
   }
 </style>
+{% endblock %}
+
+{% block content %}
+<!-- MD3 Navigation -->
+<header class="md-nav-container">
+  {% include 'md3-nav.html' %}
+</header>
+
+<div class="md3-calendar-container">
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="md3-flash-messages">
+        {% for category, message in messages %}
+          <div class="md3-flash-message md3-flash-{{ category }}">
+            <span class="material-symbols-outlined md3-flash-icon">
+              {% if category == 'error' %}error{% elif category == 'warning' %}warning{% elif category == 'success' %}check_circle{% else %}info{% endif %}
+            </span>
+            <span class="md3-flash-text">{{ message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="md3-calendar-card">
+    <!-- Calendar Header -->
+    <div class="md3-calendar-header">
+      <h1 class="md3-calendar-title" id="calendar-title">August 2025</h1>
+      <div class="md3-calendar-nav">
+        <button class="md3-nav-btn" id="prev-month" title="Vorheriger Monat">
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+        <button class="md3-today-btn" id="today-btn">Heute</button>
+        <button class="md3-nav-btn" id="next-month" title="Nächster Monat">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Calendar Grid -->
+    <div class="md3-calendar-grid" id="calendar-grid">
+      <!-- Weekday Headers -->
+      <div class="md3-calendar-weekday">Mo</div>
+      <div class="md3-calendar-weekday">Di</div>
+      <div class="md3-calendar-weekday">Mi</div>
+      <div class="md3-calendar-weekday">Do</div>
+      <div class="md3-calendar-weekday">Fr</div>
+      <div class="md3-calendar-weekday">Sa</div>
+      <div class="md3-calendar-weekday">So</div>
+      
+      <!-- Calendar days will be dynamically inserted here -->
+    </div>
+
+    <!-- Calendar Actions -->
+    <div class="md3-calendar-actions">
+      <button class="md3-action-btn primary" id="add-event-btn">
+        <span class="material-symbols-outlined">add</span>
+        Termin hinzufügen
+      </button>
+      <button class="md3-action-btn secondary" id="view-events-btn">
+        <span class="material-symbols-outlined">event</span>
+        Alle Termine
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Event Modal (hidden by default) -->
+<div class="md3-modal" id="event-modal">
+  <div class="md3-modal-backdrop"></div>
+  <div class="md3-modal-content">
+    <div class="md3-modal-header">
+      <h2 class="md3-modal-title">Neuer Termin</h2>
+      <button class="md3-modal-close" id="close-modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <form class="md3-modal-body" id="event-form">
+      <div class="md3-field">
+        <input type="text" id="event-title" class="md3-input" required>
+        <label for="event-title" class="md3-label">Titel</label>
+      </div>
+      <div class="md3-field">
+        <input type="date" id="event-date" class="md3-input" required>
+        <label for="event-date" class="md3-label">Datum</label>
+      </div>
+      <div class="md3-field">
+        <input type="time" id="event-time" class="md3-input">
+        <label for="event-time" class="md3-label">Uhrzeit</label>
+      </div>
+      <div class="md3-field">
+        <textarea id="event-description" class="md3-textarea" rows="3"></textarea>
+        <label for="event-description" class="md3-label">Beschreibung</label>
+      </div>
+      <div class="md3-field">
+        <select id="event-priority" class="md3-select">
+          <option value="normal">Normal</option>
+          <option value="important">Wichtig</option>
+        </select>
+        <label for="event-priority" class="md3-label">Priorität</label>
+      </div>
+    </form>
+    <div class="md3-modal-footer">
+      <button class="md3-action-btn secondary" id="cancel-event">Abbrechen</button>
+      <button class="md3-action-btn primary" id="save-event">Speichern</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Calendar functionality
+class MD3Calendar {
+  constructor() {
+    this.currentDate = new Date();
+    this.selectedDate = null;
+    this.events = {};
+    this.monthNames = [
+      'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+      'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+    ];
+    
+    this.init();
+  }
+
+  async init() {
+    this.bindEvents();
+    await this.loadEvents();
+    this.render();
+  }
+
+  bindEvents() {
+    // Hilfsfunktion: Event-Listener nur hinzufügen wenn Element existiert
+    const addEventListenerSafe = (elementId, event, handler) => {
+      const element = document.getElementById(elementId);
+      if (element) {
+        element.addEventListener(event, handler);
+      } else {
+        console.warn(`Element mit ID '${elementId}' nicht gefunden - Event-Listener übersprungen`);
+      }
+    };
+
+    addEventListenerSafe('prev-month', 'click', async () => {
+      this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+      await this.loadEvents();
+      this.render();
+    });
+
+    addEventListenerSafe('next-month', 'click', async () => {
+      this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+      await this.loadEvents();
+      this.render();
+    });
+
+    addEventListenerSafe('today-btn', 'click', async () => {
+      this.currentDate = new Date();
+      await this.loadEvents();
+      this.render();
+    });
+
+    addEventListenerSafe('add-event-btn', 'click', () => {
+      this.showEventModal();
+    });
+
+    addEventListenerSafe('close-modal', 'click', () => {
+      this.hideEventModal();
+    });
+
+    addEventListenerSafe('cancel-event', 'click', () => {
+      this.hideEventModal();
+    });
+
+    addEventListenerSafe('save-event', 'click', () => {
+      this.saveEvent();
+    });
+
+    // Ripple effect for buttons
+    document.querySelectorAll('.md3-nav-btn, .md3-today-btn, .md3-action-btn').forEach(btn => {
+      btn.addEventListener('click', this.createRipple);
+    });
+  }
+
+  render() {
+    this.renderHeader();
+    this.renderCalendar();
+  }
+
+  renderHeader() {
+    const title = `${this.monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
+    document.getElementById('calendar-title').textContent = title;
+  }
+
+  renderCalendar() {
+    const grid = document.getElementById('calendar-grid');
+    const weekdayHeaders = grid.querySelectorAll('.md3-calendar-weekday');
+    
+    // Clear existing days
+    const existingDays = grid.querySelectorAll('.md3-calendar-day');
+    existingDays.forEach(day => day.remove());
+
+    const year = this.currentDate.getFullYear();
+    const month = this.currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const today = new Date();
+
+    // Get first Monday of the calendar view
+    const startDate = new Date(firstDay);
+    const dayOfWeek = (firstDay.getDay() + 6) % 7; // Convert Sunday=0 to Monday=0
+    startDate.setDate(startDate.getDate() - dayOfWeek);
+
+    // Generate 42 days (6 weeks)
+    for (let i = 0; i < 42; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      
+      const dayElement = this.createDayElement(date, month, today);
+      grid.appendChild(dayElement);
+    }
+  }
+
+  createDayElement(date, currentMonth, today) {
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'md3-calendar-day';
+    
+    if (date.getMonth() !== currentMonth) {
+      dayDiv.classList.add('other-month');
+    }
+    
+    if (this.isSameDate(date, today)) {
+      dayDiv.classList.add('today');
+    }
+
+    if (this.selectedDate && this.isSameDate(date, this.selectedDate)) {
+      dayDiv.classList.add('selected');
+    }
+
+    const dayNumber = document.createElement('div');
+    dayNumber.className = 'md3-day-number';
+    dayNumber.textContent = date.getDate();
+    dayDiv.appendChild(dayNumber);
+
+    const eventsContainer = document.createElement('div');
+    eventsContainer.className = 'md3-day-events';
+    
+    const dateKey = this.getDateKey(date);
+    if (this.events[dateKey]) {
+      this.events[dateKey].forEach(event => {
+        const eventDiv = document.createElement('div');
+        // Typ-Klasse hinzufügen (delivery, inventory, manual)
+        const typeClass = event.type || 'manual';
+        const importantClass = event.priority === 'important' ? 'important' : '';
+        eventDiv.className = `md3-event ${typeClass} ${importantClass}`.trim();
+        eventDiv.textContent = event.title;
+        eventDiv.title = `${event.title}\n${event.time || ''}\n${event.description || ''}`;
+        eventsContainer.appendChild(eventDiv);
+      });
+    }
+    
+    dayDiv.appendChild(eventsContainer);
+
+    dayDiv.addEventListener('click', () => {
+      this.selectDate(date);
+    });
+
+    return dayDiv;
+  }
+
+  selectDate(date) {
+    this.selectedDate = new Date(date);
+    this.render();
+  }
+
+  showEventModal() {
+    const modal = document.getElementById('event-modal');
+    modal.classList.add('show');
+    
+    if (this.selectedDate) {
+      document.getElementById('event-date').value = this.selectedDate.toISOString().split('T')[0];
+    }
+    
+    // Close modal when clicking backdrop
+    const backdrop = modal.querySelector('.md3-modal-backdrop');
+    backdrop.addEventListener('click', () => this.hideEventModal());
+  }
+
+  hideEventModal() {
+    const modal = document.getElementById('event-modal');
+    modal.classList.remove('show');
+    document.getElementById('event-form').reset();
+  }
+
+  saveEvent() {
+    const title = document.getElementById('event-title').value;
+    const date = document.getElementById('event-date').value;
+    const time = document.getElementById('event-time').value;
+    const description = document.getElementById('event-description').value;
+    const priority = document.getElementById('event-priority').value;
+
+    if (!title || !date) {
+      alert('Bitte Titel und Datum eingeben.');
+      return;
+    }
+
+    const dateKey = date;
+    if (!this.events[dateKey]) {
+      this.events[dateKey] = [];
+    }
+
+    this.events[dateKey].push({
+      title,
+      time,
+      description,
+      priority,
+      id: Date.now()
+    });
+
+    this.saveEvents();
+    this.render();
+    this.hideEventModal();
+  }
+
+  async loadEvents() {
+    try {
+      // Events aus der API laden
+      const year = this.currentDate.getFullYear();
+      const month = this.currentDate.getMonth() + 1;
+      const response = await fetch(`/api/calendar/events?year=${year}&month=${month}`);
+      
+      if (!response.ok) {
+        console.error('Fehler beim Laden der Events:', response.statusText);
+        return;
+      }
+      
+      const data = await response.json();
+      console.log('Geladene Events:', data);
+      
+      // Events gruppieren nach Datum
+      this.events = {};
+      if (data.events && Array.isArray(data.events)) {
+        data.events.forEach(event => {
+          const date = new Date(event.start_datetime);
+          const dateKey = this.getDateKey(date);
+          
+          if (!this.events[dateKey]) {
+            this.events[dateKey] = [];
+          }
+          
+          this.events[dateKey].push({
+            id: event.id,
+            title: event.title,
+            description: event.description || '',
+            time: date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+            type: event.event_type,
+            status: event.status
+          });
+        });
+      }
+      
+      console.log('Verarbeitete Events:', this.events);
+    } catch (error) {
+      console.error('Fehler beim Laden der Events:', error);
+    }
+  }
+
+  saveEvents() {
+    localStorage.setItem('md3-calendar-events', JSON.stringify(this.events));
+  }
+
+  getDateKey(date) {
+    return date.toISOString().split('T')[0];
+  }
+
+  isSameDate(date1, date2) {
+    return date1.getFullYear() === date2.getFullYear() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getDate() === date2.getDate();
+  }
+
+  createRipple(event) {
+    const button = event.currentTarget;
+    const ripple = document.createElement('span');
+    const rect = button.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = event.clientX - rect.left - size / 2;
+    const y = event.clientY - rect.top - size / 2;
+    
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    ripple.classList.add('ripple');
+    
+    button.appendChild(ripple);
+    
+    setTimeout(() => {
+      ripple.remove();
+    }, 600);
+  }
+}
+
+// Initialize calendar when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  new MD3Calendar();
+});
+</script>
 {% endblock %}

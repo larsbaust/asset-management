@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% block styles %}
+  {{ super() }}
+  <style>
+    .md3-page { padding: 24px; padding-top: 80px; }
+    .md3-container { max-width: 1200px; margin: 0 auto; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+    .title { font: var(--md-sys-typescale-headline-small-font); color: var(--md-sys-color-on-surface); }
+
+    .grid { display:grid; grid-template-columns: 1fr 2fr; gap:16px; }
+    .card { background: var(--md-sys-color-surface); border-radius: 16px; box-shadow: var(--md-sys-elevation-level2); padding: 16px; }
+
+    .section-title { font: var(--md-sys-typescale-title-medium-font); color: var(--md-sys-color-on-surface); margin-bottom: 12px; }
+
+    .info-table { width:100%; border-collapse: collapse; }
+    .info-table th { text-align:left; color: var(--md-sys-color-on-surface-variant); font: var(--md-sys-typescale-label-large-font); padding: 8px 0; width: 180px; }
+    .info-table td { color: var(--md-sys-color-on-surface); padding: 8px 0; }
+
+    .actions { display:flex; flex-wrap: wrap; gap:10px; margin-top: 12px; }
+    .md3-button { border: none; border-radius: 999px; padding: 10px 16px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; text-decoration:none; white-space: nowrap; }
+    .md3-button .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; font-size: 20px; }
+    .md3-button-filled { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
+    .md3-button-tonal { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+    .md3-button-text { background: transparent; color: var(--md-sys-color-primary); }
+
+    .table-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    .search-input { height: 40px; border-radius: 12px; border:1px solid var(--md-sys-color-outline-variant); padding: 0 10px; background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); width: 280px; }
+
+    table { width:100%; border-collapse: collapse; }
+    thead th { text-align:left; color: var(--md-sys-color-on-surface-variant); padding: 10px; border-bottom: 1px solid var(--md-sys-color-outline-variant); }
+    tbody td { padding: 10px; border-bottom: 1px solid var(--md-sys-color-outline-variant); }
+
+    @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } .search-input { width: 100%; } }
+  </style>
+{% endblock %}
+
+{% block content %}
+  {% include 'md3-nav.html' %}
+  <div class="md3-page">
+    <div class="md3-container">
+      <div class="header">
+        <div class="title">Lieferant: {{ supplier.name }}</div>
+        <div class="actions">
+          <a href="{{ url_for('suppliers.supplier_list', md3=1) }}" class="md3-button md3-button-text">
+            <span class="material-symbols-outlined">arrow_back</span>
+            Zur Liste
+          </a>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- Kontakt / Stammdaten -->
+        <div class="card">
+          <div class="section-title">Kontaktdaten</div>
+          <table class="info-table">
+            <tbody>
+              <tr>
+                <th>Anschrift</th>
+                <td>{{ supplier.address|replace('\n', '<br>')|safe if supplier.address else '-' }}</td>
+              </tr>
+              <tr>
+                <th>Telefon</th>
+                <td>{{ supplier.phone or '-' }}</td>
+              </tr>
+              <tr>
+                <th>E-Mail</th>
+                <td>
+                  {% if supplier.email %}
+                    <a href="mailto:{{ supplier.email }}">{{ supplier.email }}</a>
+                  {% else %}-{% endif %}
+                </td>
+              </tr>
+              <tr>
+                <th>Website</th>
+                <td>
+                  {% if supplier.website %}
+                    <a href="{{ supplier.website }}" target="_blank">{{ supplier.website }}</a>
+                  {% else %}-{% endif %}
+                </td>
+              </tr>
+              <tr>
+                <th>Ansprechpartner</th>
+                <td>{{ supplier.contact_name or '-' }}</td>
+              </tr>
+              <tr>
+                <th>Kundennummer</th>
+                <td>{{ supplier.customer_number or '-' }}</td>
+              </tr>
+              <tr>
+                <th>Kreditorennummer</th>
+                <td>{{ supplier.creditor_number or '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="actions">
+            <a class="md3-button md3-button-filled" href="{{ url_for('suppliers.supplier_edit', supplier_id=supplier.id, md3=1) }}">
+              <span class="material-symbols-outlined">edit</span>
+              Bearbeiten
+            </a>
+            <a class="md3-button md3-button-tonal" href="{{ url_for('suppliers.supplier_assign_assets', supplier_id=supplier.id) }}?md3=1">
+              <span class="material-symbols-outlined">link</span>
+              Assets zuordnen
+            </a>
+            <a class="md3-button" href="{{ url_for('order.start_wizard') }}?supplier_id={{ supplier.id }}&md3=1">
+              <span class="material-symbols-outlined">shopping_cart</span>
+              Bestellen
+            </a>
+          </div>
+        </div>
+
+        <!-- Assets -->
+        <div class="card">
+          <div class="table-toolbar">
+            <div class="section-title">Bestellbare Assets ({{ asset_count }})</div>
+            <input type="text" id="assetSearchInput" class="search-input" placeholder="Assets suchen..." />
+          </div>
+          {% if assets %}
+          <div class="table-container">
+            <table id="assetsTable">
+              <thead>
+                <tr>
+                  <th>Artikelnr.</th>
+                  <th>Name</th>
+                  <th>Kategorie</th>
+                  <th>Preis</th>
+                  <th>Hersteller</th>
+                  <th>Aktionen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for asset in assets %}
+                <tr>
+                  <td>{{ asset.article_number or '-' }}</td>
+                  <td><a href="{{ url_for('main.asset_details', id=asset.id) }}?md3=1">{{ asset.name }}</a></td>
+                  <td>{{ asset.category.name if asset.category else '-' }}</td>
+                  <td>{% if asset.value %}{{ "%.2f"|format(asset.value) }} €{% else %}-{% endif %}</td>
+                  <td>{% if asset.manufacturers %}{{ asset.manufacturers[0].name if asset.manufacturers else '-' }}{% else %}-{% endif %}</td>
+                  <td>
+                    <a class="md3-button md3-button-text" href="{{ url_for('main.asset_details', id=asset.id) }}?md3=1">
+                      <span class="material-symbols-outlined">visibility</span>
+                      Anzeigen
+                    </a>
+                    <a class="md3-button md3-button-filled" href="{{ url_for('order.start_wizard') }}?supplier_id={{ supplier.id }}&asset_id={{ asset.id }}&md3=1">
+                      <span class="material-symbols-outlined">shopping_cart</span>
+                      Bestellen
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="section-title">Diesem Lieferanten sind noch keine Assets zugeordnet.</div>
+          <a class="md3-button md3-button-tonal" href="{{ url_for('suppliers.supplier_assign_assets', supplier_id=supplier.id) }}?md3=1">
+            <span class="material-symbols-outlined">link</span>
+            Assets zuordnen
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const searchInput = document.getElementById('assetSearchInput');
+      const table = document.getElementById('assetsTable');
+
+      function filter() {
+        if (!table) return;
+        const term = (searchInput.value || '').toLowerCase();
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(r => {
+          const t = r.textContent.toLowerCase();
+          r.style.display = t.includes(term) ? '' : 'none';
+        });
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('input', filter);
+      }
+    });
+  </script>
+{% endblock %}

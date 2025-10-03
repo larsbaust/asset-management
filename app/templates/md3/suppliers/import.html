@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block styles %}
+  {{ super() }}
+  <style>
+    .md3-page { padding: 24px; padding-top: 80px; }
+    .md3-container { max-width: 1000px; margin: 0 auto; }
+    .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+    .title { font: var(--md-sys-typescale-headline-small-font); color: var(--md-sys-color-on-surface); }
+
+    .card { background: var(--md-sys-color-surface); border-radius: 16px; box-shadow: var(--md-sys-elevation-2); padding: 16px; }
+    .section-title { font: var(--md-sys-typescale-title-medium-font); color: var(--md-sys-color-on-surface); margin-bottom: 12px; }
+
+    .md3-button { border: none; border-radius: 999px; padding: 10px 16px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; text-decoration:none; white-space: nowrap; }
+    .md3-button .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; font-size: 20px; }
+    .md3-button-filled { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
+    .md3-button-tonal { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+    .md3-button-text { background: transparent; color: var(--md-sys-color-primary); }
+
+    .field { display:flex; flex-direction:column; gap:6px; margin-bottom: 12px; }
+    .field label { color: var(--md-sys-color-on-surface-variant); font: var(--md-sys-typescale-label-large-font); }
+    .control input[type="file"], select { height: 40px; border-radius: 12px; border:1px solid var(--md-sys-color-outline-variant); padding: 6px 10px; background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); }
+
+    .warning { background: var(--md-sys-color-warning-container, #FFF4E5); color: var(--md-sys-color-on-warning-container, #5B3D00); border-radius: 12px; padding: 12px; margin-bottom: 16px; }
+    .info { background: var(--md-sys-color-surface-variant); color: var(--md-sys-color-on-surface-variant); border-radius: 12px; padding: 12px; }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead th { text-align: left; color: var(--md-sys-color-on-surface-variant); padding: 8px; border-bottom: 1px solid var(--md-sys-color-outline-variant); }
+    tbody td { padding: 8px; border-bottom: 1px solid var(--md-sys-color-outline-variant); }
+    pre { white-space: pre-wrap; background: var(--md-sys-color-surface); padding: 12px; border-radius: 10px; border:1px dashed var(--md-sys-color-outline-variant); }
+  </style>
+{% endblock %}
+
+{% block content %}
+  {% include 'md3-nav.html' %}
+  <div class="md3-page">
+    <div class="md3-container">
+      <div class="header">
+        <div class="title">Lieferanten importieren</div>
+        <div class="actions">
+          <a class="md3-button md3-button-text" href="{{ url_for('suppliers.supplier_list', md3=1) }}">
+            <span class="material-symbols-outlined">arrow_back</span>
+            Zur Liste
+          </a>
+        </div>
+      </div>
+
+      <div class="warning">
+        <strong>Backup-Erinnerung:</strong> Erstellen Sie vor dem Import bitte ein Backup Ihrer Datenbank (z.B. Assed_Managemend_Backup_{{ now.strftime('%Y-%m-%d') }}.zip), um Datenverluste zu vermeiden.
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="section-title">CSV-Datei hochladen</div>
+        <form method="post" enctype="multipart/form-data">
+          <input type="hidden" name="md3" value="1">
+          <div class="field">
+            <label>CSV-Datei</label>
+            <div class="control">
+              <input type="file" name="csv_file" accept=".csv">
+            </div>
+            <div class="help">Bitte wählen Sie eine CSV-Datei aus.</div>
+          </div>
+
+          <div class="field">
+            <label>Trennzeichen</label>
+            <div class="control">
+              <select name="delimiter">
+                <option value=",">Komma (,)</option>
+                <option value=";" selected>Semikolon (;)</option>
+                <option value="\t">Tab</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="md3-button md3-button-filled"><span class="material-symbols-outlined">upload_file</span>Importieren</button>
+            <a href="{{ url_for('suppliers.supplier_list', md3=1) }}" class="md3-button md3-button-text"><span class="material-symbols-outlined">close</span>Abbrechen</a>
+          </div>
+        </form>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="section-title">CSV-Format</div>
+        <p>Die CSV-Datei sollte folgende Spalten enthalten:</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Spaltenname</th>
+              <th>Beschreibung</th>
+              <th>Pflichtfeld</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Name</td><td>Name des Lieferanten</td><td>Ja</td></tr>
+            <tr><td>Adresse</td><td>Vollständige Adresse des Lieferanten</td><td>Nein</td></tr>
+            <tr><td>Telefon</td><td>Telefonnummer</td><td>Nein</td></tr>
+            <tr><td>Email</td><td>E-Mail-Adresse</td><td>Nein</td></tr>
+            <tr><td>Website</td><td>Webseite des Lieferanten</td><td>Nein</td></tr>
+            <tr><td>Kundennummer</td><td>Ihre Kundennummer beim Lieferanten</td><td>Nein</td></tr>
+            <tr><td>Kreditornummer</td><td>Kreditornummer für Buchhaltung</td><td>Nein</td></tr>
+            <tr><td>Beschreibung</td><td>Allgemeine Beschreibung</td><td>Nein</td></tr>
+            <tr><td>Kontaktinfo</td><td>Detaillierte Kontaktinformationen, Ansprechpartner etc.</td><td>Nein</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="section-title">CSV-Tipps</div>
+        <ul>
+          <li>Verwenden Sie UTF-8 Kodierung für Ihre CSV-Datei, um Probleme mit Umlauten zu vermeiden</li>
+          <li>Exportieren Sie Daten aus Excel als CSV (Trennzeichen-getrennt)</li>
+          <li>Text mit Trennzeichen sollte in Anführungszeichen gesetzt werden</li>
+          <li>Erstellen Sie vor dem Import ein Datenbank-Backup</li>
+        </ul>
+        <div class="info" style="margin-top:12px;">
+          <p><strong>Beispiel für eine gültige CSV-Datei:</strong></p>
+          <pre>Name;Adresse;Telefon;Email;Website;Kundennummer;Kreditornummer;Beschreibung;Kontaktinfo
+ABC Technik AG;Industriestraße 42, 12345 Berlin;+49 30 123456;kontakt@abc-technik.de;www.abc-technik.de;K-10042;KR9001;Hardware-Lieferant;Hr. Schmidt, Tel. Durchwahl -201
+Büromarkt Schmidt;Hauptstr. 11, 80331 München;089 987654;info@bueromarkt-schmidt.de;www.bueromarkt-schmidt.de;10042;KR9002;Bürobedarf und Möbel;Fr. Müller, Vertrieb</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+  .actions {
+    display: flex;
+    gap: var(--md-sys-spacing-2, 8px);
+  }
+  
+  .permission-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--md-sys-spacing-1, 4px);
+  }
+  
+  .md3-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--md-sys-color-surface);
+    border-radius: var(--md-sys-shape-corner-medium, 8px);
+    overflow: hidden;
+    margin-top: var(--md-sys-spacing-4, 16px);
+  }
+  
+  .md3-table th {
+    background: var(--md-sys-color-surface-container-highest);
+    padding: var(--md-sys-spacing-3, 12px) var(--md-sys-spacing-4, 16px);
+    text-align: left;
+    color: var(--md-sys-color-on-surface-variant);
+    font-weight: 500;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+  
+  .md3-table td {
+    padding: var(--md-sys-spacing-3, 12px) var(--md-sys-spacing-4, 16px);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
+  }
+  
+  .md3-table tr:hover {
+    background: var(--md-sys-color-surface-container-lowest);
+  }
+  
+  .md3-table tr:last-child td {
+    border-bottom: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  {% include 'md3-nav.html' %}
+  <div class="md3-page">
+    <div class="md3-container">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--md-sys-spacing-6, 24px);">
+        <h1 class="md3-headline-large">Rollenverwaltung</h1>
+        <a href="{{ url_for('admin.add_role', md3=1) }}" class="md3-button md3-button-filled">
+          <span class="material-symbols-outlined">add_circle</span>
+          Neue Rolle anlegen
+        </a>
+      </div>
+
+      <div class="md3-card">
+        <table class="md3-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Beschreibung</th>
+              <th>Rechte</th>
+              <th>Aktionen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for role in roles %}
+            <tr>
+              <td><strong>{{ role.name }}</strong></td>
+              <td>{{ role.description }}</td>
+              <td>
+                <div class="permission-badges">
+                  {% for perm in role.permissions %}
+                    <span class="md3-chip md3-chip-outlined" style="font-size: 0.75rem; padding: var(--md-sys-spacing-1, 4px) var(--md-sys-spacing-2, 8px);">{{ perm.name }}</span>
+                  {% endfor %}
+                </div>
+              </td>
+              <td>
+                <div class="actions">
+                  <a href="{{ url_for('admin.edit_role', role_id=role.id, md3=1) }}" class="md3-button md3-button-text">
+                    <span class="material-symbols-outlined">edit</span>
+                    Bearbeiten
+                  </a>
+                  <a href="{{ url_for('admin.delete_role', role_id=role.id, md3=1) }}" class="md3-button md3-button-text" onclick="return confirm('Wirklich löschen?');" style="color: var(--md-sys-color-error);">
+                    <span class="material-symbols-outlined">delete</span>
+                    Löschen
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}

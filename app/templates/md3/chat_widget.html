@@ -1,0 +1,586 @@
+<!-- MD3 Chat Widget - Bottom Right Corner -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+<style>
+#md3-livechat-toggle {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.16);
+    z-index: 9999;
+    transition: all 0.3s ease;
+}
+
+#md3-livechat-toggle:hover {
+    background: var(--md-sys-color-primary-hover);
+    transform: scale(1.05);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15), 0 4px 8px rgba(0,0,0,0.18);
+}
+
+#md3-livechat-toggle .material-symbols-outlined {
+    font-size: 28px;
+}
+
+#md3-livechat-slidein {
+    position: fixed;
+    right: 24px;
+    bottom: 88px;
+    width: 380px;
+    max-width: calc(100vw - 48px);
+    height: 480px;
+    background: var(--md-sys-color-surface);
+    border-radius: 20px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.12), 0 6px 16px rgba(0,0,0,0.08);
+    display: none;
+    flex-direction: column;
+    z-index: 9998;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+#md3-livechat-slidein.show {
+    display: flex;
+    transform: translateY(0);
+    opacity: 1;
+}
+
+#md3-livechat-header {
+    background: linear-gradient(135deg, var(--md-sys-color-primary) 0%, var(--md-sys-color-primary-container) 100%);
+    color: var(--md-sys-color-on-primary);
+    padding: 16px 20px;
+    border-radius: 20px 20px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+}
+
+#md3-livechat-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="15" cy="20" r="1.5" fill="rgba(255,255,255,0.1)"/><circle cx="85" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="75" r="1.2" fill="rgba(255,255,255,0.1)"/></svg>');
+    pointer-events: none;
+}
+
+#md3-livechat-header .title {
+    font: var(--md-sys-typescale-title-medium-font);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+}
+
+#md3-livechat-header .controls {
+    display: flex;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+}
+
+.md3-chat-control-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: var(--md-sys-color-on-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.md3-chat-control-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+#md3-livechat-users {
+    background: var(--md-sys-color-surface-container-low);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+}
+
+#md3-livechat-users::-webkit-scrollbar {
+    height: 4px;
+}
+
+#md3-livechat-users::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#md3-livechat-users::-webkit-scrollbar-thumb {
+    background: var(--md-sys-color-outline);
+    border-radius: 2px;
+}
+
+.md3-chat-user {
+    padding: 6px 12px;
+    border-radius: 16px;
+    background: var(--md-sys-color-surface-container);
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-body-small-font);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.md3-chat-user:hover {
+    background: var(--md-sys-color-surface-container-high);
+}
+
+.md3-chat-user.selected {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    border-color: var(--md-sys-color-primary);
+}
+
+.md3-chat-user.online {
+    background: var(--md-sys-color-tertiary-container);
+    color: var(--md-sys-color-on-tertiary-container);
+}
+
+.md3-chat-user.online.selected {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--md-sys-color-outline);
+}
+
+.status-indicator.online {
+    background: var(--md-sys-color-tertiary);
+    box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
+}
+
+.status-indicator.away {
+    background: var(--md-sys-color-secondary);
+}
+
+#md3-livechat-messages {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--md-sys-color-surface-container-lowest);
+}
+
+#md3-livechat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+#md3-livechat-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#md3-livechat-messages::-webkit-scrollbar-thumb {
+    background: var(--md-sys-color-outline);
+    border-radius: 3px;
+}
+
+.md3-chat-message {
+    display: flex;
+    flex-direction: column;
+    max-width: 80%;
+}
+
+.md3-chat-message.me {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.md3-chat-message.them {
+    align-self: flex-start;
+    align-items: flex-start;
+}
+
+.md3-chat-bubble {
+    padding: 12px 16px;
+    border-radius: 18px;
+    font: var(--md-sys-typescale-body-medium-font);
+    line-height: 1.4;
+    word-wrap: break-word;
+    position: relative;
+}
+
+.md3-chat-message.me .md3-chat-bubble {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    border-bottom-right-radius: 4px;
+}
+
+.md3-chat-message.them .md3-chat-bubble {
+    background: var(--md-sys-color-surface-container-high);
+    color: var(--md-sys-color-on-surface);
+    border-bottom-left-radius: 4px;
+}
+
+.md3-chat-meta {
+    font: var(--md-sys-typescale-body-small-font);
+    color: var(--md-sys-color-on-surface-variant);
+    margin-top: 4px;
+    padding: 0 4px;
+}
+
+#md3-livechat-input-container {
+    padding: 16px;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: 0 0 20px 20px;
+}
+
+#md3-livechat-input {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+#md3-livechat-message {
+    flex: 1;
+    min-height: 40px;
+    max-height: 80px;
+    padding: 8px 16px;
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: 20px;
+    background: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-body-medium-font);
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+#md3-livechat-message:focus {
+    border-color: var(--md-sys-color-primary);
+}
+
+#md3-livechat-message::placeholder {
+    color: var(--md-sys-color-on-surface-variant);
+}
+
+#md3-livechat-send {
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+#md3-livechat-send:hover {
+    background: var(--md-sys-color-primary-hover);
+    transform: scale(1.05);
+}
+
+#md3-livechat-send:disabled {
+    background: var(--md-sys-color-outline);
+    color: var(--md-sys-color-on-surface-variant);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.md3-chat-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--md-sys-color-on-surface-variant);
+    text-align: center;
+    padding: 24px;
+}
+
+.md3-chat-empty-state .material-symbols-outlined {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+@media (max-width: 480px) {
+    #md3-livechat-slidein {
+        right: 12px;
+        bottom: 76px;
+        width: calc(100vw - 24px);
+        height: 60vh;
+        max-height: 480px;
+    }
+    
+    #md3-livechat-toggle {
+        right: 12px;
+        bottom: 12px;
+    }
+}
+</style>
+
+<!-- Chat Toggle Button -->
+<button id="md3-livechat-toggle" onclick="toggleMD3Chat()">
+    <span class="material-symbols-outlined">chat</span>
+</button>
+
+<!-- Chat Window -->
+<div id="md3-livechat-slidein">
+    <div id="md3-livechat-header">
+        <div class="title">
+            <span class="material-symbols-outlined">forum</span>
+            Live Chat
+        </div>
+        <div class="controls">
+            <button class="md3-chat-control-btn" onclick="minimizeMD3Chat()" title="Minimieren">
+                <span class="material-symbols-outlined" style="font-size: 18px;">minimize</span>
+            </button>
+            <button class="md3-chat-control-btn" onclick="closeMD3Chat()" title="Schließen">
+                <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
+            </button>
+        </div>
+    </div>
+    
+    <div id="md3-livechat-users">
+        <!-- Users will be populated here -->
+    </div>
+    
+    <div id="md3-livechat-messages">
+        <div class="md3-chat-empty-state">
+            <span class="material-symbols-outlined">waving_hand</span>
+            <h3>Willkommen im Live Chat!</h3>
+            <p>Wählen Sie einen Benutzer aus der Liste oben aus, um eine Unterhaltung zu beginnen.</p>
+        </div>
+    </div>
+    
+    <div id="md3-livechat-input-container">
+        <form id="md3-livechat-input">
+            <textarea id="md3-livechat-message" placeholder="Nachricht eingeben..." rows="1"></textarea>
+            <button type="submit" id="md3-livechat-send" disabled>
+                <span class="material-symbols-outlined" style="font-size: 20px;">send</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+let md3LivechatSocket;
+let md3SelectedUserId = null;
+let md3MyUserId = null;
+let md3UserStatusMap = {};
+
+function toggleMD3Chat() {
+    const chatWindow = document.getElementById('md3-livechat-slidein');
+    if (chatWindow.classList.contains('show')) {
+        closeMD3Chat();
+    } else {
+        openMD3Chat();
+    }
+}
+
+function openMD3Chat() {
+    const chatWindow = document.getElementById('md3-livechat-slidein');
+    chatWindow.classList.add('show');
+    
+    if (!md3LivechatSocket) {
+        initMD3LiveChatSocket();
+    }
+}
+
+function closeMD3Chat() {
+    const chatWindow = document.getElementById('md3-livechat-slidein');
+    chatWindow.classList.remove('show');
+}
+
+function minimizeMD3Chat() {
+    closeMD3Chat();
+}
+
+function renderMD3UserList(users) {
+    const usersContainer = document.getElementById('md3-livechat-users');
+    usersContainer.innerHTML = '';
+    
+    users.forEach(user => {
+        const userDiv = document.createElement('div');
+        userDiv.className = 'md3-chat-user';
+        userDiv.onclick = () => selectMD3User(user.user_id);
+        
+        const status = md3UserStatusMap[user.user_id] || 'offline';
+        if (status === 'online') userDiv.classList.add('online');
+        if (user.user_id === md3SelectedUserId) userDiv.classList.add('selected');
+        
+        userDiv.innerHTML = `
+            <div class="status-indicator ${status}"></div>
+            <span>${user.username}</span>
+        `;
+        
+        usersContainer.appendChild(userDiv);
+    });
+}
+
+function selectMD3User(userId) {
+    md3SelectedUserId = userId;
+    
+    // Update visual selection
+    document.querySelectorAll('.md3-chat-user').forEach(user => {
+        user.classList.remove('selected');
+    });
+    document.querySelectorAll('.md3-chat-user').forEach(user => {
+        if (user.onclick.toString().includes(userId)) {
+            user.classList.add('selected');
+        }
+    });
+    
+    // Enable/disable send button
+    const sendBtn = document.getElementById('md3-livechat-send');
+    const messageInput = document.getElementById('md3-livechat-message');
+    sendBtn.disabled = !userId || !messageInput.value.trim();
+    
+    // Clear messages for new conversation
+    const messagesContainer = document.getElementById('md3-livechat-messages');
+    messagesContainer.innerHTML = `
+        <div class="md3-chat-empty-state">
+            <span class="material-symbols-outlined">chat_bubble</span>
+            <p>Unterhaltung mit ${document.querySelector('.md3-chat-user.selected span')?.textContent || 'Benutzer'}</p>
+        </div>
+    `;
+}
+
+function renderMD3Message(msg) {
+    const messagesContainer = document.getElementById('md3-livechat-messages');
+    
+    // Remove empty state if present
+    const emptyState = messagesContainer.querySelector('.md3-chat-empty-state');
+    if (emptyState) {
+        emptyState.remove();
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'md3-chat-message ' + (msg.from === md3MyUserId ? 'me' : 'them');
+    
+    messageDiv.innerHTML = `
+        <div class="md3-chat-bubble">${msg.msg}</div>
+        <div class="md3-chat-meta">${msg.from_username || ''} • ${new Date(msg.timestamp).toLocaleTimeString()}</div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function initMD3LiveChatSocket() {
+    md3LivechatSocket = io({ transports: ['websocket'] });
+    
+    md3LivechatSocket.on('connect', () => {
+        md3LivechatSocket.emit('join_room');
+    });
+    
+    md3LivechatSocket.on('online_users', users => {
+        md3MyUserId = users.find(u => u.username === window.currentUsername)?.user_id;
+        renderMD3UserList(users);
+    });
+    
+    md3LivechatSocket.on('user_status', data => {
+        md3UserStatusMap[data.user_id] = data.status;
+        // Re-render user list to update status indicators
+        if (document.getElementById('md3-livechat-users').children.length > 0) {
+            md3LivechatSocket.emit('get_users'); // Request updated user list
+        }
+    });
+    
+    md3LivechatSocket.on('receive_message', msg => {
+        renderMD3Message(msg);
+    });
+    
+    // Status management
+    let awayTimer = null;
+    
+    function setAway() {
+        if (md3LivechatSocket) {
+            md3LivechatSocket.emit('set_status', { status: 'away' });
+        }
+    }
+    
+    function setOnline() {
+        if (md3LivechatSocket) {
+            md3LivechatSocket.emit('set_status', { status: 'online' });
+        }
+    }
+    
+    window.addEventListener('focus', () => { 
+        setOnline(); 
+        clearTimeout(awayTimer); 
+    });
+    
+    window.addEventListener('blur', () => { 
+        awayTimer = setTimeout(setAway, 300000); // 5 minutes
+    });
+}
+
+// Message input handling
+document.getElementById('md3-livechat-message').addEventListener('input', function() {
+    const sendBtn = document.getElementById('md3-livechat-send');
+    sendBtn.disabled = !md3SelectedUserId || !this.value.trim();
+});
+
+document.getElementById('md3-livechat-message').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        document.getElementById('md3-livechat-input').dispatchEvent(new Event('submit'));
+    }
+});
+
+document.getElementById('md3-livechat-input').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const messageInput = document.getElementById('md3-livechat-message');
+    
+    if (!md3SelectedUserId || !messageInput.value.trim()) return;
+    
+    if (md3LivechatSocket) {
+        md3LivechatSocket.emit('send_message', { 
+            to: md3SelectedUserId, 
+            msg: messageInput.value 
+        });
+    }
+    
+    messageInput.value = '';
+    document.getElementById('md3-livechat-send').disabled = true;
+    
+    // Reset textarea height
+    messageInput.style.height = 'auto';
+});
+
+// Auto-resize textarea
+document.getElementById('md3-livechat-message').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+});
+</script>

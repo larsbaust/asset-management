@@ -15,16 +15,23 @@ def supplier_list():
     query = Supplier.query
     search = request.args.get('search', '')
     letter = request.args.get('letter', '')
+    md3 = request.args.get('md3', default=0, type=int)
+    
     if search:
         query = query.filter(Supplier.name.ilike(f"%{search}%"))
     if letter and letter != "Alle":
         query = query.filter(Supplier.name.ilike(f"{letter}%"))
     suppliers_list = query.order_by(Supplier.name).all()
-    return render_template('suppliers/list.html', suppliers=suppliers_list, search=search, letter=letter)
+    
+    if md3 == 1:
+        return render_template('md3/suppliers/list.html', suppliers=suppliers_list, search=search, letter=letter)
+    else:
+        return render_template('suppliers/list.html', suppliers=suppliers_list, search=search, letter=letter)
 
 @suppliers.route('/suppliers/add', methods=['GET', 'POST'])
 @login_required
 def supplier_add():
+    md3 = request.values.get('md3', default=0, type=int)
     form = SupplierForm()
     if form.validate_on_submit():
         supplier = Supplier(
@@ -33,33 +40,34 @@ def supplier_add():
             phone=form.phone.data,
             email=form.email.data,
             website=form.website.data,
-            contact_name=form.contact_name.data,
+            contact_info=form.contact_name.data,
             customer_number=form.customer_number.data,
             creditor_number=form.creditor_number.data
         )
         db.session.add(supplier)
         db.session.commit()
         flash(f'Lieferant "{supplier.name}" wurde erfolgreich angelegt', 'success')
-        return redirect(url_for('suppliers.supplier_list'))
-    return render_template('suppliers/edit.html', form=form, title='Neuen Lieferanten anlegen')
+        return redirect(url_for('suppliers.supplier_list', md3=1) if md3 == 1 else url_for('suppliers.supplier_list'))
+    return render_template('md3/suppliers/edit.html' if md3 == 1 else 'suppliers/edit.html', form=form, title='Neuen Lieferanten anlegen')
 
 @suppliers.route('/suppliers/import', methods=['GET', 'POST'])
 @login_required
 @permission_required('import_suppliers')
 def import_suppliers():
     """Lieferanten aus CSV-Datei importieren"""
+    md3 = request.values.get('md3', default=0, type=int)
     if request.method == 'POST':
         # Prüfen ob Datei vorhanden ist
         if 'csv_file' not in request.files:
             flash('Keine Datei ausgewählt', 'danger')
-            return redirect(request.url)
+            return redirect(url_for('suppliers.import_suppliers', md3=1) if md3 == 1 else url_for('suppliers.import_suppliers'))
         
         file = request.files['csv_file']
         
         # Prüfen ob Dateiname vorhanden
         if file.filename == '':
             flash('Keine Datei ausgewählt', 'danger')
-            return redirect(request.url)
+            return redirect(url_for('suppliers.import_suppliers', md3=1) if md3 == 1 else url_for('suppliers.import_suppliers'))
             
         # Prüfen ob es sich um eine CSV handelt
         if file and file.filename.endswith('.csv'):
@@ -82,16 +90,17 @@ def import_suppliers():
                 if len(result['errors']) > 5:
                     flash(f"... und {len(result['errors']) - 5} weitere Fehler", 'danger')
             
-            return redirect(url_for('suppliers.supplier_list'))
+            return redirect(url_for('suppliers.supplier_list', md3=1) if md3 == 1 else url_for('suppliers.supplier_list'))
         else:
             flash('Bitte eine CSV-Datei auswählen', 'danger')
             
     from datetime import datetime
-    return render_template('suppliers/import.html', now=datetime.now())
+    return render_template('md3/suppliers/import.html' if md3 == 1 else 'suppliers/import.html', now=datetime.now())
 
 @suppliers.route('/suppliers/edit/<int:supplier_id>', methods=['GET', 'POST'])
 @login_required
 def supplier_edit(supplier_id):
+    md3 = request.values.get('md3', default=0, type=int)
     supplier = Supplier.query.get_or_404(supplier_id)
     form = SupplierForm(obj=supplier)
     
@@ -99,14 +108,15 @@ def supplier_edit(supplier_id):
         form.populate_obj(supplier)
         db.session.commit()
         flash(f'Lieferant "{supplier.name}" wurde erfolgreich aktualisiert', 'success')
-        return redirect(url_for('suppliers.supplier_list'))
+        return redirect(url_for('suppliers.supplier_list', md3=1) if md3 == 1 else url_for('suppliers.supplier_list'))
         
-    return render_template('suppliers/edit.html', form=form, supplier=supplier, title='Lieferant bearbeiten')
+    return render_template('md3/suppliers/edit.html' if md3 == 1 else 'suppliers/edit.html', form=form, supplier=supplier, title='Lieferant bearbeiten')
 
 @suppliers.route('/suppliers/detail/<int:supplier_id>')
 @login_required
 def supplier_detail(supplier_id):
     """Detailansicht eines Lieferanten mit zugeordneten Assets"""
+    md3 = request.values.get('md3', default=0, type=int)
     supplier = Supplier.query.get_or_404(supplier_id)
     
     # Zuerst alle eindeutigen Asset-IDs über die asset_suppliers-Tabelle ermitteln
@@ -124,7 +134,7 @@ def supplier_detail(supplier_id):
         assets = Asset.query.filter(Asset.id.in_(asset_ids)).order_by(Asset.name).all()
         
     return render_template(
-        'suppliers/detail.html', 
+        'md3/suppliers/detail.html' if md3 == 1 else 'suppliers/detail.html', 
         supplier=supplier, 
         assets=assets,
         asset_count=len(assets)
@@ -134,6 +144,7 @@ def supplier_detail(supplier_id):
 @login_required
 def supplier_assign_assets(supplier_id):
     supplier = Supplier.query.get_or_404(supplier_id)
+    md3 = request.values.get('md3', default=0, type=int)
     
     if request.method == 'POST':
         # Aktuelle Asset-Zuordnungen entfernen
@@ -153,7 +164,7 @@ def supplier_assign_assets(supplier_id):
         flash(f'{len(selected_asset_ids)} Assets wurden dem Lieferanten {supplier.name} zugeordnet.', 'success')
         
         # Zurück zur Detailansicht
-        return redirect(url_for('suppliers.supplier_detail', supplier_id=supplier.id))
+        return redirect(url_for('suppliers.supplier_detail', supplier_id=supplier.id, md3=1) if md3 == 1 else url_for('suppliers.supplier_detail', supplier_id=supplier.id))
     
     # Alle verfügbaren Assets laden
     assets = Asset.query.order_by(Asset.name).all()
@@ -162,13 +173,14 @@ def supplier_assign_assets(supplier_id):
     assigned_asset_ids = [asset.id for asset in supplier.assets]
     
     # Template rendern
-    return render_template('suppliers/assign_assets.html', supplier=supplier, assets=assets, assigned_asset_ids=assigned_asset_ids)
+    return render_template('md3/suppliers/assign_assets.html' if md3 == 1 else 'suppliers/assign_assets.html', supplier=supplier, assets=assets, assigned_asset_ids=assigned_asset_ids)
 
 @suppliers.route('/suppliers/delete/<int:supplier_id>', methods=['POST'])
 @login_required
 def supplier_delete(supplier_id):
     supplier = Supplier.query.get_or_404(supplier_id)
     supplier_name = supplier.name
+    md3 = request.values.get('md3', default=0, type=int)
     
     # Prüfen, ob der Lieferant mit Bestellungen verknüpft ist
     from app.models import Order
@@ -176,7 +188,7 @@ def supplier_delete(supplier_id):
     
     if orders_count > 0:
         flash(f'Der Lieferant "{supplier_name}" kann nicht gelöscht werden, da er mit {orders_count} Bestellung(en) verknüpft ist.', 'danger')
-        return redirect(url_for('suppliers.supplier_list'))
+        return redirect(url_for('suppliers.supplier_list', md3=1) if md3 == 1 else url_for('suppliers.supplier_list'))
     
     try:
         # Verknüpfungen zu Assets entfernen
@@ -191,4 +203,4 @@ def supplier_delete(supplier_id):
         db.session.rollback()
         flash(f'Fehler beim Löschen des Lieferanten: {str(e)}', 'danger')
     
-    return redirect(url_for('suppliers.supplier_list'))
+    return redirect(url_for('suppliers.supplier_list', md3=1) if md3 == 1 else url_for('suppliers.supplier_list'))

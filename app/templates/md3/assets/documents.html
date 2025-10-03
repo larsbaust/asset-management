@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+
+<style>
+  .md3-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    margin-top: 80px;
+  }
+  
+  .md3-header {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .md3-title {
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+  }
+  
+  .md3-subtitle {
+    font-size: 14px;
+    color: var(--md-sys-color-on-surface-variant);
+    margin-top: 8px;
+  }
+  
+  .md3-card {
+    background: var(--md-sys-color-surface);
+    border-radius: 16px;
+    box-shadow: var(--md-sys-elevation-1);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  
+  .document-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+  
+  .document-card {
+    background: var(--md-sys-color-surface-container);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  
+  .document-card:hover {
+    border-color: var(--md-sys-color-primary);
+    box-shadow: var(--md-sys-elevation-2);
+  }
+  
+  .document-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .document-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+  }
+  
+  .document-title {
+    flex: 1;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    font-size: 16px;
+  }
+  
+  .document-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+  
+  .document-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+  }
+  
+  .doc-action-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+    transition: all 0.2s ease;
+  }
+  
+  .doc-action-btn:hover {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+  }
+  
+  .asset-info {
+    background: var(--md-sys-color-primary-container);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+</style>
+
+<div class="md3-container">
+  <div class="md3-header">
+    <div>
+      <h1 class="md3-title">Dokumente</h1>
+      <div class="md3-subtitle">{{ asset.name }}</div>
+    </div>
+    <a href="{{ url_for('md3_assets') }}" style="padding: 8px 16px; background: var(--md-sys-color-surface); border: 1px solid var(--md-sys-color-outline); border-radius: 20px; color: var(--md-sys-color-on-surface); text-decoration: none; font-size: 14px; font-weight: 500;">
+      ← Zurück zu Assets
+    </a>
+  </div>
+  
+  <!-- Asset-Info -->
+  <div class="asset-info">
+    {% if asset.image_url %}
+    <img src="{{ asset.image_url }}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;">
+    {% else %}
+    <div style="width: 60px; height: 60px; border-radius: 8px; background: var(--md-sys-color-surface); display: flex; align-items: center; justify-content: center;">
+      <span class="material-symbols-outlined" style="font-size: 32px; color: var(--md-sys-color-on-surface-variant);">inventory_2</span>
+    </div>
+    {% endif %}
+    <div>
+      <div style="font-size: 18px; font-weight: 500; color: var(--md-sys-color-on-primary-container);">{{ asset.name }}</div>
+      <div style="font-size: 14px; color: var(--md-sys-color-on-primary-container); opacity: 0.8; margin-top: 4px;">
+        {% if asset.article_number %}Art.-Nr.: {{ asset.article_number }}{% endif %}
+        {% if asset.serial_number %} | SN: {{ asset.serial_number }}{% endif %}
+      </div>
+    </div>
+  </div>
+  
+  <div class="md3-card">
+    <div style="margin-bottom: 16px;">
+      <strong style="color: var(--md-sys-color-on-surface);">{{ documents|length }} Dokument(e)</strong>
+    </div>
+    
+    {% if documents %}
+    <div class="document-grid">
+      {% for doc in documents %}
+      <div class="document-card">
+        <div class="document-header">
+          <div class="document-icon">
+            <span class="material-symbols-outlined">description</span>
+          </div>
+          <div class="document-title">{{ doc.title }}</div>
+        </div>
+        
+        <div class="document-meta">
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <span class="material-symbols-outlined" style="font-size: 14px;">category</span>
+            <span>{{ doc.document_type or 'Sonstiges' }}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <span class="material-symbols-outlined" style="font-size: 14px;">calendar_today</span>
+            <span>{{ doc.created_at.strftime('%d.%m.%Y') if doc.created_at else '-' }}</span>
+          </div>
+          {% if doc.size %}
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <span class="material-symbols-outlined" style="font-size: 14px;">storage</span>
+            <span>{{ "%.1f KB"|format(doc.size / 1024) if doc.size < 1024*1024 else "%.1f MB"|format(doc.size / (1024*1024)) }}</span>
+          </div>
+          {% endif %}
+        </div>
+        
+        {% if doc.notes %}
+        <div style="margin-top: 8px; font-size: 12px; color: var(--md-sys-color-on-surface-variant); font-style: italic;">
+          {{ doc.notes[:80] }}{{ '...' if doc.notes|length > 80 else '' }}
+        </div>
+        {% endif %}
+        
+        <div class="document-actions">
+          <button onclick="downloadDocument('{{ doc.id }}')" class="doc-action-btn">
+            <span class="material-symbols-outlined" style="font-size: 16px;">download</span>
+            Herunterladen
+          </button>
+          <button onclick="viewDocument('{{ doc.id }}')" class="doc-action-btn">
+            <span class="material-symbols-outlined" style="font-size: 16px;">visibility</span>
+            Ansehen
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 60px; color: var(--md-sys-color-on-surface-variant);">
+      <span class="material-symbols-outlined" style="font-size: 64px; opacity: 0.3;">description</span>
+      <div style="margin-top: 16px; font-size: 18px;">Keine Dokumente vorhanden</div>
+      <div style="margin-top: 8px; font-size: 14px;">Ausleih-PDFs werden hier automatisch angezeigt.</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function downloadDocument(docId) {
+  window.location.href = `/documents/${docId}/download`;
+}
+
+function viewDocument(docId) {
+  window.open(`/documents/${docId}/view`, '_blank');
+}
+</script>
+{% endblock %}

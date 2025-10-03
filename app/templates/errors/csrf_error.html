@@ -1,0 +1,35 @@
+{% extends 'md3/base.html' %}
+{% block title %}Sicherheitsfehler (CSRF){% endblock %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+<div class="md3-page">
+  <div class="md3-container">
+    <div class="md3-card" style="padding: 20px; margin-top: 16px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="material-symbols-outlined" style="color: var(--md-sys-color-error);">shield_lock</span>
+        <h1 class="md3-headline-small" style="margin:0;">Sicherheitsüberprüfung fehlgeschlagen</h1>
+      </div>
+      <p style="color: var(--md-sys-color-on-surface-variant); margin-top:12px;">
+        Aus Sicherheitsgründen konnte Ihre Anfrage nicht verifiziert werden (CSRF-Fehler).
+      </p>
+      {% if reason %}
+      <p style="color: var(--md-sys-color-on-surface-variant);">Grund: {{ reason }}</p>
+      {% endif %}
+      <div style="display:flex; gap:8px; margin-top: 12px;">
+        <a class="md3-button md3-button-filled" href="{{ request.referrer or url_for('index') }}">
+          <span class="material-symbols-outlined">arrow_back</span>
+          Zurück
+        </a>
+        <a class="md3-button md3-button-text" href="{{ url_for('index') }}">
+          <span class="material-symbols-outlined">home</span>
+          Startseite
+        </a>
+      </div>
+      <div style="margin-top: 8px; font-size: 0.9rem; color: var(--md-sys-color-on-surface-variant);">
+        Tipp: Laden Sie die Seite neu und versuchen Sie es erneut. Stellen Sie sicher, dass Cookies aktiviert sind.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

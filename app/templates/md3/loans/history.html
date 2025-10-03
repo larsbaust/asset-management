@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+
+<style>
+  .md3-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+    margin-top: 80px;
+  }
+  
+  .md3-header {
+    margin-bottom: 24px;
+  }
+  
+  .md3-title {
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+  }
+  
+  .md3-subtitle {
+    font-size: 14px;
+    color: var(--md-sys-color-on-surface-variant);
+    margin-top: 8px;
+  }
+  
+  .md3-card {
+    background: var(--md-sys-color-surface);
+    border-radius: 16px;
+    box-shadow: var(--md-sys-elevation-1);
+    padding: 24px;
+  }
+  
+  .md3-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+  }
+  
+  .md3-table thead th {
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface-variant);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .md3-table tbody tr {
+    background: var(--md-sys-color-surface-container);
+    border-radius: 12px;
+  }
+  
+  .md3-table tbody td {
+    padding: 16px;
+    vertical-align: middle;
+    color: var(--md-sys-color-on-surface);
+  }
+  
+  .md3-table tbody tr:first-child td:first-child {
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+  }
+  
+  .md3-table tbody tr:first-child td:last-child {
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+</style>
+
+<div class="md3-container">
+  <div class="md3-header">
+    <h1 class="md3-title">Ausleihhistorie</h1>
+    <div class="md3-subtitle">Alle zurückgegebenen Ausleihen</div>
+  </div>
+  
+  <div class="md3-card">
+    {% if loan_history %}
+    <div class="table-wrap">
+      <table class="md3-table">
+        <thead>
+          <tr>
+            <th>Asset</th>
+            <th>Ausgeliehen an</th>
+            <th>Von</th>
+            <th>Bis</th>
+            <th>Zurückgegeben am</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for loan in loan_history %}
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                {% if loan.loaned_asset.image_url %}
+                <img src="{{ loan.loaned_asset.image_url }}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px;">
+                {% endif %}
+                <div>
+                  <div style="font-weight: 500;">{{ loan.loaned_asset.name }}</div>
+                  {% if loan.loaned_asset.article_number %}
+                  <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant);">Art.-Nr.: {{ loan.loaned_asset.article_number }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px; color: var(--md-sys-color-primary);">person</span>
+              {{ loan.borrower_name }}
+            </td>
+            <td>{{ loan.start_date.strftime('%d.%m.%Y') }}</td>
+            <td>{{ loan.expected_return_date.strftime('%d.%m.%Y') }}</td>
+            <td>
+              <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container); border-radius: 8px; font-size: 12px; font-weight: 500;">
+                <span class="material-symbols-outlined" style="font-size: 14px;">check</span>
+                {{ loan.actual_return_date.strftime('%d.%m.%Y') }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 60px; color: var(--md-sys-color-on-surface-variant);">
+      <span class="material-symbols-outlined" style="font-size: 64px; opacity: 0.3;">history</span>
+      <div style="margin-top: 16px; font-size: 18px;">Keine Ausleihhistorie vorhanden</div>
+      <div style="margin-top: 8px; font-size: 14px;">Zurückgegebene Assets werden hier angezeigt.</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,8 +1,25 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_file, current_app, json
 import random
+import uuid
 from dotenv import load_dotenv
 load_dotenv()
-from .models import Asset, db, Loan, Document, CostEntry, InventorySession, InventoryItem, InventoryTeam, OrderComment, AssetLog
+from .models import (
+    Asset,
+    AssetLog,
+    CostEntry,
+    Document,
+    InventoryItem,
+    InventorySession,
+    InventoryTeam,
+    Loan,
+    Location,
+    LocationFloorplan,
+    LocationFloorplanRevision,
+    LocationFloorplanAsset,
+    LocationFloorplanAutosave,
+    OrderComment,
+    db,
+)
 from .forms import AssetForm, LoanForm, DocumentForm, CostEntryForm, InventorySessionForm, InventoryTeamForm, InventoryCheckForm, MultiLoanForm
 import csv
 from io import StringIO, BytesIO
@@ -41,7 +58,7 @@ def inventory_scan(session_id, asset_id):
     asset = Asset.query.get_or_404(asset_id)
     item = InventoryItem.query.filter_by(session_id=session.id, asset_id=asset.id).first()
     if not item:
-        item = InventoryItem(session_id=session.id, asset_id=asset.id, expected_quantity=1, expected_location=asset.location)
+        item = InventoryItem(session_id=session.id, asset_id=asset.id, expected_quantity=1, expected_location=asset.location_obj.name if asset.location_obj else (asset.location if asset.location else 'Unbekannt'))
         db.session.add(item)
         db.session.commit()
 
@@ -60,9 +77,9 @@ def inventory_scan(session_id, asset_id):
 
     return render_template('inventory_scan.html', asset=asset, inventory_entry=item)
 
-@main.route('/multi_loan', methods=['GET', 'POST'])
+@main.route('/old_multi_loan', methods=['GET', 'POST'])
 @login_required
-def multi_loan():
+def old_multi_loan():
     form = MultiLoanForm()
     if request.method == 'GET':
         # Beide Parameter-Namen unterstützen für Kompatibilität
@@ -627,10 +644,474 @@ def bulk_restore_assets():
 # Konfiguration für Datei-Uploads
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'}
+FLOORPLAN_ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'svg', 'pdf'}
+
+
+def allowed_floorplan_file(filename: str) -> bool:
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in FLOORPLAN_ALLOWED_EXTENSIONS
+
+
+def get_floorplan_upload_dir(location_id: int) -> str:
+    base_upload = current_app.config.get('UPLOAD_FOLDER', UPLOAD_FOLDER)
+    path = os.path.join(base_upload, 'floorplans', str(location_id))
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def build_floorplan_filename(original_name: str) -> str:
+    ext = original_name.rsplit('.', 1)[-1].lower()
+    return f"{uuid.uuid4().hex}.{ext}"
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+
+
+def serialize_floorplan_asset(asset_entry: LocationFloorplanAsset) -> dict:
+    asset = asset_entry.asset
+    metadata = json.loads(asset_entry.metadata_json) if asset_entry.metadata_json else {}
+
+    coverage_radius_raw = metadata.get('coverage_radius_m') if metadata else None
+    try:
+        coverage_radius_m = float(coverage_radius_raw) if coverage_radius_raw is not None else None
+    except (TypeError, ValueError):
+        coverage_radius_m = None
+
+    coverage_note = metadata.get('coverage_note') if metadata else None
+
+    metadata_payload = metadata if metadata else None
+
+    return {
+        'id': asset_entry.id,
+        'asset_id': asset_entry.asset_id,
+        'position_x': asset_entry.position_x,
+        'position_y': asset_entry.position_y,
+        'rotation': asset_entry.rotation,
+        'display_label': asset_entry.display_label,
+        'metadata': metadata_payload,
+        'coverage_radius_m': coverage_radius_m,
+        'coverage_note': coverage_note,
+        'created_at': asset_entry.created_at.isoformat() if asset_entry.created_at else None,
+        'updated_at': asset_entry.updated_at.isoformat() if asset_entry.updated_at else None,
+        'asset': {
+            'name': asset.name if asset else None,
+            'status': asset.status if asset else None,
+            'serial_number': getattr(asset, 'serial_number', None) if asset else None,
+            'category': asset.category.name if asset and asset.category else None,
+        } if asset else None,
+    }
+
+
+def serialize_floorplan_revision(revision: LocationFloorplanRevision, include_assets: bool = True) -> dict:
+    floorplan = revision.floorplan
+    location_id = floorplan.location_id if floorplan else None
+    file_url = url_for('main.get_floorplan_file', location_id=location_id, filename=revision.filename) if location_id else None
+    preview_url = (
+        url_for('main.get_floorplan_file', location_id=location_id, filename=revision.preview_filename)
+        if location_id and revision.preview_filename
+        else None
+    )
+    latest_autosave = None
+    if revision.autosaves:
+        latest = max(revision.autosaves, key=lambda a: a.saved_at or datetime.min)
+        latest_autosave = {
+            'id': latest.id,
+            'saved_at': latest.saved_at.isoformat() if latest.saved_at else None,
+        }
+
+    return {
+        'id': revision.id,
+        'version_number': revision.version_number,
+        'filename': revision.filename,
+        'file_url': file_url,
+        'preview_filename': revision.preview_filename,
+        'preview_url': preview_url,
+        'mimetype': revision.mimetype,
+        'scale_line_length_px': revision.scale_line_length_px,
+        'scale_real_length_cm': revision.scale_real_length_cm,
+        'metadata': json.loads(revision.metadata_json) if revision.metadata_json else None,
+        'created_at': revision.created_at.isoformat() if revision.created_at else None,
+        'updated_at': revision.updated_at.isoformat() if revision.updated_at else None,
+        'assets': [serialize_floorplan_asset(asset) for asset in revision.assets] if include_assets else None,
+        'latest_autosave': latest_autosave,
+    }
+
+
+def serialize_floorplan(floorplan: LocationFloorplan, include_revisions: bool = True) -> dict:
+    revisions = floorplan.revisions or []
+    latest_revision = revisions[-1] if revisions else None
+    return {
+        'id': floorplan.id,
+        'location_id': floorplan.location_id,
+        'name': floorplan.name,
+        'description': floorplan.description,
+        'is_archived': floorplan.is_archived,
+        'created_at': floorplan.created_at.isoformat() if floorplan.created_at else None,
+        'updated_at': floorplan.updated_at.isoformat() if floorplan.updated_at else None,
+        'latest_revision': serialize_floorplan_revision(latest_revision) if latest_revision else None,
+        'revisions': [serialize_floorplan_revision(rev) for rev in revisions] if include_revisions else None,
+    }
+
+
+def ensure_asset_belongs_to_location(asset: Asset, location_id: int) -> bool:
+    if not asset:
+        return False
+    if asset.location_id == location_id:
+        return True
+    if asset.location and asset.location.strip() == str(location_id):
+        return True
+    return False
+
+
+def serialize_location_asset(asset: Asset) -> dict:
+    return {
+        'id': asset.id,
+        'name': asset.name,
+        'serial_number': getattr(asset, 'serial_number', None),
+        'article_number': getattr(asset, 'article_number', None),
+        'category': asset.category.name if getattr(asset, 'category', None) else None,
+        'status': asset.status,
+        'status_display': asset.get_status_display() if hasattr(asset, 'get_status_display') else asset.status,
+        'on_loan': getattr(asset, 'on_loan', False),
+        'image_url': getattr(asset, 'image_url', None),
+    }
+
+
+@main.route('/uploads/floorplans/<int:location_id>/<path:filename>')
+@login_required
+def get_floorplan_file(location_id, filename):
+    directory = get_floorplan_upload_dir(location_id)
+    return send_from_directory(directory, filename)
+
+
+@main.route('/api/locations/<int:location_id>/assets', methods=['GET'])
+@login_required
+def api_location_assets(location_id):
+    location = Location.query.get_or_404(location_id)
+
+    query = Asset.query.filter(
+        or_(Asset.location_id == location.id, Asset.location == str(location.id))
+    )
+
+    status_filter = request.args.get('status')
+    if status_filter in {'active', 'inactive', 'on_loan'}:
+        query = query.filter(Asset.status == status_filter)
+
+    search = (request.args.get('q') or '').strip()
+    if search:
+        pattern = f"%{search}%"
+        query = query.filter(or_(
+            Asset.name.ilike(pattern),
+            Asset.serial_number.ilike(pattern),
+            Asset.article_number.ilike(pattern)
+        ))
+
+    assets = query.order_by(Asset.name.asc()).all()
+
+    return jsonify({'assets': [serialize_location_asset(asset) for asset in assets]})
+
+
+@main.route('/api/locations/<int:location_id>/floorplans', methods=['GET', 'POST'])
+@login_required
+def api_location_floorplans(location_id):
+    location = Location.query.get_or_404(location_id)
+
+    if request.method == 'GET':
+        include_archived = request.args.get('archived') == '1'
+        floorplans = [
+            serialize_floorplan(fp)
+            for fp in location.floorplans
+            if include_archived or not fp.is_archived
+        ]
+        return jsonify({'floorplans': floorplans})
+
+    name = (request.form.get('name') or '').strip()
+    description = (request.form.get('description') or '').strip() or None
+    file = request.files.get('file')
+
+    if not name:
+        return jsonify({'error': 'Name darf nicht leer sein.'}), 400
+
+    if not file or file.filename == '':
+        return jsonify({'error': 'Bitte eine Datei hochladen.'}), 400
+
+    if not allowed_floorplan_file(file.filename):
+        return jsonify({'error': 'Dateityp wird nicht unterstützt.'}), 400
+
+    storage_dir = get_floorplan_upload_dir(location_id)
+    stored_filename = build_floorplan_filename(file.filename)
+    absolute_path = os.path.join(storage_dir, stored_filename)
+    file.save(absolute_path)
+
+    floorplan = LocationFloorplan(
+        location_id=location.id,
+        name=name,
+        description=description,
+    )
+    db.session.add(floorplan)
+    db.session.flush()
+
+    revision = LocationFloorplanRevision(
+        floorplan_id=floorplan.id,
+        version_number=1,
+        filename=stored_filename,
+        mimetype=file.mimetype or 'application/octet-stream',
+    )
+    db.session.add(revision)
+    db.session.commit()
+
+    return jsonify({'floorplan': serialize_floorplan(floorplan)}), 201
+
+
+@main.route('/api/floorplans/<int:floorplan_id>', methods=['PATCH', 'DELETE'])
+@login_required
+def api_floorplan_detail(floorplan_id):
+    floorplan = LocationFloorplan.query.get_or_404(floorplan_id)
+
+    if request.method == 'DELETE':
+        db.session.delete(floorplan)
+        db.session.commit()
+        return jsonify({'success': True})
+
+    data = request.get_json() or {}
+    if 'name' in data:
+        floorplan.name = data['name'].strip()
+    if 'description' in data:
+        floorplan.description = data['description'].strip() or None
+    if 'is_archived' in data:
+        floorplan.is_archived = bool(data['is_archived'])
+
+    db.session.commit()
+    return jsonify({'floorplan': serialize_floorplan(floorplan)})
+
+
+@main.route('/api/floorplans/<int:floorplan_id>/revisions', methods=['POST'])
+@login_required
+def api_floorplan_revisions(floorplan_id):
+    floorplan = LocationFloorplan.query.get_or_404(floorplan_id)
+
+    file = request.files.get('file')
+    if not file or file.filename == '':
+        return jsonify({'error': 'Bitte eine Datei hochladen.'}), 400
+
+    if not allowed_floorplan_file(file.filename):
+        return jsonify({'error': 'Dateityp wird nicht unterstützt.'}), 400
+
+    storage_dir = get_floorplan_upload_dir(floorplan.location_id)
+    stored_filename = build_floorplan_filename(file.filename)
+    absolute_path = os.path.join(storage_dir, stored_filename)
+    file.save(absolute_path)
+
+    latest_version = (
+        db.session.query(func.max(LocationFloorplanRevision.version_number))
+        .filter_by(floorplan_id=floorplan.id)
+        .scalar()
+        or 0
+    )
+
+    revision = LocationFloorplanRevision(
+        floorplan_id=floorplan.id,
+        version_number=latest_version + 1,
+        filename=stored_filename,
+        mimetype=file.mimetype or 'application/octet-stream',
+    )
+    db.session.add(revision)
+    db.session.commit()
+
+    return jsonify({'revision': serialize_floorplan_revision(revision)})
+
+
+@main.route('/api/floorplan-revisions/<int:revision_id>', methods=['PATCH', 'DELETE'])
+@login_required
+def api_floorplan_revision_detail(revision_id):
+    revision = LocationFloorplanRevision.query.get_or_404(revision_id)
+
+    if request.method == 'DELETE':
+        db.session.delete(revision)
+        db.session.commit()
+        return jsonify({'success': True})
+
+    data = request.get_json() or {}
+    if 'scale_line_length_px' in data:
+        revision.scale_line_length_px = float(data['scale_line_length_px']) if data['scale_line_length_px'] is not None else None
+    if 'scale_real_length_cm' in data:
+        revision.scale_real_length_cm = float(data['scale_real_length_cm']) if data['scale_real_length_cm'] is not None else None
+    if 'metadata' in data:
+        revision.metadata_json = json.dumps(data['metadata']) if data['metadata'] is not None else None
+
+    db.session.commit()
+    return jsonify({'revision': serialize_floorplan_revision(revision)})
+
+
+@main.route('/api/floorplan-revisions/<int:revision_id>/assets', methods=['POST'])
+@login_required
+def api_floorplan_revision_add_asset(revision_id):
+    revision = LocationFloorplanRevision.query.get_or_404(revision_id)
+    data = request.get_json() or {}
+
+    asset_id = data.get('asset_id')
+    if not asset_id:
+        return jsonify({'error': 'asset_id fehlt'}), 400
+
+    asset = Asset.query.get(asset_id)
+    if not ensure_asset_belongs_to_location(asset, revision.floorplan.location_id):
+        return jsonify({'error': 'Asset gehört nicht zu diesem Standort.'}), 400
+
+    position_x = float(data.get('position_x', 0.5))
+    position_y = float(data.get('position_y', 0.5))
+    rotation = float(data.get('rotation', 0.0))
+    display_label = data.get('display_label')
+    metadata = data.get('metadata') or {}
+    if not isinstance(metadata, dict):
+        return jsonify({'error': 'metadata muss ein Objekt sein'}), 400
+
+    def _coerce_radius(value):
+        if value in (None, ''):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            raise ValueError('coverage_radius_m muss eine Zahl sein')
+
+    if 'coverage_radius_m' in data:
+        try:
+            radius = _coerce_radius(data.get('coverage_radius_m'))
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
+        if radius is not None:
+            metadata['coverage_radius_m'] = radius
+        else:
+            metadata.pop('coverage_radius_m', None)
+
+    if 'coverage_note' in data:
+        note = data.get('coverage_note')
+        if note:
+            metadata['coverage_note'] = str(note)
+        else:
+            metadata.pop('coverage_note', None)
+
+    metadata = {key: value for key, value in metadata.items() if value not in (None, '')}
+
+    asset_entry = LocationFloorplanAsset(
+        revision_id=revision.id,
+        asset_id=asset_id,
+        position_x=position_x,
+        position_y=position_y,
+        rotation=rotation,
+        display_label=display_label,
+        metadata_json=json.dumps(metadata) if metadata else None,
+    )
+    db.session.add(asset_entry)
+    db.session.commit()
+
+    return jsonify({'asset': serialize_floorplan_asset(asset_entry)}), 201
+
+
+@main.route('/api/floorplan-assets/<int:asset_entry_id>', methods=['PATCH', 'DELETE'])
+@login_required
+def api_floorplan_asset_detail(asset_entry_id):
+    asset_entry = LocationFloorplanAsset.query.get_or_404(asset_entry_id)
+
+    if request.method == 'DELETE':
+        db.session.delete(asset_entry)
+        db.session.commit()
+        return jsonify({'success': True})
+
+    data = request.get_json() or {}
+    if 'position_x' in data:
+        asset_entry.position_x = float(data['position_x'])
+    if 'position_y' in data:
+        asset_entry.position_y = float(data['position_y'])
+    if 'rotation' in data:
+        asset_entry.rotation = float(data['rotation'])
+    if 'display_label' in data:
+        asset_entry.display_label = data['display_label']
+
+    metadata = json.loads(asset_entry.metadata_json) if asset_entry.metadata_json else {}
+
+    if 'metadata' in data:
+        new_meta = data['metadata'] or {}
+        if not isinstance(new_meta, dict):
+            return jsonify({'error': 'metadata muss ein Objekt sein'}), 400
+        metadata.update(new_meta)
+
+    if 'coverage_radius_m' in data:
+        radius_value = data.get('coverage_radius_m')
+        if radius_value in (None, ''):
+            metadata.pop('coverage_radius_m', None)
+        else:
+            try:
+                metadata['coverage_radius_m'] = float(radius_value)
+            except (TypeError, ValueError):
+                return jsonify({'error': 'coverage_radius_m muss eine Zahl sein'}), 400
+
+    if 'coverage_note' in data:
+        note_value = data.get('coverage_note')
+        if note_value:
+            metadata['coverage_note'] = str(note_value)
+        else:
+            metadata.pop('coverage_note', None)
+
+    metadata = {key: value for key, value in metadata.items() if value not in (None, '')}
+
+    asset_entry.metadata_json = json.dumps(metadata) if metadata else None
+
+    db.session.commit()
+    return jsonify({'asset': serialize_floorplan_asset(asset_entry)})
+
+
+@main.route('/api/floorplan-revisions/<int:revision_id>/autosave', methods=['GET', 'POST'])
+@login_required
+def api_floorplan_autosave(revision_id):
+    revision = LocationFloorplanRevision.query.get_or_404(revision_id)
+
+    if request.method == 'GET':
+        autosave = (
+            LocationFloorplanAutosave.query.filter_by(revision_id=revision.id)
+            .order_by(LocationFloorplanAutosave.saved_at.desc())
+            .first()
+        )
+        if not autosave:
+            return jsonify({'autosave': None})
+        return jsonify({
+            'autosave': {
+                'id': autosave.id,
+                'payload': json.loads(autosave.payload),
+                'saved_at': autosave.saved_at.isoformat() if autosave.saved_at else None,
+            }
+        })
+
+    data = request.get_json() or {}
+    payload = data.get('payload')
+    if payload is None:
+        return jsonify({'error': 'payload fehlt'}), 400
+
+    payload_str = json.dumps(payload) if not isinstance(payload, str) else payload
+
+    autosave = LocationFloorplanAutosave(
+        revision_id=revision.id,
+        payload=payload_str,
+    )
+    db.session.add(autosave)
+    db.session.flush()
+
+    autosaves = (
+        LocationFloorplanAutosave.query.filter_by(revision_id=revision.id)
+        .order_by(LocationFloorplanAutosave.saved_at.desc())
+        .all()
+    )
+    for obsolete in autosaves[10:]:
+        db.session.delete(obsolete)
+
+    db.session.commit()
+
+    return jsonify({
+        'autosave': {
+            'id': autosave.id,
+            'saved_at': autosave.saved_at.isoformat() if autosave.saved_at else None,
+        }
+    }), 201
 @main.route('/')
 @login_required
 def index():
@@ -680,6 +1161,7 @@ def index():
     # Standorte für die Karte (wie im dashboard-View)
     from .models import Location
     location_objs = Location.query.filter(Location.latitude.isnot(None), Location.longitude.isnot(None)).all()
+    location_total_count = Location.query.count()
     locations = [
         {
             'name': loc.name,
@@ -710,14 +1192,19 @@ def index():
 @main.route('/md3/dashboard')
 @login_required
 def dashboard():
+    from flask import make_response
+    
     # Hole die letzten 5 Assets des Benutzers
     recent_assets = Asset.query.order_by(Asset.id.desc()).limit(5).all()
     
-    # Statistiken für die Charts
+    # Statistiken für die Charts - korrigierte Zählung
     total_assets = Asset.query.count()
+    active = Asset.query.filter_by(status='active').count()
     on_loan = Asset.query.filter_by(status='on_loan').count()
-    inactive = Asset.query.filter_by(status='inactive').count()
-    active = total_assets - on_loan - inactive
+    inactive = Asset.query.filter(Asset.status.in_(['inactive', 'defect'])).count()
+    
+    print(f"=== DASHBOARD ASSET COUNTS ===")
+    print(f"Total: {total_assets}, Active: {active}, On Loan: {on_loan}, Inactive: {inactive}")
 
     # Debug: Zeige alle Assets und ihre Werte
     print("\nAlle Assets und ihre Werte:")
@@ -725,36 +1212,39 @@ def dashboard():
     for asset in all_assets:
         print(f"Asset: {asset.name}, Wert: {asset.value}, Erstellt am: {asset.created_at}")
 
-    # Wertentwicklung über die letzten 6 Monate
-    today = datetime.utcnow()
+    # Wertentwicklung über die letzten 6 Monate - nur wenn Assets vorhanden
     months = []
     values = []
     
-    print("\nWertentwicklung Berechnung:")
-    # Für jeden Monat die Wertentwicklung berechnen
-    for i in range(5, -1, -1):
-        date = today.replace(day=1) - relativedelta(months=i)
-        next_date = date + relativedelta(months=1)
-        months.append(date.strftime('%B %Y'))
+    # Nur Chart-Daten generieren wenn Assets vorhanden sind
+    if total_assets > 0:
+        today = datetime.utcnow()
         
-        # Gesamtwert für diesen Monat berechnen (acquisition_date bevorzugen, sonst created_at)
-        all_assets = Asset.query.all()
-        total_value = 0
-        for asset in all_assets:
+        print("\nWertentwicklung Berechnung:")
+        # Für jeden Monat die Wertentwicklung berechnen
+        for i in range(5, -1, -1):
+            date = today.replace(day=1) - relativedelta(months=i)
+            next_date = date + relativedelta(months=1)
+            months.append(date.strftime('%B %Y'))
             
-            asset_date = getattr(asset, 'purchase_date', None) or asset.created_at
-            if asset_date and asset_date < next_date:
-                try:
-                    if asset.value is not None:
-                        total_value += float(asset.value)
-                except (ValueError, TypeError):
-                    print(f"Warnung: Ungültiger Wert für Asset {asset.name}: {asset.value}")
-                    continue
-        values.append(total_value)
-        
-        print("\nBerechnete Werte:")
-        print("Monate:", months)
-        print("Werte:", values)
+            # Gesamtwert für diesen Monat berechnen (acquisition_date bevorzugen, sonst created_at)
+            all_assets = Asset.query.all()
+            total_value = 0
+            for asset in all_assets:
+                
+                asset_date = getattr(asset, 'purchase_date', None) or asset.created_at
+                if asset_date and asset_date < next_date:
+                    try:
+                        if asset.value is not None:
+                            total_value += float(asset.value)
+                    except (ValueError, TypeError):
+                        print(f"Warnung: Ungültiger Wert für Asset {asset.name}: {asset.value}")
+                        continue
+            values.append(total_value)
+            
+            print("\nBerechnete Werte:")
+            print("Monate:", months)
+            print("Werte:", values)
 
     # Kategorien
     category_data = []
@@ -888,6 +1378,7 @@ def dashboard():
     # Standorte für die Karte (nur mit Koordinaten)
     from .models import Location
     location_objs = Location.query.filter(Location.latitude.isnot(None), Location.longitude.isnot(None)).all()
+    location_total_count = Location.query.count()
     locations = [
         {
             'name': loc.name,
@@ -917,9 +1408,28 @@ def dashboard():
         },
         "categories": category_data if category_data is not None else [],
     }
-    # Fallback: assignment_data, falls oben nicht definiert
-    if 'assignment_data' not in locals():
+    # Assignment-Auswertung für Dashboard (nur aktive Assets)
+    from .models import Assignment
+    assignment_data = []
+    try:
+        assignments = Assignment.query.order_by(Assignment.name).all()
+        for assignment in assignments:
+            count = Asset.query.filter(Asset.assignments.any(Assignment.id == assignment.id), Asset.status == 'active').count()
+            assignment_data.append({'assignment': assignment.name, 'count': count})
+        # Assets ohne Zuordnung hinzufügen
+        assets_without_assignment = Asset.query.filter(~Asset.assignments.any(), Asset.status == 'active').count()
+        if assets_without_assignment > 0:
+            assignment_data.append({'assignment': 'Keine Zuordnung', 'count': assets_without_assignment})
+        
+        # Optional: Nur Assignments mit mindestens einem Asset anzeigen
+        assignment_data = [a for a in assignment_data if a['count'] > 0]
+    except Exception as e:
+        print(f'Assignment model error: {e}')
         assignment_data = []
+    
+    print('Assignment-Auswertung für Dashboard:')
+    for entry in assignment_data:
+        print(entry)
     
     # Prüfen, welches Dashboard angezeigt werden soll
     if request.path.startswith('/md3/'):
@@ -947,24 +1457,58 @@ def dashboard():
                 'labels': [cat['category'] for cat in category_data if cat['count'] > 0],
                 'data': [cat['count'] for cat in category_data if cat['count'] > 0]
             },
+            'manufacturer_distribution': {
+                'labels': [mfr['manufacturer'] for mfr in manufacturer_data if mfr['count'] > 0],
+                'data': [mfr['count'] for mfr in manufacturer_data if mfr['count'] > 0]
+            },
+            'assignment_distribution': {
+                'labels': [assignment['assignment'] for assignment in assignment_data if assignment['count'] > 0],
+                'data': [assignment['count'] for assignment in assignment_data if assignment['count'] > 0]
+            },
+            'category_assignment_combined': {
+                'categories': {
+                    'labels': [cat['category'] for cat in category_data if cat['count'] > 0],
+                    'data': [cat['count'] for cat in category_data if cat['count'] > 0]
+                },
+                'assignments': {
+                    'labels': [assignment['assignment'] for assignment in assignment_data if assignment['count'] > 0],
+                    'data': [assignment['count'] for assignment in assignment_data if assignment['count'] > 0]
+                }
+            },
             'monthly_usage': {
-                'labels': ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun'],
-                'data': [random.randint(20, 100) for _ in range(6)]
+                'labels': [],
+                'data': []
             }
         }
         
+        # Asset-Counts für MD3 Template
+        asset_counts = {
+            'active': active,
+            'on_loan': on_loan,
+            'inactive': inactive,
+            'total': total_assets
+        }
+        
         # MD3-Dashboard-Template rendern
-        return render_template('md3/layouts/dashboard.html',
+        response = make_response(render_template('md3/layouts/dashboard.html',
             active_count=active,
             on_loan_count=on_loan,
             inactive_count=inactive,
+            asset_counts=asset_counts,
             latest_assets=recent_assets,
             chart_data=md3_chart_data,
-            locations_json=locations_json
-        )
+            locations_json=locations_json,
+            location_count=location_total_count
+        ))
+        
+        # Cache-busting Headers hinzufügen
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     else:
-        # Standard-Dashboard rendern
-        return render_template('dashboard.html',
+        # Standard-Dashboard rendern  
+        response = make_response(render_template('dashboard.html',
             recent_assets=recent_assets,
             chart_data=chart_data,
             active_count=active,
@@ -979,7 +1523,13 @@ def dashboard():
             locations=locations,
             manufacturer_data=manufacturer_data,
             location_delivery_status=location_delivery_status
-        )
+        ))
+        
+        # Cache-busting Headers auch für Standard-Dashboard
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
 
 # Route für die Massenarchivierung von Assets
 @main.route('/bulk_archive', methods=['POST'])
@@ -1237,6 +1787,7 @@ def delete_category():
 def add_asset():
     from .models import Assignment, Manufacturer, Supplier
     form = AssetForm()
+    form.update_choices()  # Aktualisiere Dropdown-Optionen
     doc_form = DocumentForm()
     
     if form.validate_on_submit():
@@ -1251,10 +1802,10 @@ def add_asset():
             serial_number=form.serial_number.data,
             purchase_date=form.purchase_date.data
         )
-        # IDs als Liste holen (Strings zu int)
-        assignment_ids = [int(i) for i in request.form.getlist('assignments')]
-        manufacturer_ids = [int(i) for i in request.form.getlist('manufacturers')]
-        supplier_ids = [int(i) for i in request.form.getlist('suppliers')]
+        # IDs als Liste holen (Strings zu int, leere Werte filtern)
+        assignment_ids = [int(i) for i in request.form.getlist('assignments') if i.strip()]
+        manufacturer_ids = [int(i) for i in request.form.getlist('manufacturers') if i.strip()]
+        supplier_ids = [int(i) for i in request.form.getlist('suppliers') if i.strip()]
         # Relationen setzen
         asset.assignments = Assignment.query.filter(Assignment.id.in_(assignment_ids)).all() if assignment_ids else []
         asset.manufacturers = Manufacturer.query.filter(Manufacturer.id.in_(manufacturer_ids)).all() if manufacturer_ids else []
@@ -1284,7 +1835,7 @@ def add_asset():
         db.session.add(log)
         db.session.commit()
         flash('Asset wurde erfolgreich erstellt.', 'success')
-        return redirect(url_for('main.edit_asset', id=asset.id))
+        return redirect(url_for('md3_assets'))
     
     return render_template('edit_asset.html', form=form, doc_form=doc_form, asset=None, documents=[], is_new=True)
 
@@ -1293,6 +1844,7 @@ def edit_asset(id):
     from .models import Assignment, Manufacturer, Supplier
     asset = Asset.query.get_or_404(id)
     form = AssetForm(obj=asset)
+    form.update_choices()  # Aktualisiere Dropdown-Optionen
     doc_form = DocumentForm()
     # Multi-Select-Felder mit aktuellen IDs befüllen
     form.assignments.data = [str(a.id) for a in asset.assignments]
@@ -1349,15 +1901,296 @@ def edit_asset(id):
     documents = Document.query.filter_by(asset_id=id).all()
     return render_template('edit_asset.html', form=form, doc_form=doc_form, asset=asset, documents=documents, is_new=False)
 
+def generate_multi_loan_pdf(loans, assets, borrower_name, start_date, expected_return_date, notes, signature, signature_employer):
+    """Generiert PDF für Sammelausleihe und speichert es als Dokument"""
+    from fpdf import FPDF
+    from app.models import Document
+    from app import db
+    import tempfile, os, time, base64
+    
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Titel
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, f'Sammelausleihe-Protokoll für {borrower_name}', ln=1, align='C')
+    pdf.ln(5)
+    
+    # Info
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 7, f'§ 1 Die Firma stellt dem Arbeitnehmer die folgenden {len(assets)} Arbeitsmittel zur Verfügung.')
+    pdf.ln(3)
+    
+    # Assets-Tabelle
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(10, 7, '#', border=1)
+    pdf.cell(80, 7, 'Asset', border=1)
+    pdf.cell(50, 7, 'Seriennummer', border=1)
+    pdf.cell(50, 7, 'Hersteller', border=1, ln=1)
+    
+    pdf.set_font('Arial', '', 10)
+    for idx, asset in enumerate(assets, 1):
+        pdf.cell(10, 7, str(idx), border=1)
+        pdf.cell(80, 7, (asset.name or '-')[:35], border=1)
+        pdf.cell(50, 7, (asset.serial_number or '-')[:20], border=1)
+        hersteller = ', '.join([m.name for m in asset.manufacturers])[:20] if asset.manufacturers else '-'
+        pdf.cell(50, 7, hersteller, border=1, ln=1)
+    
+    pdf.ln(5)
+    
+    # Ausleih-Informationen
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(0, 7, 'Ausleihdetails:', ln=1)
+    pdf.set_font('Arial', '', 10)
+    pdf.cell(0, 6, f'Ausgeliehen von: {start_date.strftime("%d.%m.%Y")}', ln=1)
+    if expected_return_date:
+        pdf.cell(0, 6, f'Geplante Rückgabe: {expected_return_date.strftime("%d.%m.%Y")}', ln=1)
+    if notes:
+        pdf.cell(0, 6, f'Notizen: {notes[:100]}', ln=1)
+    pdf.ln(5)
+    
+    # Unterschriften
+    y_sig = pdf.get_y()
+    
+    if signature:
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(90, 6, 'Unterschrift Mitarbeiter:', ln=0)
+        pdf.cell(0, 6, 'Unterschrift Arbeitgeber:', ln=1)
+        
+        try:
+            # Mitarbeiter-Unterschrift
+            sig_data = signature.split(',')[1] if ',' in signature else signature
+            sig_bytes = base64.b64decode(sig_data)
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+                tmp.write(sig_bytes)
+                tmp.flush()
+                pdf.image(tmp.name, x=10, y=pdf.get_y(), w=80, h=30)
+                os.unlink(tmp.name)
+            
+            # Arbeitgeber-Unterschrift
+            if signature_employer:
+                sig_emp_data = signature_employer.split(',')[1] if ',' in signature_employer else signature_employer
+                sig_emp_bytes = base64.b64decode(sig_emp_data)
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp2:
+                    tmp2.write(sig_emp_bytes)
+                    tmp2.flush()
+                    pdf.image(tmp2.name, x=110, y=y_sig + 6, w=80, h=30)
+                    os.unlink(tmp2.name)
+        except Exception as e:
+            print(f"Fehler beim Einfügen der Unterschriften: {e}")
+    
+    # PDF speichern
+    uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
+    if not os.path.exists(uploads_dir):
+        os.makedirs(uploads_dir)
+    
+    timestamp = time.strftime('%Y%m%d_%H%M%S')
+    pdf_filename = f"multi_loan_{len(assets)}assets_{timestamp}.pdf"
+    pdf_path = os.path.join(uploads_dir, pdf_filename)
+    pdf.output(pdf_path)
+    
+    # PDF-Infos in ersten Loan speichern
+    if loans:
+        loans[0].pdf_filename = pdf_filename
+        loans[0].pdf_path = pdf_path
+    
+    # Als Dokument bei allen Assets speichern
+    for asset in assets:
+        document = Document(
+            title=f"Sammelausleihe ({len(assets)} Assets) - {borrower_name}",
+            document_type="loan",
+            filename=pdf_filename,
+            file_path=pdf_path,
+            mime_type="application/pdf",
+            size=os.path.getsize(pdf_path),
+            notes=f"Sammelausleihe vom {start_date.strftime('%d.%m.%Y')} mit {len(assets)} Assets",
+            asset_id=asset.id
+        )
+        db.session.add(document)
+    
+    db.session.commit()
+    
+    return pdf_filename
+
+
+def generate_loan_pdf(loan, asset):
+    """Generiert PDF für Ausleihprotokoll und speichert es als Dokument"""
+    from fpdf import FPDF
+    import tempfile, os, time
+    from PIL import Image
+    
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Titel
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 10, f'Übergabeprotokoll für Arbeitsmittel an {loan.borrower_name}', ln=1, align='C')
+    pdf.ln(5)
+    
+    # § 1
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 7, '§ 1 Die Firma stellt dem Arbeitnehmer das im Folgenden näher bezeichnete Arbeitsmittel zur Verfügung.')
+    pdf.ln(3)
+    
+    # Asset-Informationen
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(60, 7, 'Typenbezeichnung:', border=1)
+    pdf.set_font('Arial', '', 11)
+    pdf.cell(0, 7, asset.name or '-', border=1, ln=1)
+    
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(60, 7, 'Seriennummer:', border=1)
+    pdf.set_font('Arial', '', 11)
+    pdf.cell(0, 7, asset.serial_number or '-', border=1, ln=1)
+    
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(60, 7, 'Hersteller:', border=1)
+    pdf.set_font('Arial', '', 11)
+    hersteller = ', '.join([m.name for m in asset.manufacturers]) if asset.manufacturers else '-'
+    pdf.cell(0, 7, hersteller, border=1, ln=1)
+    
+    if loan.notes:
+        pdf.set_font('Arial', 'B', 11)
+        pdf.cell(60, 7, 'Zubehör/Notizen:', border=1)
+        pdf.set_font('Arial', '', 11)
+        pdf.cell(0, 7, loan.notes[:50], border=1, ln=1)
+    
+    pdf.ln(5)
+    
+    # Ausleih-Informationen
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(0, 7, 'Ausleihdetails:', ln=1)
+    pdf.set_font('Arial', '', 10)
+    pdf.cell(0, 6, f'Ausgeliehen von: {loan.start_date.strftime("%d.%m.%Y")}', ln=1)
+    if loan.expected_return_date:
+        pdf.cell(0, 6, f'Geplante Rückgabe: {loan.expected_return_date.strftime("%d.%m.%Y")}', ln=1)
+    pdf.ln(5)
+    
+    # Unterschriften
+    y_sig = pdf.get_y()
+    
+    # Unterschrift Mitarbeiter
+    if loan.signature:
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(90, 6, 'Unterschrift Mitarbeiter:', ln=0)
+        pdf.cell(0, 6, 'Unterschrift Arbeitgeber:', ln=1)
+        
+        # Signature als Base64-Bild einfügen
+        import base64
+        try:
+            # Mitarbeiter-Unterschrift
+            sig_data = loan.signature.split(',')[1] if ',' in loan.signature else loan.signature
+            sig_bytes = base64.b64decode(sig_data)
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+                tmp.write(sig_bytes)
+                tmp.flush()
+                pdf.image(tmp.name, x=10, y=pdf.get_y(), w=80, h=30)
+                os.unlink(tmp.name)
+            
+            # Arbeitgeber-Unterschrift
+            if loan.signature_employer:
+                sig_emp_data = loan.signature_employer.split(',')[1] if ',' in loan.signature_employer else loan.signature_employer
+                sig_emp_bytes = base64.b64decode(sig_emp_data)
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp2:
+                    tmp2.write(sig_emp_bytes)
+                    tmp2.flush()
+                    pdf.image(tmp2.name, x=110, y=y_sig + 6, w=80, h=30)
+                    os.unlink(tmp2.name)
+        except Exception as e:
+            print(f"Fehler beim Einfügen der Unterschriften: {e}")
+    
+    # PDF speichern
+    uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
+    if not os.path.exists(uploads_dir):
+        os.makedirs(uploads_dir)
+    
+    timestamp = time.strftime('%Y%m%d_%H%M%S')
+    pdf_filename = f"loan_{loan.id}_asset_{asset.id}_{timestamp}.pdf"
+    pdf_path = os.path.join(uploads_dir, pdf_filename)
+    pdf.output(pdf_path)
+    
+    # Loan-Daten aktualisieren
+    loan.pdf_filename = pdf_filename
+    loan.pdf_path = pdf_path
+    
+    # Als Dokument speichern
+    from mimetypes import guess_type
+    document = Document(
+        title=f"Übergabeprotokoll {asset.name} - {loan.borrower_name}",
+        document_type="loan",
+        filename=pdf_filename,
+        file_path=pdf_path,
+        mime_type="application/pdf",
+        size=os.path.getsize(pdf_path),
+        notes=f"Automatisch generiertes Ausleihprotokoll vom {loan.start_date.strftime('%d.%m.%Y')}",
+        asset_id=asset.id
+    )
+    db.session.add(document)
+    db.session.commit()
+    
+    return pdf_filename
+
+
 @main.route('/loan_asset/<int:id>', methods=['GET', 'POST'])
 def loan_asset(id):
     """Asset ausleihen"""
+    from datetime import datetime
     asset = Asset.query.get_or_404(id)
     
     if asset.on_loan:
+        if request.method == 'POST':
+            return jsonify({'success': False, 'message': 'Asset ist bereits ausgeliehen'}), 400
         flash('Dieses Asset ist bereits ausgeliehen.', 'error')
         return redirect(url_for('main.assets'))
     
+    # AJAX-Request (vom MD3-Modal)
+    if request.method == 'POST' and request.form.get('asset_id'):
+        try:
+            # Daten direkt aus request.form
+            borrower_name = request.form.get('borrower_name', '').strip()
+            start_date_str = request.form.get('start_date', '')
+            expected_return_date_str = request.form.get('expected_return_date', '')
+            notes = request.form.get('notes', '').strip()
+            signature = request.form.get('signature', '')
+            signature_employer = request.form.get('signature_employer', '')
+            
+            if not borrower_name:
+                return jsonify({'success': False, 'message': 'Name ist erforderlich'}), 400
+            
+            # Datums-Konvertierung
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else datetime.now().date()
+            expected_return_date = datetime.strptime(expected_return_date_str, '%Y-%m-%d').date() if expected_return_date_str else None
+            
+            loan = Loan(
+                asset_id=asset.id,
+                borrower_name=borrower_name,
+                start_date=start_date,
+                expected_return_date=expected_return_date,
+                notes=notes if notes else None,
+                signature=signature if signature else None,
+                signature_employer=signature_employer if signature_employer else None
+            )
+            asset.status = 'on_loan'
+            db.session.add(loan)
+            db.session.commit()
+            
+            # PDF generieren und als Dokument speichern
+            try:
+                pdf_filename = generate_loan_pdf(loan, asset)
+                print(f"PDF erfolgreich erstellt: {pdf_filename}")
+            except Exception as pdf_error:
+                print(f"Fehler bei PDF-Generierung: {pdf_error}")
+                # Fehler bei PDF nicht zum Abbruch führen
+            
+            return jsonify({'success': True, 'message': 'Asset erfolgreich ausgeliehen', 'loan_id': loan.id, 'pdf': loan.pdf_filename})
+        except Exception as e:
+            db.session.rollback()
+            print(f"Fehler beim Ausleihen: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'success': False, 'message': f'Fehler: {str(e)}'}), 500
+    
+    # Normale Form-Validierung (alter Weg)
     form = LoanForm()
     if form.validate_on_submit():
         loan = Loan(
@@ -1588,21 +2421,39 @@ def loan_asset(id):
 @main.route('/return_asset/<int:id>', methods=['POST'])
 def return_asset(id):
     """Asset zurückgeben"""
+    from datetime import datetime
     asset = Asset.query.get_or_404(id)
     
-    if not asset.on_loan:
-        flash('Dieses Asset ist nicht ausgeliehen.', 'error')
-        return redirect(url_for('main.assets'))
+    # AJAX-Request prüfen
+    is_ajax = request.headers.get('Content-Type') == 'application/x-www-form-urlencoded' or request.is_json
     
-    # Finde das aktuelle Ausleih-Objekt
-    loan = Loan.query.filter_by(asset_id=id, return_date=None).first()
+    if not asset.on_loan and asset.status != 'on_loan':
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Asset ist nicht ausgeliehen'}), 400
+        flash('Dieses Asset ist nicht ausgeliehen.', 'error')
+        return redirect(url_for('md3_assets'))
+    
+    # Finde das aktuelle Ausleih-Objekt (nutze actual_return_date)
+    loan = Loan.query.filter_by(asset_id=id, actual_return_date=None).first()
+    if not loan:
+        # Fallback: Versuche mit return_date (Legacy)
+        loan = Loan.query.filter_by(asset_id=id, return_date=None).first()
+    
     if loan:
-        loan.return_date = datetime.utcnow()
+        loan.actual_return_date = datetime.now().date()
+        loan.return_date = datetime.now().date()  # Legacy-Feld auch setzen
         asset.status = 'active'
         db.session.commit()
+        
+        if is_ajax:
+            return jsonify({'success': True, 'message': 'Asset erfolgreich zurückgegeben'})
         flash('Asset wurde erfolgreich zurückgegeben.', 'success')
+    else:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Keine aktive Ausleihe gefunden'}), 404
+        flash('Keine aktive Ausleihe gefunden.', 'error')
     
-    return redirect(url_for('main.assets'))
+    return redirect(url_for('md3_assets'))
 
 @main.route('/upload_document/<int:id>', methods=['POST'])
 def upload_document(id):
@@ -1887,6 +2738,77 @@ def asset_costs(id):
         cost_entries=cost_entries
     )
 
+@main.route('/costs/<int:asset_id>')
+def cost_management(asset_id):
+    """MD3 Kostenverwaltung für ein Asset"""
+    asset = Asset.query.get_or_404(asset_id)
+    
+    from datetime import datetime
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    return render_template(
+        'md3/costs/cost_management.html',
+        asset=asset,
+        today=today,
+        page_title=f'Kostenverwaltung - {asset.name}'
+    )
+
+@main.route('/costs/<int:asset_id>', methods=['POST'])
+def cost_entry(asset_id):
+    """Verarbeitet Kosteneintrag-Aktionen (Hinzufügen/Löschen)"""
+    # CSRF Token validieren
+    from flask_wtf.csrf import validate_csrf
+    from wtforms import ValidationError
+    try:
+        validate_csrf(request.form.get('csrf_token'))
+    except ValidationError:
+        flash('CSRF-Token ungültig. Bitte versuchen Sie es erneut.', 'error')
+        return redirect(url_for('main.cost_management', asset_id=asset_id))
+    
+    asset = Asset.query.get_or_404(asset_id)
+    action = request.form.get('action')
+    
+    if action == 'add':
+        # Neuen Kosteneintrag hinzufügen
+        try:
+            from datetime import datetime
+            
+            cost_entry = CostEntry(
+                asset_id=asset_id,
+                cost_type=request.form.get('cost_type'),
+                amount=float(request.form.get('amount')),
+                date=datetime.strptime(request.form.get('date'), '%Y-%m-%d').date(),
+                description=request.form.get('description', '')
+            )
+            
+            db.session.add(cost_entry)
+            db.session.commit()
+            flash('Kosteneintrag wurde erfolgreich hinzugefügt', 'success')
+            
+        except ValueError as e:
+            flash('Ungültige Eingabe. Bitte prüfen Sie Ihre Daten.', 'error')
+        except Exception as e:
+            db.session.rollback()
+            flash('Fehler beim Hinzufügen des Kosteneintrags', 'error')
+    
+    elif action == 'delete':
+        # Kosteneintrag löschen
+        entry_id = request.form.get('entry_id')
+        if entry_id:
+            try:
+                cost_entry = CostEntry.query.get_or_404(int(entry_id))
+                if cost_entry.asset_id == asset_id:
+                    db.session.delete(cost_entry)
+                    db.session.commit()
+                    flash('Kosteneintrag wurde erfolgreich gelöscht', 'success')
+                else:
+                    flash('Kosteneintrag gehört nicht zu diesem Asset', 'error')
+            except Exception as e:
+                db.session.rollback()
+                flash('Fehler beim Löschen des Kosteneintrags', 'error')
+    
+    return redirect(url_for('main.cost_management', asset_id=asset_id))
+
 @main.route('/assets/<int:id>/costs/add', methods=['POST'])
 def add_cost_entry(id):
     """Fügt einen neuen Kosteneintrag hinzu"""
@@ -1952,22 +2874,35 @@ def download_receipt(id):
         download_name=f"Beleg_{cost_entry.date.strftime('%Y%m%d')}_{cost_entry.cost_type}{os.path.splitext(cost_entry.receipt_file)[1]}"
     )
 
-@main.route('/assets/<int:id>')
-def asset_details(id):
-    asset = Asset.query.get_or_404(id)
-    
-    # Aktive/geplante Inventur-Session für dieses Asset suchen
-    from app.models import InventorySession, InventoryItem
-    active_inventory = (
-        InventorySession.query
-        .filter(InventorySession.status.in_(['active', 'planned']))
-        .join(InventoryItem)
-        .filter(InventoryItem.asset_id == asset.id)
-        .order_by(InventorySession.start_date.desc())
-        .first()
-    )
-    documents = Document.query.filter_by(asset_id=id).all()
-    return render_template('asset_details.html', asset=asset, documents=documents, active_inventory=active_inventory)
+@main.route('/assets/<int:id>', methods=['GET', 'DELETE'])
+@login_required
+def asset_details_or_delete(id):
+    if request.method == 'DELETE':
+        # Asset löschen
+        asset = Asset.query.get_or_404(id)
+        try:
+            db.session.delete(asset)
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Asset erfolgreich gelöscht'}), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 500
+    else:
+        # Asset details anzeigen (GET)
+        asset = Asset.query.get_or_404(id)
+        
+        # Aktive/geplante Inventur-Session für dieses Asset suchen
+        from app.models import InventorySession, InventoryItem
+        active_inventory = (
+            InventorySession.query
+            .filter(InventorySession.status.in_(['active', 'planned']))
+            .join(InventoryItem)
+            .filter(InventoryItem.asset_id == asset.id)
+            .order_by(InventorySession.start_date.desc())
+            .first()
+        )
+        documents = Document.query.filter_by(asset_id=id).all()
+        return render_template('asset_details.html', asset=asset, documents=documents, active_inventory=active_inventory)
 
 
 @main.route('/inventory/planning', methods=['GET'])
@@ -2032,6 +2967,33 @@ def inventory_planning_new(location_id=None):
             db.session.add(item)
         
         db.session.commit()
+        
+        # KALENDER-EVENT für Inventur erstellen
+        from app.models import CalendarEvent, EVENT_TYPE_INVENTORY, EVENT_STATUS_PLANNED
+        from flask_login import current_user
+        
+        # Standort-Name für Beschreibung
+        location_name = session.location.name if session.location else 'Kein Standort'
+        event_title = f"Inventur: {session.name}"
+        event_description = f"Inventur am Standort: {location_name}\nStatus: Geplant"
+        
+        if session.notes:
+            event_description += f"\n\nNotizen:\n{session.notes}"
+        
+        calendar_event = CalendarEvent(
+            title=event_title,
+            description=event_description,
+            start_datetime=session.start_date,
+            end_datetime=session.end_date,
+            event_type=EVENT_TYPE_INVENTORY,
+            status=EVENT_STATUS_PLANNED,
+            inventory_session_id=session.id,
+            created_by_id=current_user.id if current_user.is_authenticated else None
+        )
+        db.session.add(calendar_event)
+        db.session.commit()
+        print(f"DEBUG: Kalender-Event #{calendar_event.id} für Inventurplanung #{session.id} erstellt")
+        
         flash('Inventur wurde erfolgreich geplant.', 'success')
         return redirect(url_for('main.inventory_planning_detail', id=session.id))
     
@@ -2119,7 +3081,12 @@ def inventory_planning_detail(id):
         location = request.form.get('location')
         if location:
             # Alle Assets am ausgewählten Standort zur Inventur hinzufügen
-            assets = Asset.query.filter_by(location=location).all()
+            # FIXED: Verwende location_id statt location field für korrekte Filterung
+            location_obj = Location.query.filter_by(name=location).first()
+            if location_obj:
+                assets = Asset.query.filter_by(location_id=location_obj.id).all()
+            else:
+                assets = []
             for asset in assets:
                 # Prüfen ob das Asset bereits in der Inventur ist
                 if not InventoryItem.query.filter_by(session_id=id, asset_id=asset.id).first():
@@ -2711,9 +3678,9 @@ def inventory_report_detail(id):
             "serial_number": item.asset.serial_number,
             "article_number": item.asset.article_number,
             "location": {
-                "id": item.asset.location.id if item.asset.location else None,
-                "name": item.asset.location.name if item.asset.location else None
-            } if item.asset.location else None
+                "id": item.asset.location_obj.id if item.asset.location_obj else None,
+                "name": item.asset.location_obj.name if item.asset.location_obj else None
+            } if item.asset.location_obj else None
         }
         
         # Erstelle ein serialisierbares Dictionary für das Inventur-Item
@@ -3119,11 +4086,53 @@ def api_dashboard_cost_distribution():
             cost_type_labels.append(cost_type)
             cost_amounts.append(float(total_cost))  # Decimal zu float für JSON
     
-    # Chart-Daten zurückgeben
+    # Chart-Daten zurückgeben (auch wenn leer)
     return jsonify({
         'cost_distribution': {
             'labels': cost_type_labels,
             'data': cost_amounts
+        }
+    })
+
+@main.route('/api/dashboard/value-development', methods=['GET'])
+def api_dashboard_value_development():
+    """API-Endpunkt für Wertentwicklung"""
+    from .models import Asset
+    from sqlalchemy import func, extract
+    from datetime import datetime, timedelta
+    import calendar
+    
+    # Prüfe, ob Assets existieren
+    asset_count = Asset.query.count()
+    if asset_count == 0:
+        return jsonify({
+            'value_development': {
+                'labels': [],
+                'data': []
+            }
+        })
+    
+    # Wertentwicklung über die letzten 12 Monate berechnen
+    today = datetime.now()
+    months = []
+    values = []
+    
+    for i in range(12):
+        month_date = today - timedelta(days=30*i)
+        month_name = calendar.month_name[month_date.month][:3]
+        months.insert(0, month_name)
+        
+        # Gesamtwert der Assets zu diesem Zeitpunkt
+        total_value = db.session.query(func.sum(Asset.value)).filter(
+            Asset.created_at <= month_date
+        ).scalar() or 0
+        
+        values.insert(0, float(total_value))
+    
+    return jsonify({
+        'value_development': {
+            'labels': months,
+            'data': values
         }
     })
 
@@ -3216,3 +4225,201 @@ def md3_location_import():
     
     # GET-Request: Zeige Import-Seite
     return render_template('md3/layouts/location_import.html')
+
+
+@main.route('/locations/tenders')
+@login_required
+def location_tenders():
+    """Standortausschreibung - Übersicht über ausschreibungsrelevante Standorte"""
+    from app.models import Location, Asset
+    from sqlalchemy import func
+    
+    # Lade alle Standorte mit Asset-Anzahl
+    locations = db.session.query(
+        Location,
+        func.count(Asset.id).label('asset_count')
+    ).outerjoin(Asset, Asset.location_id == Location.id)\
+     .group_by(Location.id)\
+     .order_by(Location.name).all()
+    
+    return render_template('md3/layouts/location_tenders.html', locations=locations)
+
+
+@main.route('/md3/loans')
+@login_required
+def md3_loans_overview():
+    """MD3 Ausleih-Übersicht - Aktive Ausleihen"""
+    from app.models import Loan, Asset
+    from datetime import datetime
+    
+    # Aktive Ausleihen (ohne actual_return_date)
+    active_loans = Loan.query.filter(Loan.actual_return_date.is_(None))\
+                             .order_by(Loan.expected_return_date).all()
+    
+    # Als date-Objekt für Vergleich mit expected_return_date (date)
+    now = datetime.now().date()
+    
+    return render_template('md3/loans/overview.html', 
+                         active_loans=active_loans,
+                         now=now)
+
+
+@main.route('/md3/loans/history')
+@login_required
+def md3_loans_history():
+    """MD3 Ausleih-Historie - Zurückgegebene Ausleihen"""
+    from app.models import Loan
+    
+    # Ausleihhistorie (mit actual_return_date)
+    loan_history = Loan.query.filter(Loan.actual_return_date.isnot(None))\
+                             .order_by(Loan.actual_return_date.desc()).all()
+    
+    return render_template('md3/loans/history.html', 
+                         loan_history=loan_history)
+
+
+@main.route('/md3/loans/multi')
+@login_required
+def md3_multi_loan():
+    """MD3 Sammelausleihe - Mehrere Assets auf einmal ausleihen"""
+    from app.models import Asset
+    
+    # Alle aktiven Assets für Auswahl
+    assets = Asset.query.filter_by(status='active').order_by(Asset.name).all()
+    
+    return render_template('md3/loans/multi_loan.html', assets=assets)
+
+
+@main.route('/multi_loan', methods=['POST'])
+@login_required
+def process_multi_loan():
+    """Verarbeitet Sammelausleihe für mehrere Assets"""
+    from datetime import datetime
+    from app.models import Asset, Loan, Document
+    import time
+    
+    try:
+        # Formulardaten
+        asset_ids_str = request.form.get('asset_ids', '')
+        borrower_name = request.form.get('borrower_name', '').strip()
+        start_date_str = request.form.get('start_date', '')
+        expected_return_date_str = request.form.get('expected_return_date', '')
+        notes = request.form.get('notes', '').strip()
+        signature = request.form.get('signature', '')
+        signature_employer = request.form.get('signature_employer', '')
+        
+        # Validierung
+        if not asset_ids_str or not borrower_name:
+            return jsonify({'success': False, 'message': 'Asset-IDs und Name sind erforderlich'}), 400
+        
+        # Asset-IDs parsen
+        asset_ids = [int(id.strip()) for id in asset_ids_str.split(',') if id.strip()]
+        if not asset_ids:
+            return jsonify({'success': False, 'message': 'Keine Assets ausgewählt'}), 400
+        
+        # Datums-Konvertierung
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else datetime.now().date()
+        expected_return_date = datetime.strptime(expected_return_date_str, '%Y-%m-%d').date() if expected_return_date_str else None
+        
+        # Assets laden und prüfen
+        assets = Asset.query.filter(Asset.id.in_(asset_ids)).all()
+        if len(assets) != len(asset_ids):
+            return jsonify({'success': False, 'message': 'Einige Assets wurden nicht gefunden'}), 404
+        
+        # Prüfen ob alle Assets verfügbar sind
+        for asset in assets:
+            if asset.status != 'active':
+                return jsonify({'success': False, 'message': f'Asset "{asset.name}" ist nicht verfügbar'}), 400
+        
+        # Loans erstellen für jedes Asset
+        created_loans = []
+        for asset in assets:
+            loan = Loan(
+                asset_id=asset.id,
+                borrower_name=borrower_name,
+                start_date=start_date,
+                expected_return_date=expected_return_date,
+                notes=notes if notes else None,
+                signature=signature if signature else None,
+                signature_employer=signature_employer if signature_employer else None
+            )
+            asset.status = 'on_loan'
+            db.session.add(loan)
+            created_loans.append(loan)
+        
+        db.session.commit()
+        
+        # PDF für Sammelausleihe generieren
+        try:
+            pdf_filename = generate_multi_loan_pdf(created_loans, assets, borrower_name, start_date, expected_return_date, notes, signature, signature_employer)
+            print(f"Multi-Loan PDF erfolgreich erstellt: {pdf_filename}")
+        except Exception as pdf_error:
+            print(f"Fehler bei PDF-Generierung: {pdf_error}")
+            import traceback
+            traceback.print_exc()
+        
+        return jsonify({
+            'success': True,
+            'message': f'{len(assets)} Assets erfolgreich ausgeliehen',
+            'count': len(assets)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Fehler bei Sammelausleihe: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Fehler: {str(e)}'}), 500
+
+
+@main.route('/md3/assets/<int:id>/documents')
+@login_required
+def md3_asset_documents(id):
+    """MD3 Dokumenten-Übersicht für ein Asset"""
+    asset = Asset.query.get_or_404(id)
+    documents = Document.query.filter_by(asset_id=id).order_by(Document.created_at.desc()).all()
+    
+    return render_template('md3/assets/documents.html', asset=asset, documents=documents)
+
+
+@main.route('/documents/<int:id>/download')
+@login_required
+def md3_download_document(id):
+    """Dokument herunterladen (MD3)"""
+    from flask import send_file
+    import os
+    
+    document = Document.query.get_or_404(id)
+    
+    # Prüfe ob Datei existiert
+    if not document.file_path or not os.path.exists(document.file_path):
+        flash('Dokument-Datei nicht gefunden.', 'error')
+        return redirect(request.referrer or url_for('md3_assets'))
+    
+    return send_file(
+        document.file_path,
+        as_attachment=True,
+        download_name=document.filename or 'document.pdf',
+        mimetype=document.mime_type or 'application/pdf'
+    )
+
+
+@main.route('/documents/<int:id>/view')
+@login_required
+def md3_view_document(id):
+    """Dokument im Browser anzeigen (MD3)"""
+    from flask import send_file
+    import os
+    
+    document = Document.query.get_or_404(id)
+    
+    # Prüfe ob Datei existiert
+    if not document.file_path or not os.path.exists(document.file_path):
+        flash('Dokument-Datei nicht gefunden.', 'error')
+        return redirect(request.referrer or url_for('md3_assets'))
+    
+    return send_file(
+        document.file_path,
+        as_attachment=False,
+        mimetype=document.mime_type or 'application/pdf'
+    )

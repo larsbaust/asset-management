@@ -274,6 +274,7 @@
     </h2>
     
     <form method="post" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       
       <div class="md3-form-field">
         <label class="md3-form-label">CSV-Datei</label>

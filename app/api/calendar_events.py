@@ -17,7 +17,7 @@ import calendar
 bp = Blueprint('calendar_events', __name__, url_prefix='/calendar')
 
 
-@bp.route('/calendar/events', methods=['GET'])
+@bp.route('/events', methods=['GET'])
 # @token_auth.login_required  # TODO: Authentifizierung wieder aktivieren
 def get_events():
     """
@@ -50,7 +50,7 @@ def get_events():
     })
 
 
-@bp.route('/calendar/events', methods=['POST'])
+@bp.route('/events', methods=['POST'])
 # @token_auth.login_required  # TODO: Authentifizierung wieder aktivieren
 def create_event():
     """Neuen Event erstellen"""
@@ -111,7 +111,7 @@ def create_event():
     return jsonify(format_event(event)), 201
 
 
-@bp.route('/calendar/events/<int:id>', methods=['GET'])
+@bp.route('/events/<int:id>', methods=['GET'])
 # @token_auth.login_required  # TODO: Authentifizierung wieder aktivieren
 def get_event(id):
     """Details für einen bestimmten Event abrufen"""
@@ -119,7 +119,7 @@ def get_event(id):
     return jsonify(format_event(event))
 
 
-@bp.route('/calendar/events/<int:id>', methods=['PUT'])
+@bp.route('/events/<int:id>', methods=['PUT'])
 # @token_auth.login_required  # TODO: Authentifizierung wieder aktivieren
 def update_event(id):
     """Event aktualisieren"""
@@ -187,7 +187,7 @@ def update_event(id):
     return jsonify(format_event(event))
 
 
-@bp.route('/calendar/events/<int:id>', methods=['DELETE'])
+@bp.route('/events/<int:id>', methods=['DELETE'])
 # @token_auth.login_required  # TODO: Authentifizierung wieder aktivieren
 def delete_event(id):
     """Event löschen"""
@@ -203,7 +203,7 @@ def delete_event(id):
     return '', 204
 
 
-@bp.route('/calendar/pending-reminders', methods=['GET'])
+@bp.route('/pending-reminders', methods=['GET'])
 # @token_auth.login_required  # TODO: Authentifizierung wieder aktivieren
 def get_pending_reminders():
     """Ausstehende Erinnerungen für den aktuellen Benutzer abrufen"""
@@ -233,7 +233,7 @@ def get_pending_reminders():
     return jsonify({'reminders': formatted_reminders})
 
 
-@bp.route('/calendar/reminders/<int:id>/read', methods=['POST'])
+@bp.route('/reminders/<int:id>/read', methods=['POST'])
 # @token_auth.login_required  # TODO: Authentifizierung wieder aktivieren
 def mark_reminder_as_read(id):
     """Erinnerung als gelesen markieren"""
@@ -264,15 +264,15 @@ def format_event(event):
     # Optionale Felder hinzufügen, falls vorhanden
     if event.end_datetime:
         formatted['end_datetime'] = event.end_datetime.isoformat()
-    if event.all_day:
+    if hasattr(event, 'all_day') and event.all_day:
         formatted['all_day'] = event.all_day
-    if event.location:
+    if hasattr(event, 'location') and event.location:
         formatted['location'] = event.location
-    if event.color_token:
+    if hasattr(event, 'color_token') and event.color_token:
         formatted['color_token'] = event.color_token
     if event.order_id:
         formatted['order_id'] = event.order_id
-    if event.inventory_planning_id:
+    if hasattr(event, 'inventory_planning_id') and event.inventory_planning_id:
         formatted['inventory_planning_id'] = event.inventory_planning_id
     
     # Erinnerungen hinzufügen

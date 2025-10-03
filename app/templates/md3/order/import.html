@@ -1,4 +1,4 @@
-{% extends "md3/base.html" %}
+{% extends "base.html" %}
 {% block title %}CSV-Import (Bestellungen){% endblock %}
 
 {% block content %}
@@ -25,6 +25,7 @@
     <!-- Upload Card -->
     <div class="md3-card md3-card-padded">
       <form id="csv-upload-form" enctype="multipart/form-data" method="POST" action="{{ url_for('md3_order.import_csv') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="md3-form-grid">
           <label class="md3-field">
             <span class="md3-field-label">CSV-Datei</span>
@@ -46,6 +47,7 @@
     <div class="md3-card md3-card-padded" style="margin-top:16px;">
       <h3 class="md3-card-title">Spaltenzuordnung</h3>
       <form id="csv-mapping-form" method="POST" action="{{ url_for('md3_order.import_csv') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="md3-table-wrapper">
           <table class="md3-table">
             <thead>

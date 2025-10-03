@@ -29,19 +29,19 @@ class Message(db.Model):
 
 # Zuordnungs-Tabelle für Assets und Assignments (n:m)
 asset_assignments = db.Table('asset_assignments',
-    db.Column('asset_id', db.Integer, db.ForeignKey('asset.id'), primary_key=True),
+    db.Column('asset_id', db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), primary_key=True),
     db.Column('assignment_id', db.Integer, db.ForeignKey('assignment.id'), primary_key=True)
 )
 
 # Zuordnungs-Tabelle für Assets und Manufacturers (n:m)
 asset_manufacturers = db.Table('asset_manufacturers',
-    db.Column('asset_id', db.Integer, db.ForeignKey('asset.id'), primary_key=True),
+    db.Column('asset_id', db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), primary_key=True),
     db.Column('manufacturer_id', db.Integer, db.ForeignKey('manufacturer.id'), primary_key=True)
 )
 
 # Zuordnungs-Tabelle für Assets und Suppliers (n:m)
 asset_suppliers = db.Table('asset_suppliers',
-    db.Column('asset_id', db.Integer, db.ForeignKey('asset.id'), primary_key=True),
+    db.Column('asset_id', db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), primary_key=True),
     db.Column('supplier_id', db.Integer, db.ForeignKey('supplier.id'), primary_key=True)
 )
 
@@ -136,7 +136,7 @@ Order.comments = db.relationship('OrderComment', back_populates='order', lazy='d
 class OrderItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     asset = db.relationship('Asset')
     serial_number = db.Column(db.String(100), nullable=True)  # Serial Number (optional)
@@ -297,7 +297,7 @@ class User(UserMixin, db.Model):
 
 class Maintenance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), nullable=False)
     type = db.Column(db.String(50), nullable=False)  # scheduled, repair, inspection
     description = db.Column(db.Text, nullable=False)
     scheduled_date = db.Column(db.DateTime, nullable=True)
@@ -310,7 +310,7 @@ class Maintenance(db.Model):
 
 class Document(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), nullable=False)
     title = db.Column(db.String(100), nullable=False)
     document_type = db.Column(db.String(50), nullable=False)
     filename = db.Column(db.String(255), nullable=False)
@@ -356,13 +356,21 @@ class Document(db.Model):
 class Loan(db.Model):
     """Modell für ausgeliehene Assets"""
     id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), nullable=False)
     borrower_name = db.Column(db.String(100), nullable=False)
     start_date = db.Column(db.Date, nullable=False)
     expected_return_date = db.Column(db.Date, nullable=True)
-    return_date = db.Column(db.Date)
+    actual_return_date = db.Column(db.Date)  # Umbenennung von return_date für Konsistenz
+    return_date = db.Column(db.Date)  # Legacy-Feld beibehalten
     notes = db.Column(db.Text)
+    signature = db.Column(db.Text)  # Base64 PNG - Unterschrift Mitarbeiter
+    signature_employer = db.Column(db.Text)  # Base64 PNG - Unterschrift Arbeitgeber
+    pdf_filename = db.Column(db.String(255))  # PDF-Dateiname
+    pdf_path = db.Column(db.String(255))  # PDF-Pfad
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship zu Asset (overlaps mit Asset.loans und Loan.asset)
+    loaned_asset = db.relationship('Asset', foreign_keys=[asset_id], overlaps="asset,loans")
 
     def __repr__(self):
         return f'<Loan {self.asset_id} - {self.borrower_name}>'
@@ -370,7 +378,7 @@ class Loan(db.Model):
 class CostEntry(db.Model):
     """Modell für Kosteneintrag eines Assets"""
     id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), nullable=False)
     date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     cost_type = db.Column(db.String(50), nullable=False)  # Anschaffung, Wartung, Reparatur, etc.
     amount = db.Column(db.Float, nullable=False)
@@ -411,7 +419,7 @@ class InventorySession(db.Model):
     notes = db.Column(db.Text)
     
     # MISSING ATTRIBUTES - ADD THESE FOR COMPATIBILITY
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     completed_at = db.Column(db.DateTime, nullable=True)  # When inventory was completed
@@ -419,8 +427,8 @@ class InventorySession(db.Model):
     # Beziehungen
     items = db.relationship('InventoryItem', back_populates='session', cascade='all, delete-orphan')
     team = db.relationship('InventoryTeam', back_populates='session', uselist=False)
-    location_obj = db.relationship('Location')  # Relationship für Standort
-    creator = db.relationship('User', backref='created_inventory_sessions')
+    location = db.relationship('Location', foreign_keys=[location_id])  # Relationship für Standort
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id], backref='created_inventory_sessions')
 
     def __repr__(self):
         return f'<InventorySession {self.name}>'
@@ -464,7 +472,7 @@ class MultiLoan(db.Model):
 class MultiLoanAsset(db.Model):
     __tablename__ = 'multi_loan_asset'
     multi_loan_id = db.Column(db.Integer, db.ForeignKey('multi_loan.id'), primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), primary_key=True)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), primary_key=True)
 
 
 class AssetLog(db.Model):
@@ -473,13 +481,13 @@ class AssetLog(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     username = db.Column(db.String(80), nullable=False)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), nullable=False)
     action = db.Column(db.String(30), nullable=False)  # z.B. 'archiviert', 'wiederhergestellt', 'gelöscht', 'angelegt', 'bearbeitet'
     details = db.Column(db.Text)  # z.B. Änderungen als JSON/Text
     ip_address = db.Column(db.String(45))
 
     user = db.relationship('User', backref='asset_logs')
-    asset = db.relationship('Asset', backref='logs')
+    asset = db.relationship('Asset', backref=db.backref('logs', cascade='all, delete-orphan'))
 
     def __repr__(self):
         return f'<AssetLog {self.action} by {self.username} on asset {self.asset_id}>'
@@ -489,7 +497,7 @@ class InventoryItem(db.Model):
     """Ein Item in einer Inventur"""
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.Integer, db.ForeignKey('inventory_planning.id'), nullable=False)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), nullable=False)
     
     # Status und Mengen
     status = db.Column(db.String(20), default='pending')  # pending, found, missing, damaged
@@ -547,6 +555,7 @@ class Location(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     assets = db.relationship('Asset', backref='location_obj', lazy=True)
     images = db.relationship('LocationImage', backref='location', lazy=True, cascade='all, delete-orphan')
+    floorplans = db.relationship('LocationFloorplan', backref='location', lazy=True, cascade='all, delete-orphan')
 
     def __repr__(self):
         return f'<Location {self.name}>'
@@ -563,6 +572,92 @@ class LocationImage(db.Model):
 
     def __repr__(self):
         return f'<LocationImage {self.id}>'
+
+
+class LocationFloorplan(db.Model):
+    """Meta-Informationen zu Grundriss-Sammlungen pro Standort."""
+    id = db.Column(db.Integer, primary_key=True)
+    location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=False)
+    name = db.Column(db.String(150), nullable=False)
+    description = db.Column(db.Text)
+    is_archived = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    revisions = db.relationship(
+        'LocationFloorplanRevision',
+        backref='floorplan',
+        order_by='LocationFloorplanRevision.version_number',
+        lazy=True,
+        cascade='all, delete-orphan'
+    )
+
+    def __repr__(self):
+        return f'<LocationFloorplan {self.name} (Location {self.location_id})>'
+
+
+class LocationFloorplanRevision(db.Model):
+    """Konkrete Version eines Grundrisses (Bild/PDF + Maßstab)."""
+    id = db.Column(db.Integer, primary_key=True)
+    floorplan_id = db.Column(db.Integer, db.ForeignKey('location_floorplan.id'), nullable=False)
+    version_number = db.Column(db.Integer, nullable=False, default=1)
+    filename = db.Column(db.String(255), nullable=False)
+    preview_filename = db.Column(db.String(255))
+    mimetype = db.Column(db.String(120), nullable=False)
+    scale_line_length_px = db.Column(db.Float)
+    scale_real_length_cm = db.Column(db.Float)
+    metadata_json = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    assets = db.relationship(
+        'LocationFloorplanAsset',
+        backref='revision',
+        lazy=True,
+        cascade='all, delete-orphan'
+    )
+    autosaves = db.relationship(
+        'LocationFloorplanAutosave',
+        backref='revision',
+        lazy=True,
+        cascade='all, delete-orphan'
+    )
+
+    def __repr__(self):
+        return f'<LocationFloorplanRevision {self.id} v{self.version_number}>'
+
+
+class LocationFloorplanAsset(db.Model):
+    """Position eines Assets innerhalb einer Floorplan-Revision."""
+    id = db.Column(db.Integer, primary_key=True)
+    revision_id = db.Column(db.Integer, db.ForeignKey('location_floorplan_revision.id'), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), nullable=False)
+    position_x = db.Column(db.Float, nullable=False)
+    position_y = db.Column(db.Float, nullable=False)
+    rotation = db.Column(db.Float, default=0.0)
+    display_label = db.Column(db.String(150))
+    metadata_json = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    asset = db.relationship('Asset', lazy=True)
+
+    def __repr__(self):
+        return (
+            f'<LocationFloorplanAsset asset={self.asset_id} '
+            f'revision={self.revision_id} ({self.position_x}, {self.position_y})>'
+        )
+
+
+class LocationFloorplanAutosave(db.Model):
+    """Automatisch gesicherter Arbeitsstand einer Revision."""
+    id = db.Column(db.Integer, primary_key=True)
+    revision_id = db.Column(db.Integer, db.ForeignKey('location_floorplan_revision.id'), nullable=False)
+    payload = db.Column(db.Text, nullable=False)
+    saved_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<LocationFloorplanAutosave revision={self.revision_id} at {self.saved_at}>'
 
 class OrderTemplate(db.Model):
     """Modell für Bestellvorlagen, die vom Benutzer gespeichert werden können"""
@@ -585,7 +680,7 @@ class OrderTemplateItem(db.Model):
     """Ein einzelnes Asset in einer Bestellvorlage"""
     id = db.Column(db.Integer, primary_key=True)
     template_id = db.Column(db.Integer, db.ForeignKey('order_template.id'), nullable=False)
-    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), nullable=False)
     quantity = db.Column(db.Integer, default=1)
     
     # Beziehungen
@@ -593,3 +688,83 @@ class OrderTemplateItem(db.Model):
     
     def __repr__(self):
         return f'<OrderTemplateItem {self.id} for template {self.template_id} with asset {self.asset_id}>'
+
+# ============================================================================
+# KALENDER & EVENTS
+# ============================================================================
+
+# Event-Typen Konstanten
+EVENT_TYPE_DELIVERY = 'delivery'
+EVENT_TYPE_INVENTORY = 'inventory'
+EVENT_TYPE_MANUAL = 'manual'
+
+# Event-Status Konstanten
+EVENT_STATUS_PLANNED = 'planned'
+EVENT_STATUS_CONFIRMED = 'confirmed'
+EVENT_STATUS_COMPLETED = 'completed'
+EVENT_STATUS_CANCELLED = 'cancelled'
+
+# Reminder-Status Konstanten
+REMINDER_STATUS_PENDING = 'pending'
+REMINDER_STATUS_DELIVERED = 'delivered'
+REMINDER_STATUS_READ = 'read'
+
+class CalendarEvent(db.Model):
+    """Kalender-Event für Liefertermine, Inventur-Termine, etc."""
+    __tablename__ = 'calendar_event'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    start_datetime = db.Column(db.DateTime, nullable=False)
+    end_datetime = db.Column(db.DateTime)
+    
+    # Event-Typ: 'delivery', 'inventory', 'manual'
+    event_type = db.Column(db.String(50), default=EVENT_TYPE_MANUAL)
+    
+    # Status: 'planned', 'confirmed', 'completed', 'cancelled'
+    status = db.Column(db.String(50), default=EVENT_STATUS_PLANNED)
+    
+    # Verknüpfung zur Bestellung (optional)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
+    
+    # Verknüpfung zu Inventur-Session (optional)
+    inventory_session_id = db.Column(db.Integer, db.ForeignKey('inventory_planning.id'))
+    
+    # Erstellt von Benutzer
+    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Beziehungen
+    order = db.relationship('Order', backref='calendar_events')
+    inventory_session = db.relationship('InventorySession', backref='calendar_events')
+    created_by = db.relationship('User', backref='created_events')
+    reminders = db.relationship('EventReminder', backref='event', lazy='dynamic', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<CalendarEvent {self.id}: {self.title} ({self.event_type})>'
+
+class EventReminder(db.Model):
+    """Erinnerung für ein Kalender-Event"""
+    __tablename__ = 'event_reminder'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey('calendar_event.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Wann soll erinnert werden (z.B. 1 Tag vorher)
+    remind_at = db.Column(db.DateTime, nullable=False)
+    
+    # Status: 'pending', 'delivered', 'read'
+    status = db.Column(db.String(50), default=REMINDER_STATUS_PENDING)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    delivered_at = db.Column(db.DateTime)
+    read_at = db.Column(db.DateTime)
+    
+    # Beziehungen
+    user = db.relationship('User', backref='event_reminders')
+    
+    def __repr__(self):
+        return f'<EventReminder {self.id} for Event {self.event_id}, User {self.user_id}>'

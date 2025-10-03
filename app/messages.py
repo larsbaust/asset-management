@@ -10,18 +10,23 @@ messages_bp = Blueprint('messages', __name__)
 @messages_bp.route('/messages/inbox')
 @login_required
 def inbox():
+    md3 = request.args.get('md3', type=int)
     messages = Message.query.filter_by(recipient_id=current_user.id).order_by(Message.timestamp.desc()).all()
-    return render_template('messages/inbox.html', messages=messages)
+    template = 'md3/messages/inbox.html' if md3 else 'messages/inbox.html'
+    return render_template(template, messages=messages)
 
 @messages_bp.route('/messages/sent')
 @login_required
 def sent():
+    md3 = request.args.get('md3', type=int)
     messages = Message.query.filter_by(sender_id=current_user.id).order_by(Message.timestamp.desc()).all()
-    return render_template('messages/sent.html', messages=messages)
+    template = 'md3/messages/sent.html' if md3 else 'messages/sent.html'
+    return render_template(template, messages=messages)
 
 @messages_bp.route('/messages/compose', methods=['GET', 'POST'])
 @login_required
 def compose():
+    md3 = request.values.get('md3', type=int)
     users = User.query.filter(User.id != current_user.id).all()
     if request.method == 'POST':
         recipient_id = request.form.get('recipient_id')
@@ -49,12 +54,14 @@ def compose():
         db.session.add(msg)
         db.session.commit()
         flash('Nachricht gesendet!', 'success')
-        return redirect(url_for('messages.sent'))
-    return render_template('messages/compose.html', users=users)
+        return redirect(url_for('messages.sent', md3=1 if md3 else None))
+    template = 'md3/messages/compose.html' if md3 else 'messages/compose.html'
+    return render_template(template, users=users)
 
 @messages_bp.route('/messages/<int:message_id>', methods=['GET', 'POST'])
 @login_required
 def view_message(message_id):
+    md3 = request.values.get('md3', type=int)
     msg = Message.query.get_or_404(message_id)
     if msg.recipient_id == current_user.id and not msg.is_read:
         msg.is_read = True
@@ -86,8 +93,9 @@ def view_message(message_id):
         db.session.add(reply)
         db.session.commit()
         flash('Antwort gesendet!', 'success')
-        return redirect(url_for('messages.sent'))
-    return render_template('messages/view_message.html', msg=msg)
+        return redirect(url_for('messages.sent', md3=1 if md3 else None))
+    template = 'md3/messages/view_message.html' if md3 else 'messages/view_message.html'
+    return render_template(template, msg=msg)
 
 @messages_bp.route('/messages/attachment/<path:filename>')
 @login_required

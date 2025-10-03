@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block styles %}
+  {{ super() }}
+  <style>
+    .md3-page { padding: 24px; padding-top: 80px; }
+    .md3-container { max-width: 1200px; margin: 0 auto; }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+    .title { font: var(--md-sys-typescale-headline-small-font); color: var(--md-sys-color-on-surface); }
+    
+    .card { background: var(--md-sys-color-surface); border-radius: 16px; box-shadow: var(--md-sys-elevation-level2); padding: 24px; margin-bottom: 24px; }
+    
+    .md3-button { border: none; border-radius: 999px; padding: 10px 24px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; white-space: nowrap; font: var(--md-sys-typescale-label-large-font); }
+    .md3-button .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; font-size: 20px; }
+    .md3-button-filled { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
+    .md3-button-tonal { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+    
+    .actions { display: flex; gap: 12px; margin-bottom: 16px; }
+    
+    .ai-preview { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); padding: 16px; border-radius: 12px; margin-bottom: 16px; }
+    .ai-preview strong { display: block; margin-bottom: 12px; }
+    
+    .form-field { margin-bottom: 16px; }
+    .form-textarea { width: 100%; padding: 12px 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 12px; background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font: var(--md-sys-typescale-body-large-font); resize: vertical; min-height: 200px; }
+    .form-textarea:focus { outline: none; border-color: var(--md-sys-color-primary); }
+    
+    .changelog-content { background: var(--md-sys-color-surface-variant); padding: 16px; border-radius: 12px; font-family: 'Courier New', monospace; white-space: pre-wrap; color: var(--md-sys-color-on-surface-variant); }
+  </style>
+{% endblock %}
+
+{% block content %}
+  {% include 'md3-nav.html' %}
+  <div class="md3-page">
+    <div class="md3-container">
+      <div class="header">
+        <div class="title">Änderungshistorie</div>
+      </div>
+
+      <div class="card">
+        <div class="actions">
+          <form method="post" action="{{ url_for('admin.changelog', md3=1) }}" style="display: inline;">
+            <input type="hidden" name="md3" value="1">
+            <button class="md3-button md3-button-tonal" type="submit" name="generate_ai">
+              <span class="material-symbols-outlined">smart_toy</span>
+              KI-Changelog generieren
+            </button>
+          </form>
+          <form method="post" action="{{ url_for('admin.generate_changelog_route', md3=1) }}" style="display: inline;">
+            <input type="hidden" name="md3" value="1">
+            <button class="md3-button md3-button-filled" type="submit">
+              <span class="material-symbols-outlined">refresh</span>
+              Changelog automatisch aktualisieren
+            </button>
+          </form>
+        </div>
+
+        {% if ai_summary %}
+        <div class="ai-preview">
+          <strong>KI-Zusammenfassung (Vorschau):</strong>
+          <form method="post" action="{{ url_for('admin.changelog', md3=1) }}">
+            <input type="hidden" name="md3" value="1">
+            <div class="form-field">
+              <textarea name="ai_text" class="form-textarea" rows="8">{{ ai_summary }}</textarea>
+            </div>
+            <button class="md3-button md3-button-filled" type="submit" name="save_ai">
+              <span class="material-symbols-outlined">save</span>
+              KI-Changelog speichern
+            </button>
+          </form>
+        </div>
+        {% endif %}
+
+        <div class="changelog-content">{{ changelog_text }}</div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

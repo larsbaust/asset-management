@@ -1,0 +1,335 @@
+{% extends 'base.html' %}
+
+{% block head %}
+  {{ super() }}
+  <style>
+    body {
+      background: linear-gradient(135deg, #f0f8ff 0%, #e8f4ff 50%, #f0f4ff 100%);
+      margin: 0;
+      padding: 0;
+    }
+    
+    .register-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    
+    .register-card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--md-sys-color-surface);
+      border-radius: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      margin: 1rem;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .register-header {
+      background: linear-gradient(135deg, var(--md-sys-color-secondary) 0%, var(--md-sys-color-secondary-container) 100%);
+      color: var(--md-sys-color-on-secondary);
+      padding: 3rem 2rem 2rem;
+      text-align: center;
+      position: relative;
+    }
+    
+    .register-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="15" cy="15" r="1.5" fill="rgba(255,255,255,0.1)"/><circle cx="85" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="35" cy="75" r="1.2" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="85" r="0.8" fill="rgba(255,255,255,0.1)"/></svg>');
+      pointer-events: none;
+    }
+    
+    .register-header h1 {
+      margin: 0;
+      font: var(--md-sys-typescale-headline-medium-font);
+      font-weight: 500;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .welcome-icon {
+      font-size: 3rem !important;
+      margin-bottom: 0.5rem;
+      opacity: 0.9;
+    }
+    
+    .register-body {
+      padding: 2.5rem;
+      background: rgba(255, 255, 255, 0.95);
+    }
+    
+    .form-field {
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+    
+    .form-field label {
+      display: block;
+      margin-bottom: 0.75rem;
+      font: var(--md-sys-typescale-body-medium-font);
+      color: var(--md-sys-color-on-surface);
+      font-weight: 500;
+    }
+    
+    .input-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    
+    .input-container .material-symbols-outlined {
+      position: absolute;
+      left: 16px;
+      color: var(--md-sys-color-secondary);
+      pointer-events: none;
+      font-size: 1.25rem;
+    }
+    
+    .form-input, .form-select {
+      width: 100%;
+      padding: 1rem 1.25rem 1rem 3.25rem;
+      font: var(--md-sys-typescale-body-large-font);
+      color: var(--md-sys-color-on-surface);
+      background: var(--md-sys-color-surface-container-highest);
+      border: 2px solid var(--md-sys-color-outline-variant);
+      border-radius: 16px;
+      transition: all 0.3s ease;
+      box-sizing: border-box;
+    }
+    
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: var(--md-sys-color-secondary);
+      box-shadow: 0 0 0 2px rgba(139, 195, 74, 0.2);
+      transform: translateY(-1px);
+    }
+    
+    .form-input:hover:not(:focus), .form-select:hover:not(:focus) {
+      border-color: var(--md-sys-color-outline);
+    }
+    
+    .register-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    
+    .register-button {
+      width: 100%;
+      padding: 1.25rem;
+      border: none;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--md-sys-color-secondary) 0%, #8BC34A 100%);
+      color: var(--md-sys-color-on-secondary);
+      font: var(--md-sys-typescale-label-large-font);
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(139, 195, 74, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .register-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(139, 195, 74, 0.4);
+      background: linear-gradient(135deg, #8BC34A 0%, var(--md-sys-color-secondary) 100%);
+    }
+    
+    .register-button:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 8px rgba(139, 195, 74, 0.3);
+    }
+    
+    .register-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+    
+    .register-button:hover::before {
+      left: 100%;
+    }
+    
+    .login-link {
+      text-align: center;
+      margin-top: 1rem;
+    }
+    
+    .login-link a {
+      color: var(--md-sys-color-secondary);
+      text-decoration: none;
+      font: var(--md-sys-typescale-body-medium-font);
+      transition: color 0.2s;
+    }
+    
+    .login-link a:hover {
+      color: var(--md-sys-color-secondary-hover);
+      text-decoration: underline;
+    }
+    
+    /* Flash messages */
+    .flash-messages {
+      margin-bottom: 1.5rem;
+    }
+    
+    .flash-message {
+      padding: 1rem;
+      border-radius: 12px;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      font: var(--md-sys-typescale-body-medium-font);
+    }
+    
+    .flash-message .material-symbols-outlined {
+      flex-shrink: 0;
+    }
+    
+    .flash-error {
+      background: var(--md-sys-color-error-container);
+      color: var(--md-sys-color-on-error-container);
+    }
+    
+    .flash-success {
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+    }
+    
+    .flash-info {
+      background: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+    }
+    
+    .close-button {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      margin-left: auto;
+      padding: 0.25rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+    }
+    
+    .close-button:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+    
+    @media (max-width: 480px) {
+      .register-card {
+        border-radius: 24px;
+        margin: 0.5rem;
+      }
+      
+      .register-header {
+        padding: 1.5rem 1.5rem 1rem;
+      }
+      
+      .register-body {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="register-container">
+  <div class="register-card">
+    <div class="register-header">
+      <div class="material-symbols-outlined welcome-icon">person_add</div>
+      <h1>Neues Konto erstellen</h1>
+    </div>
+    
+    <div class="register-body">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-messages">
+            {% for category, message in messages %}
+              <div class="flash-message flash-{{ category }}">
+                <span class="material-symbols-outlined">
+                  {% if category == 'error' %}
+                    error
+                  {% elif category == 'success' %}
+                    check_circle
+                  {% else %}
+                    info
+                  {% endif %}
+                </span>
+                <span>{{ message|safe }}</span>
+                <button class="close-button" onclick="this.parentElement.style.display='none'" aria-label="Close">
+                  <span class="material-symbols-outlined" style="font-size: 1.25rem;">close</span>
+                </button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      
+      <form method="POST">
+        {{ form.hidden_tag() }}
+        
+        <div class="form-field">
+          <label for="username">Benutzername</label>
+          <div class="input-container">
+            <span class="material-symbols-outlined">person</span>
+            <input type="text" id="username" name="username" class="form-input" required autocomplete="username">
+          </div>
+        </div>
+        
+        <div class="form-field">
+          <label for="password">Passwort</label>
+          <div class="input-container">
+            <span class="material-symbols-outlined">lock</span>
+            <input type="password" id="password" name="password" class="form-input" required autocomplete="new-password">
+          </div>
+        </div>
+        
+        <div class="form-field">
+          <label for="role">Rolle</label>
+          <div class="input-container">
+            <span class="material-symbols-outlined">badge</span>
+            {{ form.role(class="form-select", id="role") }}
+          </div>
+        </div>
+        
+        <div class="register-actions">
+          <button type="submit" class="register-button">
+            <span class="material-symbols-outlined">person_add</span>
+            Registrieren
+          </button>
+        </div>
+      </form>
+      
+      <div class="login-link">
+        <a href="{{ url_for('auth.login') }}{% if request.args.get('md3') %}?md3=1{% endif %}">
+          Bereits registriert? Zum Login
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

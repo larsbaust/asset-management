@@ -1,0 +1,331 @@
+{% extends 'base.html' %}
+
+{% block head %}
+  {{ super() }}
+  <style>
+    .md3-page { padding: 24px; padding-top: 80px; }
+    .md3-container { max-width: 800px; margin: 0 auto; }
+    
+    .header { 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      margin-bottom: 24px; 
+    }
+    
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
+      color: var(--md-sys-color-on-surface);
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      text-decoration: none;
+    }
+    
+    .back-button:hover {
+      background: var(--md-sys-color-surface-container-highest);
+    }
+    
+    .title { 
+      font: var(--md-sys-typescale-headline-small-font); 
+      color: var(--md-sys-color-on-surface); 
+    }
+    
+    .message-card {
+      background: var(--md-sys-color-surface);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--md-sys-elevation-level2);
+      margin-bottom: 24px;
+    }
+    
+    .message-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    }
+    
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .meta-label {
+      font: var(--md-sys-typescale-body-medium-font);
+      color: var(--md-sys-color-on-surface-variant);
+      font-weight: 500;
+    }
+    
+    .meta-value {
+      font: var(--md-sys-typescale-body-large-font);
+      color: var(--md-sys-color-on-surface);
+    }
+    
+    .message-subject {
+      font: var(--md-sys-typescale-title-large-font);
+      color: var(--md-sys-color-on-surface);
+      margin-bottom: 16px;
+    }
+    
+    .message-body {
+      font: var(--md-sys-typescale-body-large-font);
+      color: var(--md-sys-color-on-surface);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    
+    .attachment-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+    
+    .attachment-link {
+      color: var(--md-sys-color-primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .attachment-link:hover {
+      text-decoration: underline;
+    }
+    
+    .reply-section {
+      background: var(--md-sys-color-surface-container-low);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    
+    .reply-title {
+      font: var(--md-sys-typescale-title-medium-font);
+      color: var(--md-sys-color-on-surface);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .form-field {
+      margin-bottom: 24px;
+    }
+    
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font: var(--md-sys-typescale-body-medium-font);
+      color: var(--md-sys-color-on-surface);
+      font-weight: 500;
+    }
+    
+    .form-input, .form-textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--md-sys-color-outline);
+      border-radius: 12px;
+      background: var(--md-sys-color-surface);
+      color: var(--md-sys-color-on-surface);
+      font: var(--md-sys-typescale-body-large-font);
+      box-sizing: border-box;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .form-input:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--md-sys-color-primary);
+      box-shadow: 0 0 0 1px var(--md-sys-color-primary);
+    }
+    
+    .form-textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    
+    .file-input-container {
+      position: relative;
+      display: inline-block;
+      cursor: pointer;
+      width: 100%;
+    }
+    
+    .file-input {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    
+    .file-input-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border: 2px dashed var(--md-sys-color-outline);
+      border-radius: 12px;
+      background: var(--md-sys-color-surface-container);
+      color: var(--md-sys-color-on-surface-variant);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .file-input-label:hover {
+      border-color: var(--md-sys-color-primary);
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+    }
+    
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+    
+    .md3-button {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 24px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      white-space: nowrap;
+      font: var(--md-sys-typescale-label-large-font);
+      transition: all 0.2s ease;
+    }
+    
+    .md3-button-filled {
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+    }
+    
+    .md3-button-filled:hover {
+      background: var(--md-sys-color-primary-hover);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
+    }
+    
+    .md3-button-text {
+      background: transparent;
+      color: var(--md-sys-color-primary);
+    }
+    
+    .md3-button-text:hover {
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+    }
+    
+    @media (max-width: 768px) {
+      .message-meta {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  {% include 'md3-nav.html' %}
+  <div class="md3-page">
+    <div class="md3-container">
+      <div class="header">
+        <a href="{{ url_for('messages.inbox') }}{% if request.args.get('md3') %}?md3=1{% endif %}" class="back-button">
+          <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+        <div class="title">Nachricht</div>
+      </div>
+
+      <div class="message-card">
+        <div class="message-meta">
+          <div class="meta-item">
+            <span class="material-symbols-outlined">person</span>
+            <div>
+              <div class="meta-label">Von</div>
+              <div class="meta-value">{{ msg.sender.vorname or msg.sender.username }}</div>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="material-symbols-outlined">person_outline</span>
+            <div>
+              <div class="meta-label">An</div>
+              <div class="meta-value">{{ msg.recipient.vorname or msg.recipient.username }}</div>
+            </div>
+          </div>
+          <div class="meta-item">
+            <span class="material-symbols-outlined">schedule</span>
+            <div>
+              <div class="meta-label">Datum</div>
+              <div class="meta-value">{{ msg.timestamp.strftime('%d.%m.%Y %H:%M') }}</div>
+            </div>
+          </div>
+          {% if msg.attachment_filename %}
+            <div class="meta-item">
+              <span class="material-symbols-outlined">attach_file</span>
+              <div>
+                <div class="meta-label">Anhang</div>
+                <div class="meta-value">
+                  <a href="{{ url_for('messages.download_attachment', filename=msg.attachment_filename) }}" class="attachment-link">
+                    {{ msg.attachment_filename }}
+                  </a>
+                </div>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+        
+        <div class="message-subject">{{ msg.subject }}</div>
+        <div class="message-body">{{ msg.body.replace('\n', '<br>')|safe }}</div>
+      </div>
+
+      <div class="reply-section">
+        <div class="reply-title">
+          <span class="material-symbols-outlined">reply</span>
+          Antworten
+        </div>
+        
+        <form method="post" enctype="multipart/form-data">
+          <div class="form-field">
+            <label class="form-label">Betreff</label>
+            <input type="text" name="subject" class="form-input" value="Re: {{ msg.subject }}" required>
+          </div>
+          
+          <div class="form-field">
+            <label class="form-label">Antwort</label>
+            <textarea name="body" class="form-textarea" required placeholder="Schreiben Sie hier Ihre Antwort..."></textarea>
+          </div>
+          
+          <div class="form-field">
+            <label class="form-label">Anhang (optional)</label>
+            <div class="file-input-container">
+              <input type="file" name="attachment" class="file-input">
+              <div class="file-input-label">
+                <span class="material-symbols-outlined">attach_file</span>
+                <span>Datei auswählen oder hier ablegen</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button type="submit" class="md3-button md3-button-filled">
+              <span class="material-symbols-outlined">send</span>
+              Antwort senden
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}

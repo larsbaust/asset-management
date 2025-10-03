@@ -308,6 +308,19 @@ def wizard_step1():
         except (ValueError, TypeError):
             pass
     
+    # Optional: Asset aus GET vorauswählen
+    if request.method == 'GET' and request.args.get('asset_id'):
+        try:
+            asset_id = int(request.args.get('asset_id'))
+            if asset_id > 0:
+                selected_assets = _get_wizard_session('selected_assets') or {}
+                if str(asset_id) not in selected_assets:
+                    selected_assets[str(asset_id)] = {'quantity': 1, 'serial_number': ''}
+                    _update_wizard_session('selected_assets', selected_assets)
+                    print(f"### DEBUG: Asset {asset_id} aus GET-Parameter vorausgewählt")
+        except (ValueError, TypeError):
+            pass
+    
     if form.validate_on_submit():
         # Daten in Session speichern
         _update_wizard_session('supplier_id', form.supplier_id.data)
@@ -1375,12 +1388,15 @@ def wizard_step4():
             # Debug-Ausgabe für den Status
             print(f"DEBUG: Bestellung #{new_order.id} wurde mit Status '{status}' angelegt")
             
+            # AUTOMATISCHER ASSET-IMPORT für alle Bestellungen mit Status 'erledigt'
+            if status == 'erledigt':
+                # Expliziter Aufruf des Asset-Imports für ALLE Bestellungen mit Status 'erledigt',
+                # unabhängig von der gewählten Aktion
+                created_assets, skipped_items = import_assets_from_order(new_order)
+                print(f"DEBUG: Asset-Import für Bestellung #{new_order.id} wurde automatisch ausgelöst - {len(created_assets)} Assets erstellt")
+            
             # Erfolgsmeldung basierend auf Aktion
             if action == 'import':
-                # Expliziter Aufruf des Asset-Imports, da der automatische Trigger nur bei Statusänderungen auf 'erledigt' funktioniert,
-                # nicht bei Neuanlage mit Status 'erledigt'
-                created_assets, skipped_items = import_assets_from_order(new_order)
-                print(f"DEBUG: Asset-Import für Bestellung #{new_order.id} wurde explizit ausgelöst - {len(created_assets)} Assets erstellt")
                 flash(f'Bestellung #{new_order.id} wurde erfolgreich angelegt und Assets wurden importiert!', 'success')
             elif action == 'send_email':
                 flash(f'Bestellung #{new_order.id} wurde erfolgreich angelegt und eine Bestätigungs-E-Mail wurde gesendet!', 'success')
@@ -1389,9 +1405,9 @@ def wizard_step4():
             
             # Je nach Aktion zur passenden Seite weiterleiten
             if action == 'import':
-                # Bei Import zur Asset-Übersicht weiterleiten
+                # Bei Import zur MD3 Asset-Übersicht weiterleiten
                 flash('Assets wurden importiert und können nun in der Asset-Übersicht eingesehen werden.', 'success')
-                return redirect(url_for('main.index'))  # Zur Asset-Hauptseite
+                return redirect('/md3/assets')  # Zur MD3 Asset-Hauptseite
             else:
                 # Bei Speichern oder E-Mail-Versand zur Bestellübersicht weiterleiten
                 return redirect(url_for('order.order_overview'))  # Zur Bestellübersicht
@@ -1551,8 +1567,19 @@ def wizard_email_preview():
 @order.route('/wizard/start')
 def start_wizard():
     """Startet den Bestellassistenten"""
+    # Session zurücksetzen und GET-Parameter (supplier_id, asset_id, md3) an Schritt 1 weiterreichen
     _reset_wizard_session()
-    return redirect(url_for('order.wizard_step1'))
+    supplier_id = request.args.get('supplier_id', type=int)
+    asset_id = request.args.get('asset_id', type=int)
+    md3 = request.args.get('md3', type=int)
+    params = {}
+    if supplier_id:
+        params['supplier_id'] = supplier_id
+    if asset_id:
+        params['asset_id'] = asset_id
+    if md3:
+        params['md3'] = md3
+    return redirect(url_for('order.wizard_step1', **params))
 
 
 # HTML Bestellansicht Route

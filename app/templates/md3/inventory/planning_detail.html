@@ -509,11 +509,12 @@ function initializeProgressBars() {
 // Start inventory session
 function startInventory(sessionId) {
   if (confirm('Möchten Sie diese Inventur wirklich starten?')) {
-    fetch(`/api/inventory/start/${sessionId}`, {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    fetch(`/md3/inventory/api/start/${sessionId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': document.getElementById('csrf-token')?.value || ''
+        'X-CSRFToken': csrfToken
       }
     })
     .then(response => response.json())
@@ -534,11 +535,12 @@ function startInventory(sessionId) {
 // Complete inventory session
 function completeInventory(sessionId) {
   if (confirm('Möchten Sie diese Inventur wirklich abschließen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
-    fetch(`/api/inventory/complete/${sessionId}`, {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    fetch(`/md3/inventory/api/complete/${sessionId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': document.getElementById('csrf-token')?.value || ''
+        'X-CSRFToken': csrfToken
       }
     })
     .then(response => response.json())
@@ -562,22 +564,38 @@ function saveProgress() {
   const form = document.getElementById('inventory-form');
   const formData = new FormData(form);
   
-  fetch(form.action, {
+  // Ensure CSRF token is included
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  if (csrfToken && !formData.has('csrf_token')) {
+    formData.set('csrf_token', csrfToken);
+  }
+  
+  // Use the correct save-progress endpoint
+  const sessionId = {{ session.id }};
+  fetch(`/md3/inventory/sessions/${sessionId}/save-progress`, {
     method: 'POST',
     body: formData
   })
   .then(response => {
     if (response.ok) {
-      // Show success message
+      return response.json();
+    } else {
+      return response.text().then(text => {
+        console.error('Server error response:', text);
+        throw new Error('Server error: ' + response.status);
+      });
+    }
+  })
+  .then(data => {
+    if (data.success) {
       showNotification('Fortschritt gespeichert', 'success');
-      // Update progress bar
       updateProgressDisplay();
     } else {
-      showNotification('Fehler beim Speichern', 'error');
+      showNotification(data.message || 'Fehler beim Speichern', 'error');
     }
   })
   .catch(error => {
-    console.error('Error:', error);
+    console.error('Error saving progress:', error);
     showNotification('Fehler beim Speichern', 'error');
   });
 }

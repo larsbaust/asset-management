@@ -1,0 +1,4157 @@
+{% extends "base.html" %}
+
+{% block title %}Standorte{% endblock %}
+
+{% block head %}
+<!-- Google Maps API with error handling -->
+<script>
+// Global error handler for Google Maps
+window.gm_authFailure = function() {
+  console.warn('Google Maps authentication failed - using fallback background');
+  showMapFallback();
+};
+
+function showMapFallback() {
+  const mapElement = document.getElementById('map');
+  if (mapElement) {
+    mapElement.innerHTML = `
+      <div style="
+        width: 100%; 
+        height: 100%; 
+        background: linear-gradient(135deg, #E8F5E8 0%, #F3E5F5 50%, #E1BEE7 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(103, 80, 164, 0.3);
+        font-size: 120px;
+        position: relative;
+      ">
+        <span class="material-symbols-outlined" style="font-size: inherit;">map</span>
+        <div style="
+          position: absolute;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          font-size: 14px;
+          color: rgba(103, 80, 164, 0.6);
+          text-align: center;
+        ">
+          Karten-Hintergrund<br>
+          <small style="font-size: 12px; opacity: 0.7;">Maps nicht verfügbar</small>
+        </div>
+      </div>
+    `;
+  }
+}
+</script>
+<script async defer 
+  src=""
+  onerror="showMapFallback()">
+</script>
+
+<!-- Locations Data for Map -->
+<script type="application/json" id="locations-data">
+[
+  {% for location in locations %}
+  {
+    "id": "{{ location.id }}",
+    "name": "{{ location.name|e }}",
+    "address": "{{ location.address|e }}",
+    "latitude": {{ location.latitude or 'null' }},
+    "longitude": {{ location.longitude or 'null' }}
+  }{% if not loop.last %},{% endif %}
+  {% endfor %}
+]
+</script>
+
+<!-- MD3 Locations Card & Carousel Styles -->
+<style>
+/* Fullscreen Map Background */
+.md3-map-background {
+  position: fixed;
+  top: 80px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  background: linear-gradient(135deg, #E8F5E8 0%, #F3E5F5 100%);
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  opacity: 0.3;
+  filter: grayscale(20%) blur(0.5px);
+}
+
+/* MD3 Locations Container - Floating Overlay */
+.md3-locations-container {
+  position: relative;
+  z-index: 10;
+  padding: 24px;
+  margin-top: 80px;
+  background: transparent;
+  min-height: calc(100vh - 80px);
+  pointer-events: none;
+}
+
+.md3-locations-container > * {
+  pointer-events: auto;
+}
+
+/* MD3 Map Info Window Styling */
+.md3-map-info-window {
+  font-family: var(--md-sys-typescale-body-medium-font-family);
+  color: var(--md-sys-color-on-surface);
+  max-width: 300px;
+  padding: 8px 0;
+}
+
+.md3-map-info-title {
+  margin: 0 0 8px 0;
+  color: #6750A4;
+  font-family: var(--md-sys-typescale-title-medium-font-family);
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.md3-map-info-address {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 14px;
+}
+
+/* Header Section - Ultra-Compact Icon-Only */
+.md3-locations-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 24px;
+  box-shadow: 0 2px 8px rgba(103, 80, 164, 0.06);
+  border: 1px solid rgba(103, 80, 164, 0.08);
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  gap: 4px;
+}
+
+.md3-locations-title {
+  display: none; /* Hide text title for icon-only design */
+}
+
+.md3-locations-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.md3-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 20px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.md3-primary-btn {
+  background: #6750A4;
+  color: white;
+}
+
+.md3-primary-btn:hover {
+  background: #7C4DFF;
+  color: white;
+  box-shadow: var(--md-sys-elevation-level2);
+  transform: translateY(-2px);
+}
+
+.md3-secondary-btn {
+  background: var(--md-sys-color-surface-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  border: 1px solid var(--md-sys-color-outline);
+}
+
+.md3-secondary-btn:hover {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+/* Carousel Container - Floating */
+.md3-locations-carousel {
+  position: relative;
+  overflow: visible;
+  width: 100%;
+  padding: 16px 0;
+}
+
+.md3-carousel-track {
+  display: flex;
+  transition: transform 0.3s ease;
+  gap: 24px;
+  padding: 8px;
+}
+
+.md3-carousel-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.md3-carousel-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(103, 80, 164, 0.9);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--md-sys-elevation-level2);
+  backdrop-filter: blur(10px);
+}
+
+.md3-carousel-btn:hover {
+  background: #7C4DFF;
+  color: white;
+  box-shadow: var(--md-sys-elevation-level3);
+  transform: scale(1.1);
+}
+
+.md3-carousel-btn:disabled {
+  background: var(--md-sys-color-surface-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.md3-carousel-indicators {
+  display: flex;
+  gap: 8px;
+}
+
+.md3-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--md-sys-color-outline);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.md3-indicator.active {
+  background: #6750A4;
+  transform: scale(1.2);
+}
+
+/* Location Cards - Enhanced with Images */
+.md3-location-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 0;
+  min-width: 320px;
+  max-width: 400px;
+  flex-shrink: 0;
+  box-shadow: none;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.md3-location-card:hover {
+  border-color: #6750A4;
+  background: rgba(255, 255, 255, 0.98);
+}
+
+/* Card Image Header */
+.md3-card-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 20px 20px 0 0;
+  background: linear-gradient(135deg, #E1BEE7 0%, #F3E5F5 100%);
+}
+
+.md3-card-image-placeholder {
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(135deg, #E1BEE7 0%, #F3E5F5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px 20px 0 0;
+  color: #6750A4;
+  font-size: 48px;
+}
+
+.md3-card-content {
+  padding: 24px;
+}
+
+.md3-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.md3-location-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #6750A4 0%, #7C4DFF 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 28px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(103, 80, 164, 0.3);
+}
+
+.md3-location-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 3px solid rgba(103, 80, 164, 0.2);
+}
+
+.md3-card-title-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.md3-location-name {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+  word-wrap: break-word;
+}
+
+.md3-location-address {
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.md3-card-badges {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.md3-badge {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.md3-badge-type {
+  background: rgba(103, 80, 164, 0.1);
+  color: #6750A4;
+  border: 1px solid rgba(103, 80, 164, 0.2);
+}
+
+.md3-badge-status {
+  background: rgba(76, 175, 80, 0.1);
+  color: #4CAF50;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+.md3-badge-status.inactive {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.md3-badge-available {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.md3-badge-unavailable {
+  background: var(--md-sys-color-outline);
+  color: var(--md-sys-color-surface);
+}
+
+.md3-card-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.md3-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.md3-detail-label {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.md3-detail-value {
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface);
+  font-weight: 400;
+}
+
+.md3-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.md3-icon-btn:hover {
+  background: rgba(103, 80, 164, 0.1);
+  color: #6750A4;
+  transform: scale(1.1);
+}
+
+.md3-icon-btn.delete:hover {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+/* Grid Layout for Desktop - Floating */
+.md3-locations-grid {
+  display: none;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 40px;
+  padding: 60px 16px 16px 16px;
+}
+
+/* Empty State */
+.md3-empty-state {
+  text-align: center;
+  padding: 80px 24px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-empty-icon {
+  font-size: 80px;
+  margin-bottom: 24px;
+  opacity: 0.6;
+}
+
+.md3-empty-title {
+  font-size: 24px;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+  color: var(--md-sys-color-on-surface);
+}
+
+.md3-empty-text {
+  font-size: 16px;
+  margin: 0 0 24px 0;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .md3-locations-container {
+    padding: 16px;
+  }
+  
+  .md3-locations-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  
+  .md3-locations-actions {
+    justify-content: center;
+  }
+  
+  .md3-location-card {
+    min-width: 280px;
+    max-width: 320px;
+  }
+  
+  .md3-card-details {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 1200px) {
+  .md3-locations-carousel {
+    display: none;
+  }
+  
+  .md3-locations-grid {
+    display: grid;
+  }
+  
+  .md3-carousel-controls {
+    display: none;
+  }
+}
+
+/* Animation for card entrance */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Screenshot 2 Elevated Image Card Design */
+.md3-location-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 0;
+  box-shadow: none;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: visible;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  animation: slideInUp 0.4s ease-out;
+  cursor: pointer;
+  margin-top: 50px;
+  padding-top: 150px;
+}
+
+.md3-location-card:hover {
+  border-color: rgba(103, 80, 164, 0.3);
+}
+
+/* Card Image Container with Elevated Design */
+.md3-card-image-container {
+  position: absolute;
+  top: -30px;
+  left: 16px;
+  right: 16px;
+  width: calc(100% - 32px);
+  height: 180px;
+  overflow: visible;
+  z-index: 10;
+}
+
+.md3-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: all 0.4s ease;
+  border-radius: 16px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 3;
+}
+
+/* Hover-Effekt für Bilder entfernt */
+
+.md3-card-image-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #E1BEE7 0%, #F3E5F5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6750A4;
+  font-size: 48px;
+  border-radius: 16px;
+  box-shadow: none;
+  position: relative;
+  z-index: 3;
+}
+
+/* Action Icons Overlay (Screenshot 2 Style) */
+.md3-card-actions-overlay {
+  position: absolute;
+  top: 12px;
+  right: 0px;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 15;
+}
+
+.md3-location-card:hover .md3-card-actions-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.md3-action-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  color: #6750A4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.md3-action-icon:hover {
+  background: #6750A4;
+  color: white;
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(103, 80, 164, 0.4);
+}
+
+.md3-action-icon .material-symbols-outlined {
+  font-size: 20px;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+.md3-action-icon:hover .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 20;
+}
+
+/* Error Button for Delete Action in Modal */
+.md3-error-btn {
+  background: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
+  border: none;
+  border-radius: 20px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.md3-error-btn:hover {
+  background: var(--md-sys-color-error);
+  box-shadow: 0 4px 16px rgba(211, 47, 47, 0.3);
+  transform: translateY(-1px);
+}
+
+.md3-error-btn .material-symbols-outlined {
+  font-size: 18px;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
+}
+
+.md3-error-btn:hover .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 18;
+}
+
+/* Modal Section Styles */
+.md3-modal-description-section,
+.md3-modal-assets-section,
+.md3-modal-categories-section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-modal-section-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  margin-bottom: 12px;
+  letter-spacing: 0.1px;
+}
+
+.md3-modal-description-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0;
+}
+
+/* Compact Assets Container */
+.md3-modal-body {
+  padding: 24px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Elegant Modal Scrollbar (Screenshot 2 Style) */
+.md3-modal-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.md3-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 2px;
+}
+
+.md3-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(103, 80, 164, 0.3);
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.md3-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(103, 80, 164, 0.6);
+}
+
+/* Firefox Scrollbar */
+.md3-modal-body {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(103, 80, 164, 0.3) transparent;
+}
+
+/* Assets Grid Layout - Optimized */
+.md3-modal-assets-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: 12px !important;
+  margin: 16px 0 !important;
+  padding: 16px !important;
+  background: rgba(103, 80, 164, 0.03) !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(103, 80, 164, 0.1) !important;
+  /* ABSOLUTE FULL WIDTH */
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 100% !important;
+  box-sizing: border-box !important;
+  /* Force grid behavior */
+  max-height: none !important;
+  overflow: visible !important;
+  position: relative !important;
+  /* Grid optimization */
+  justify-content: start !important;
+  align-content: start !important;
+  /* Override any parent width constraints */
+  flex: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Force grid on all children */
+.md3-modal-assets-grid > * {
+  display: block !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Asset Card Content Styling */
+.md3-modal-asset-card .md3-asset-name {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #1C1B1F !important;
+  margin-bottom: 4px !important;
+  line-height: 1.2 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.md3-modal-asset-card .md3-asset-value {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #6750A4 !important;
+  margin-bottom: 8px !important;
+  line-height: 1.1 !important;
+}
+
+.md3-modal-asset-card .md3-asset-badges {
+  display: flex !important;
+  gap: 6px !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+}
+
+.md3-modal-asset-card .md3-asset-category {
+  background: rgba(103, 80, 164, 0.1) !important;
+  color: #6750A4 !important;
+  padding: 2px 8px !important;
+  border-radius: 12px !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.md3-modal-asset-card .md3-asset-status {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #DC2626 !important;
+  padding: 2px 8px !important;
+  border-radius: 12px !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* Old assets container - disabled to prevent conflicts */
+.md3-modal-assets-container {
+  /* Disabled - using grid layout instead */
+  display: none !important;
+}
+
+/* Custom Scrollbar for Assets Container */
+.md3-modal-assets-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.md3-modal-assets-container::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 2px;
+}
+
+.md3-modal-assets-container::-webkit-scrollbar-thumb {
+  background: rgba(103, 80, 164, 0.3);
+  border-radius: 2px;
+  transition: background 0.2s ease;
+}
+
+.md3-modal-assets-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(103, 80, 164, 0.6);
+}
+
+/* Asset Tiles for Grid Layout - Compact */
+.md3-modal-asset-tile {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(103, 80, 164, 0.12);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(103, 80, 164, 0.06);
+  min-height: 110px;
+  max-height: 130px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  /* Force consistent sizing */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.md3-modal-asset-tile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #6750A4, #8B5CF6, #A855F7);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.md3-modal-asset-tile:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(103, 80, 164, 0.15);
+  border-color: rgba(103, 80, 164, 0.2);
+}
+
+.md3-modal-asset-tile:hover::before {
+  opacity: 1;
+}
+
+/* Asset Card Styles */
+.md3-modal-asset-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(103, 80, 164, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.md3-modal-asset-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, #6750A4, #8B5CF6);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.md3-modal-asset-card:hover {
+  background: rgba(103, 80, 164, 0.02);
+  border-color: rgba(103, 80, 164, 0.2);
+  transform: translateX(4px);
+  box-shadow: 0 4px 16px rgba(103, 80, 164, 0.1);
+}
+
+.md3-modal-asset-card:hover::before {
+  opacity: 1;
+}
+
+.md3-asset-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.md3-asset-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  flex: 1;
+  margin-right: 12px;
+  line-height: 1.3;
+}
+
+.md3-asset-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #6750A4;
+  white-space: nowrap;
+}
+
+.md3-asset-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.md3-asset-category {
+  font-size: 11px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, rgba(103, 80, 164, 0.1), rgba(139, 92, 246, 0.1));
+  color: #6750A4;
+  border: 1px solid rgba(103, 80, 164, 0.2);
+  border-radius: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.md3-asset-status {
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.md3-status-active {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.1));
+  color: #059669;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.md3-status-inactive {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
+  color: #DC2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Category Grid Styles - Optimized */
+.md3-modal-categories-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+  gap: 12px !important;
+  margin: 16px 0 !important;
+  padding: 16px !important;
+  background: rgba(103, 80, 164, 0.03) !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(103, 80, 164, 0.1) !important;
+  /* ABSOLUTE FULL WIDTH */
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 100% !important;
+  box-sizing: border-box !important;
+  /* Force grid behavior */
+  max-height: none !important;
+  overflow: visible !important;
+  position: relative !important;
+  /* Grid optimization */
+  justify-content: start !important;
+  align-content: start !important;
+  /* Override any parent width constraints */
+  flex: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Force grid on all category children */
+.md3-modal-categories-grid > * {
+  display: block !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.md3-modal-category-card {
+  background: linear-gradient(135deg, rgba(103, 80, 164, 0.08) 0%, rgba(103, 80, 164, 0.03) 100%);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(103, 80, 164, 0.15);
+  transition: all 0.3s ease;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  /* Compact sizing */
+  min-height: 100px;
+  max-height: 120px;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.md3-modal-category-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #6750A4, #8B5CF6, #A855F7);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.md3-modal-category-card:hover {
+  background: linear-gradient(135deg, rgba(103, 80, 164, 0.12) 0%, rgba(103, 80, 164, 0.06) 100%);
+  border-color: rgba(103, 80, 164, 0.3);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(103, 80, 164, 0.2);
+}
+
+.md3-modal-category-card:hover::before {
+  opacity: 1;
+}
+
+.md3-category-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.md3-category-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(103, 80, 164, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.md3-category-count {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #6750A4, #8B5CF6);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(103, 80, 164, 0.3);
+  position: relative;
+}
+
+.md3-category-count::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6750A4, #8B5CF6, #A855F7);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.md3-modal-category-card:hover .md3-category-count::after {
+  opacity: 1;
+}
+
+.md3-category-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #6750A4;
+  margin-top: 8px;
+  text-shadow: 0 1px 2px rgba(103, 80, 164, 0.1);
+}
+
+/* Loading and Error States */
+.md3-loading-message,
+.md3-error-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.md3-loading-message .material-symbols-outlined,
+.md3-error-message .material-symbols-outlined {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.md3-loading-spinner {
+  animation: spin 2s linear infinite;
+  color: var(--md-sys-color-primary);
+}
+
+.md3-error-message .material-symbols-outlined {
+  color: var(--md-sys-color-error);
+}
+
+.md3-loading-message p,
+.md3-error-message p {
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Location Detail Modal */
+.md3-location-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  width: 100vw;
+  height: 100vh;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+#floorplan-planner-modal {
+  z-index: 1100;
+}
+
+.md3-location-modal.show {
+  display: flex;
+  animation: fadeIn 0.3s ease;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.md3-modal-content {
+  background: white;
+  border-radius: 28px;
+  width: 95% !important;
+  max-width: 1200px !important;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 24px 38px 3px rgba(0, 0, 0, 0.14),
+              0 9px 46px 8px rgba(0, 0, 0, 0.12),
+              0 11px 15px -7px rgba(0, 0, 0, 0.2);
+  animation: modalSlideIn 0.3s ease-out;
+  /* DEBUG: Force full width usage */
+  min-width: 1100px !important;
+  box-sizing: border-box !important;
+}
+
+.md3-modal-header {
+  padding: 32px 32px 0 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.md3-modal-close {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(103, 80, 164, 0.1);
+  color: #6750A4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.md3-modal-close:hover {
+  background: rgba(103, 80, 164, 0.2);
+  transform: scale(1.1);
+}
+
+.md3-modal-title {
+  font-size: 28px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.md3-modal-body {
+  padding: 24px 16px 32px 16px !important;
+  /* DEBUG: Maximize width for grids */
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.md3-modal-image {
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 16px;
+  margin-bottom: 24px;
+}
+
+.md3-modal-image-placeholder {
+  width: 100%;
+  height: 240px;
+  background: linear-gradient(135deg, #E1BEE7 0%, #F3E5F5 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6750A4;
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+
+.md3-modal-details {
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin-bottom: 24px !important;
+  /* Remove grid constraints that might limit sections width */
+  box-sizing: border-box !important;
+  padding: 0 !important;
+}
+
+/* Vertical Layout for Assets and Categories Sections - Optimized */
+.md3-modal-sections {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+  margin-top: 16px !important;
+  /* FORCE FULL WIDTH */
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 100% !important;
+  box-sizing: border-box !important;
+  /* Clean styling */
+  padding: 8px !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  position: relative !important;
+  /* Override any parent constraints */
+  flex: 1 !important;
+  flex-shrink: 0 !important;
+  flex-grow: 1 !important;
+}
+
+/* Clean sections container - no debug labels */
+
+/* MD3 Edit Modal Styling */
+.md3-edit-modal {
+  max-width: 800px !important;
+  width: 90% !important;
+  max-height: 90vh !important;
+}
+
+/* MD3 Form Field Styling */
+.md3-form-field {
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.md3-form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  margin-bottom: 8px;
+  letter-spacing: 0.25px;
+}
+
+.md3-form-input,
+.md3-form-textarea {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: 4px;
+  font-size: 16px;
+  font-family: 'Roboto', sans-serif;
+  color: var(--md-sys-color-on-surface);
+  background: var(--md-sys-color-surface);
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.md3-form-input:focus,
+.md3-form-textarea:focus {
+  outline: none;
+  border-color: var(--md-sys-color-primary);
+  border-width: 2px;
+  box-shadow: 0 0 0 1px var(--md-sys-color-primary);
+}
+
+.md3-form-input:hover,
+.md3-form-textarea:hover {
+  border-color: var(--md-sys-color-on-surface);
+}
+
+.md3-form-file {
+  width: 100%;
+  padding: 12px;
+  border: 2px dashed var(--md-sys-color-outline);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+  background: var(--md-sys-color-surface-variant);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.md3-form-file:hover {
+  border-color: var(--md-sys-color-primary);
+  background: rgba(103, 80, 164, 0.05);
+}
+
+.md3-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.md3-form-error {
+  color: var(--md-sys-color-error);
+  font-size: 12px;
+  margin-top: 4px;
+  display: none;
+}
+
+.md3-form-error.show {
+  display: block;
+}
+
+.md3-form-field .md3-form-help {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-floorplan-trigger {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md3-floorplan-trigger .md3-action-btn {
+  width: 100%;
+  height: 52px;
+  padding: 0 24px;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 10px 20px rgba(103, 80, 164, 0.16);
+}
+
+.md3-floorplan-trigger .md3-action-btn .material-symbols-outlined {
+  font-size: 22px;
+}
+
+/* MD3 Action Button Styling - Icon-Only Compact */
+.md3-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.md3-action-btn .material-symbols-outlined {
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* Hide button text for icon-only design */
+.md3-action-btn-text {
+  display: none;
+}
+
+.md3-floorplan-actions .md3-action-btn,
+.md3-floorplan-footer-actions .md3-action-btn {
+  width: auto;
+  min-width: 140px;
+  height: 44px;
+  padding: 0 18px;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.md3-floorplan-actions .md3-action-btn .material-symbols-outlined,
+.md3-floorplan-footer-actions .md3-action-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.md3-floorplan-actions,
+.md3-floorplan-footer-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.md3-floorplan-toolbar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.md3-floorplan-modal {
+  max-width: 1420px !important;
+  width: 96% !important;
+}
+
+.md3-floorplan-modal .md3-modal-body {
+  padding: 24px 32px 0 32px !important;
+  max-height: 82vh;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(103, 80, 164, 0.32) rgba(103, 80, 164, 0.1);
+}
+
+.md3-floorplan-modal .md3-modal-body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.md3-floorplan-modal .md3-modal-body::-webkit-scrollbar-track {
+  background: rgba(103, 80, 164, 0.1);
+  border-radius: 999px;
+}
+
+.md3-floorplan-modal .md3-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(103, 80, 164, 0.32);
+  border-radius: 999px;
+}
+
+.md3-floorplan-modal .md3-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(103, 80, 164, 0.46);
+}
+
+.md3-floorplan-body {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 28px;
+  padding-bottom: 32px;
+  box-sizing: border-box;
+}
+
+.md3-floorplan-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-height: calc(82vh - 160px);
+  overflow-y: auto;
+  padding-right: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(103, 80, 164, 0.3) transparent;
+}
+
+.md3-floorplan-sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.md3-floorplan-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(103, 80, 164, 0.3);
+  border-radius: 999px;
+}
+
+.md3-floorplan-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(103, 80, 164, 0.44);
+}
+
+.md3-floorplan-canvas-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.md3-floorplan-section {
+  background: rgba(103, 80, 164, 0.06);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: inset 0 0 0 1px rgba(103, 80, 164, 0.08);
+}
+
+.md3-floorplan-section h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 14px;
+  color: var(--md-sys-color-on-surface);
+}
+
+.md3-floorplan-asset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.md3-floorplan-asset-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.md3-floorplan-asset-list::-webkit-scrollbar-thumb {
+  background: rgba(103, 80, 164, 0.24);
+  border-radius: 999px;
+}
+
+.md3-floorplan-placeholder {
+  width: 100%;
+  min-height: 460px;
+  border: 2px dashed rgba(103, 80, 164, 0.26);
+  border-radius: 24px;
+  padding: 48px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--md-sys-color-on-surface-variant);
+  background: rgba(103, 80, 164, 0.04);
+}
+
+.md3-floorplan-placeholder .material-symbols-outlined {
+  font-size: 44px;
+  color: var(--md-sys-color-primary);
+}
+
+.md3-floorplan-canvas {
+  width: 100%;
+  max-width: 1024px;
+  border-radius: 24px;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.14);
+  background: white;
+}
+
+.md3-floorplan-modal .md3-modal-body > *:last-child {
+  margin-bottom: 0;
+}
+
+.md3-floorplan-toolbar .md3-action-btn,
+.md3-floorplan-scale .md3-action-btn,
+.md3-floorplan-actions .md3-action-btn,
+.md3-floorplan-footer-actions .md3-action-btn {
+  width: auto;
+  min-width: 160px;
+  height: 48px;
+  padding: 0 20px;
+  gap: 10px;
+  border-radius: 18px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 8px 18px rgba(103, 80, 164, 0.14);
+}
+
+.md3-floorplan-toolbar .md3-action-btn .material-symbols-outlined,
+.md3-floorplan-scale .md3-action-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.md3-floorplan-selectors .md3-form-input {
+  width: 100%;
+}
+
+.md3-floorplan-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md3-floorplan-scale-info {
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-floorplan-asset-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(103, 80, 164, 0.06);
+  border-radius: 16px;
+}
+
+.md3-floorplan-empty {
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+  padding: 8px 0;
+}
+
+.md3-floorplan-search-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid rgba(103, 80, 164, 0.2);
+  border-radius: 12px;
+  background: white;
+}
+
+.md3-floorplan-search-group .material-symbols-outlined {
+  color: var(--md-sys-color-primary);
+  font-size: 20px;
+}
+
+.md3-floorplan-search-group input {
+  border: none;
+  outline: none;
+  flex: 1;
+  padding: 10px 0;
+  font-size: 14px;
+}
+
+.md3-floorplan-asset-results {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md3-floorplan-asset-result {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: white;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.md3-floorplan-asset-result:hover {
+  border-color: rgba(103, 80, 164, 0.4);
+  box-shadow: 0 6px 18px rgba(103, 80, 164, 0.12);
+}
+
+.md3-floorplan-asset-result.is-selected {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 6px 20px rgba(103, 80, 164, 0.24);
+}
+
+.md3-floorplan-asset-result.is-placed {
+  opacity: 0.75;
+}
+
+.md3-floorplan-asset-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.md3-floorplan-asset-name {
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+}
+
+.md3-floorplan-asset-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-floorplan-asset-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(103, 80, 164, 0.12);
+  color: var(--md-sys-color-primary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.md3-floorplan-asset-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+
+.md3-floorplan-asset-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(103, 80, 164, 0.08);
+}
+
+.md3-floorplan-asset-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.md3-floorplan-asset-actions .md3-action-btn {
+  min-width: 126px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.md3-floorplan-asset-actions .md3-secondary-btn {
+  background: rgba(103, 80, 164, 0.12);
+  color: #4E3A86;
+  border: 1px solid rgba(103, 80, 164, 0.18);
+}
+
+.md3-floorplan-asset-actions .md3-secondary-btn:hover {
+  background: rgba(103, 80, 164, 0.18);
+  color: var(--md-sys-color-primary);
+}
+
+.md3-floorplan-asset-actions .md3-error-btn {
+  background: rgba(201, 44, 73, 0.16);
+  color: #7E1F36;
+  border: 1px solid rgba(201, 44, 73, 0.28);
+}
+
+.md3-floorplan-asset-actions .md3-error-btn:hover {
+  background: rgba(201, 44, 73, 0.24);
+  color: #5C1425;
+}
+
+.md3-floorplan-modal .md3-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(103, 80, 164, 0.32);
+  border-radius: 999px;
+}
+
+.md3-floorplan-modal .md3-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(103, 80, 164, 0.45);
+}
+
+.md3-floorplan-canvas.is-placing-asset {
+  cursor: crosshair;
+}
+.md3-primary-btn {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+.md3-primary-btn:hover {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(103, 80, 164, 0.3);
+}
+
+.md3-secondary-btn {
+  background: var(--md-sys-color-surface-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  border: 1px solid var(--md-sys-color-outline);
+}
+
+.md3-secondary-btn:hover {
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  border-color: var(--md-sys-color-primary);
+  transform: translateY(-1px);
+}
+
+.md3-error-btn {
+  background: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
+}
+
+.md3-error-btn:hover {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+/* MD3 Notification Styling */
+.md3-notification {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  animation: slideInNotification 0.3s ease-out;
+  max-width: 400px;
+  word-wrap: break-word;
+}
+
+.md3-notification.md3-success {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border: 1px solid var(--md-sys-color-primary);
+}
+
+.md3-notification.md3-error {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  border: 1px solid var(--md-sys-color-error);
+}
+
+.md3-notification .material-symbols-outlined {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+@keyframes slideInNotification {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.md3-modal-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md3-modal-detail-label {
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.md3-modal-detail-value {
+  font-size: 18px;
+  color: var(--md-sys-color-on-surface);
+  font-weight: 400;
+}
+
+.md3-modal-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+  padding-top: 24px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInModal {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Mobile Navigation & Google Reviews Features */
+.md3-card-mobile-features {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0 8px 0;
+  margin-top: 12px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  gap: 12px;
+}
+
+/* Google Reviews Display */
+.md3-google-reviews {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  flex: 1;
+}
+
+.md3-google-reviews:hover {
+  background: var(--md-sys-color-surface-variant);
+  transform: translateY(-1px);
+}
+
+.md3-stars-container {
+  display: flex;
+  gap: 2px;
+}
+
+.md3-star {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.md3-star-filled {
+  color: #FFC107; /* Google Yellow */
+}
+
+.md3-star-half {
+  color: #FFC107;
+  opacity: 0.7;
+}
+
+.md3-star-empty {
+  color: var(--md-sys-color-outline);
+}
+
+.md3-rating-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: nowrap;
+}
+
+/* Navigation Button */
+.md3-navigation-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border: none;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.md3-navigation-btn:hover {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.md3-navigation-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.md3-nav-text {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Purple Navigation Button Variant */
+.md3-navigation-btn-purple {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+
+.md3-navigation-btn-purple:hover {
+  background: var(--md-sys-color-tertiary);
+  color: var(--md-sys-color-on-tertiary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(103, 80, 164, 0.25);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .md3-card-mobile-features {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  
+  .md3-google-reviews {
+    justify-content: center;
+  }
+  
+  .md3-navigation-btn {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+/* Google Reviews Form Section */
+.md3-form-section {
+  margin-top: 24px;
+  padding: 20px;
+  background: var(--md-sys-color-surface-variant);
+  border-radius: 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-form-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md3-form-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+}
+
+.md3-form-section-title .material-symbols-outlined {
+  font-size: 20px;
+  color: var(--md-sys-color-primary);
+}
+
+.md3-google-fetch-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.md3-google-fetch-btn:hover {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.md3-google-fetch-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.md3-form-help {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* Loading state for Google fetch button */
+.md3-google-fetch-btn.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.md3-google-fetch-btn.loading .material-symbols-outlined {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='md3/components/floorplan-planner.js') }}" defer></script>
+<script src="{{ url_for('static', filename='md3/components/locations.js') }}"></script>
+
+{% endblock %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+<div class="md3-locations-container">
+  <!-- Header removed - actions moved to navbar dropdown -->
+
+  {% if locations %}
+  <!-- Carousel View (Mobile/Tablet) -->
+  <div class="md3-locations-carousel" id="carousel-view">
+    <div class="md3-carousel-track" id="carousel-track">
+      {% for location in locations %}
+      <div class="md3-location-card" data-location-id="{{ location.id }}" onclick="openLocationModal('{{ location.id }}')">
+        <!-- Card Image Header with Action Icons Overlay -->
+        <div class="md3-card-image-container">
+          {% if location.image_url and location.image_url.strip() %}
+          <img src="{{ location.image_url }}" alt="{{ location.name }}" class="md3-card-image" 
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          <div class="md3-card-image-placeholder" style="display: none;">
+            <span class="material-symbols-outlined">location_on</span>
+          </div>
+          {% else %}
+          <div class="md3-card-image-placeholder">
+            <span class="material-symbols-outlined">location_on</span>
+          </div>
+          {% endif %}
+          
+          <!-- Action Icons Overlay (Screenshot 2 Style) -->
+          <div class="md3-card-actions-overlay">
+            <button class="md3-action-icon" onclick="event.stopPropagation(); openLocationModal('{{ location.id }}')" title="Details anzeigen">
+              <span class="material-symbols-outlined">visibility</span>
+            </button>
+            <button class="md3-action-icon" onclick="event.stopPropagation(); editLocation('{{ location.id }}')" title="Bearbeiten">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Card Content -->
+        <div class="md3-card-content">
+          <!-- Card Header -->
+          <div class="md3-card-header">
+            {% if location.image_url and location.image_url.strip() %}
+            <img src="{{ location.image_url }}" alt="{{ location.name }}" class="md3-location-avatar" 
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="md3-location-icon" style="display: none;">
+              <span class="material-symbols-outlined">location_on</span>
+            </div>
+            {% else %}
+            <div class="md3-location-icon">
+              <span class="material-symbols-outlined">location_on</span>
+            </div>
+            {% endif %}
+            
+            <div class="md3-card-title-section">
+              <h3 class="md3-location-name">{{ location.name }}</h3>
+              <p class="md3-location-address">{{ location.address or 'Keine Adresse angegeben' }}</p>
+            </div>
+          </div>
+
+          <!-- Badges -->
+          <div class="md3-card-badges">
+            <span class="md3-badge md3-badge-type">{{ location.location_type or 'Büro' }}</span>
+            <span class="md3-badge md3-badge-status {{ 'inactive' if not location.is_active }}">
+              {{ 'Aktiv' if location.is_active else 'Inaktiv' }}
+            </span>
+            <span class="md3-badge {{ 'md3-badge-available' if location.available else 'md3-badge-unavailable' }}">
+              {{ 'Verfügbar' if location.available else 'Belegt' }}
+            </span>
+          </div>
+
+          <!-- Details Grid -->
+          <div class="md3-card-details">
+            <div class="md3-detail-item">
+              <span class="md3-detail-label">Größe</span>
+              <span class="md3-detail-value">{{ location.size or '—' }}</span>
+            </div>
+            <div class="md3-detail-item">
+              <span class="md3-detail-label">Plätze</span>
+              <span class="md3-detail-value">{{ location.seats or '—' }}</span>
+            </div>
+            <div class="md3-detail-item">
+              <span class="md3-detail-label">Assets</span>
+              <span class="md3-detail-value">{{ location.asset_count or '0' }}</span>
+            </div>
+            <div class="md3-detail-item">
+              <span class="md3-detail-label">Kapazität</span>
+              <span class="md3-detail-value">{{ location.capacity or '—' }}</span>
+            </div>
+          </div>
+          
+          <!-- Mobile Navigation & Google Reviews Section -->
+          <div class="md3-card-mobile-features">
+            <!-- Google Reviews Display -->
+            {% if location.google_rating and location.google_reviews_count %}
+            <div class="md3-google-reviews" 
+                 data-location-name="{{ location.name }}" 
+                 data-google-url="{{ location.google_maps_url or '' }}" 
+                 onclick="event.stopPropagation(); openGoogleReviews(this)">
+              <div class="md3-stars-container">
+                {% set rating = location.google_rating %}
+                {% for i in range(5) %}
+                  {% if i < rating|int %}
+                    <span class="md3-star md3-star-filled">★</span>
+                  {% elif i < rating %}
+                    <span class="md3-star md3-star-half">★</span>
+                  {% else %}
+                    <span class="md3-star md3-star-empty">☆</span>
+                  {% endif %}
+                {% endfor %}
+              </div>
+              <span class="md3-rating-text">{{ "%.1f"|format(location.google_rating) }} ({{ location.google_reviews_count }})</span>
+            </div>
+            {% endif %}
+            
+            <!-- Navigation Button -->
+            {% if location.latitude and location.longitude %}
+            <button class="md3-navigation-btn" 
+                    data-location-name="{{ location.name }}" 
+                    data-latitude="{{ location.latitude }}" 
+                    data-longitude="{{ location.longitude }}" 
+                    data-google-url="{{ location.google_maps_url or '' }}" 
+                    onclick="event.stopPropagation(); navigateToLocation(this)" 
+                    title="Navigation zu {{ location.name }}">
+              <span class="material-symbols-outlined">navigation</span>
+              <span class="md3-nav-text">Route</span>
+            </button>
+            {% endif %}
+          </div>
+        </div> <!-- End card-content -->
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Carousel Controls -->
+    <div class="md3-carousel-controls">
+      <button class="md3-carousel-btn" id="prev-btn" onclick="previousSlide()">
+        <span class="material-symbols-outlined">chevron_left</span>
+      </button>
+      
+      <div class="md3-carousel-indicators" id="indicators">
+        <!-- Indicators will be generated by JavaScript -->
+      </div>
+      
+      <button class="md3-carousel-btn" id="next-btn" onclick="nextSlide()">
+        <span class="material-symbols-outlined">chevron_right</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Grid View (Desktop) -->
+  <div class="md3-locations-grid" id="grid-view">
+    {% for location in locations %}
+    <div class="md3-location-card" data-location-id="{{ location.id }}" onclick="openLocationModal('{{ location.id }}')">
+      <!-- Card Image Header with Action Icons Overlay -->
+      <div class="md3-card-image-container">
+        {% if location.image_url and location.image_url.strip() %}
+        <img src="{{ location.image_url }}" alt="{{ location.name }}" class="md3-card-image" 
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="md3-card-image-placeholder" style="display: none;">
+          <span class="material-symbols-outlined">location_on</span>
+        </div>
+        {% else %}
+        <div class="md3-card-image-placeholder">
+          <span class="material-symbols-outlined">location_on</span>
+        </div>
+        {% endif %}
+        
+        <!-- Action Icons Overlay (Screenshot 2 Style) -->
+        <div class="md3-card-actions-overlay">
+          <button class="md3-action-icon" onclick="event.stopPropagation(); openLocationModal('{{ location.id }}')" title="Details anzeigen">
+            <span class="material-symbols-outlined">visibility</span>
+          </button>
+          <button class="md3-action-icon" onclick="event.stopPropagation(); editLocation('{{ location.id }}')" title="Bearbeiten">
+            <span class="material-symbols-outlined">edit</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Card Content -->
+      <div class="md3-card-content">
+        <!-- Card Header -->
+        <div class="md3-card-header">
+          {% if location.image_url and location.image_url.strip() %}
+          <img src="{{ location.image_url }}" alt="{{ location.name }}" class="md3-location-avatar" 
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          <div class="md3-location-icon" style="display: none;">
+            <span class="material-symbols-outlined">location_on</span>
+          </div>
+          {% else %}
+          <div class="md3-location-icon">
+            <span class="material-symbols-outlined">location_on</span>
+          </div>
+          {% endif %}
+          
+          <div class="md3-card-title-section">
+            <h3 class="md3-location-name">{{ location.name }}</h3>
+            <p class="md3-location-address">{{ location.address or 'Keine Adresse angegeben' }}</p>
+          </div>
+        </div>
+
+        <div class="md3-card-badges">
+          <span class="md3-badge md3-badge-type">{{ location.location_type or 'Büro' }}</span>
+          <span class="md3-badge md3-badge-status {{ 'inactive' if not location.is_active }}">
+            {{ 'Aktiv' if location.is_active else 'Inaktiv' }}
+          </span>
+          <span class="md3-badge {{ 'md3-badge-available' if location.available else 'md3-badge-unavailable' }}">
+            {{ 'Verfügbar' if location.available else 'Belegt' }}
+          </span>
+        </div>
+
+        <div class="md3-card-details">
+          <div class="md3-detail-item">
+            <span class="md3-detail-label">Größe</span>
+            <span class="md3-detail-value">{{ location.size or '—' }}</span>
+          </div>
+          <div class="md3-detail-item">
+            <span class="md3-detail-label">Plätze</span>
+            <span class="md3-detail-value">{{ location.seats or '—' }}</span>
+          </div>
+          <div class="md3-detail-item">
+            <span class="md3-detail-label">Assets</span>
+            <span class="md3-detail-value">{{ location.asset_count or '0' }}</span>
+          </div>
+          <div class="md3-detail-item">
+            <span class="md3-detail-label">Kapazität</span>
+            <span class="md3-detail-value">{{ location.capacity or '—' }}</span>
+          </div>
+        </div>
+        
+        <!-- Mobile Navigation & Google Reviews Section -->
+        <div class="md3-card-mobile-features">
+          <!-- Google Reviews Display -->
+          {% if location.google_rating and location.google_reviews_count %}
+          <div class="md3-google-reviews" 
+               data-location-name="{{ location.name }}" 
+               data-google-url="{{ location.google_maps_url or '' }}" 
+               onclick="event.stopPropagation(); openGoogleReviews(this)">
+            <div class="md3-stars-container">
+              {% set rating = location.google_rating %}
+              {% for i in range(5) %}
+                {% if i < rating|int %}
+                  <span class="md3-star md3-star-filled">★</span>
+                {% elif i < rating %}
+                  <span class="md3-star md3-star-half">★</span>
+                {% else %}
+                  <span class="md3-star md3-star-empty">☆</span>
+                {% endif %}
+              {% endfor %}
+            </div>
+            <span class="md3-rating-text">{{ "%.1f"|format(location.google_rating) }} ({{ location.google_reviews_count }})</span>
+          </div>
+          {% endif %}
+          
+          <!-- Navigation Button -->
+          {% if location.latitude and location.longitude %}
+          <button class="md3-navigation-btn md3-navigation-btn-purple" 
+                  data-location-name="{{ location.name }}" 
+                  data-latitude="{{ location.latitude }}" 
+                  data-longitude="{{ location.longitude }}" 
+                  data-google-url="{{ location.google_maps_url or '' }}" 
+                  onclick="event.stopPropagation(); navigateToLocation(this)" 
+                  title="Navigation zu {{ location.name }}">
+            <span class="material-symbols-outlined">navigation</span>
+            <span class="md3-nav-text">Route</span>
+          </button>
+          {% endif %}
+        </div>
+      </div> <!-- End card-content -->
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <!-- Empty State -->
+  <div class="md3-empty-state">
+    <div class="md3-empty-icon">📍</div>
+    <h2 class="md3-empty-title">Keine Standorte vorhanden</h2>
+    <p class="md3-empty-text">
+      Erstellen Sie Ihren ersten Standort, um mit der Verwaltung Ihrer Locations zu beginnen.
+    </p>
+    <button onclick="openNewLocationModal()" class="md3-action-btn md3-primary-btn">
+      <span class="material-symbols-outlined">add</span>
+      Ersten Standort erstellen
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Location Detail Modal -->
+<div class="md3-location-modal" id="location-modal">
+  <div class="md3-modal-content">
+    <div class="md3-modal-header">
+      <h2 class="md3-modal-title" id="modal-title">Standort Details</h2>
+      <button class="md3-modal-close" onclick="closeLocationModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="md3-modal-body">
+      <!-- Modal image -->
+      <div id="modal-image-container"></div>
+      
+      <!-- Modal details -->
+      <div class="md3-modal-details" id="modal-details">
+        <!-- Details will be populated by JavaScript -->
+      </div>
+      
+      <!-- Modal badges -->
+      <div class="md3-card-badges" id="modal-badges">
+        <!-- Badges will be populated by JavaScript -->
+      </div>
+      
+      <!-- Modal actions -->
+      <div class="md3-modal-actions">
+        <button class="md3-action-btn md3-error-btn" onclick="deleteLocation(currentLocationId)">
+          <span class="material-symbols-outlined">delete</span>
+          Löschen
+        </button>
+        <button class="md3-action-btn md3-secondary-btn" onclick="editLocation(currentLocationId)">
+          <span class="material-symbols-outlined">edit</span>
+          Bearbeiten
+        </button>
+        <button class="md3-action-btn md3-primary-btn" onclick="closeLocationModal()">
+          Schließen
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Floorplan Planner Modal -->
+<div class="md3-location-modal" id="floorplan-planner-modal" style="display: none;">
+  <div class="md3-modal-content md3-floorplan-modal">
+    <div class="md3-modal-header">
+      <div class="md3-floorplan-modal-title">
+        <h2 class="md3-modal-title" id="floorplan-modal-title">Grundriss-Planer</h2>
+        <p class="md3-modal-subtitle" id="floorplan-modal-location"></p>
+      </div>
+      <button class="md3-modal-close" onclick="closeFloorplanPlanner()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="md3-floorplan-toolbar">
+      <div class="md3-floorplan-selectors">
+        <label class="md3-form-label" for="floorplan-select">Grundriss</label>
+        <select id="floorplan-select" class="md3-form-input"></select>
+      </div>
+      <div class="md3-floorplan-selectors">
+        <label class="md3-form-label" for="floorplan-version-select">Version</label>
+        <select id="floorplan-version-select" class="md3-form-input"></select>
+      </div>
+      <div class="md3-floorplan-scale">
+        <div class="md3-floorplan-scale-info" id="floorplan-scale-info">Maßstab nicht gesetzt</div>
+        <button type="button" class="md3-action-btn md3-secondary-btn" id="floorplan-set-scale-btn">
+          <span class="material-symbols-outlined">straighten</span>
+          Maßstab setzen
+        </button>
+      </div>
+      <div class="md3-floorplan-actions">
+        <button type="button" class="md3-action-btn md3-secondary-btn" id="floorplan-upload-btn">
+          <span class="material-symbols-outlined">upload</span>
+          Datei hinzufügen
+        </button>
+        <button type="button" class="md3-action-btn md3-secondary-btn" id="floorplan-new-version-btn">
+          <span class="material-symbols-outlined">history</span>
+          Neue Version
+        </button>
+      </div>
+    </div>
+    <div class="md3-floorplan-body">
+      <div class="md3-floorplan-sidebar" id="floorplan-sidebar">
+        <div class="md3-floorplan-section">
+          <h3>Assets</h3>
+          <div class="md3-floorplan-asset-picker">
+            <label class="md3-form-label" for="floorplan-asset-search">Asset suchen</label>
+            <div class="md3-floorplan-search-group">
+              <span class="material-symbols-outlined">search</span>
+              <input type="text" id="floorplan-asset-search" class="md3-form-input" placeholder="Name, Inventarnummer, Kategorie">
+            </div>
+            <label class="md3-form-label" for="floorplan-asset-filter">Filter</label>
+            <select id="floorplan-asset-filter" class="md3-form-input">
+              <option value="all">Alle Assets</option>
+              <option value="unplaced">Nur nicht platzierte</option>
+              <option value="placed">Bereits platziert</option>
+            </select>
+            <div class="md3-floorplan-asset-results" id="floorplan-asset-results"></div>
+          </div>
+          <div class="md3-floorplan-asset-list" id="floorplan-asset-list"></div>
+        </div>
+        <div class="md3-floorplan-section">
+          <h3>Versionen</h3>
+          <div class="md3-floorplan-version-list" id="floorplan-version-list"></div>
+        </div>
+      </div>
+      <div class="md3-floorplan-canvas-wrapper">
+        <div class="md3-floorplan-placeholder" id="floorplan-placeholder">
+          <span class="material-symbols-outlined" id="floorplan-placeholder-icon">dashboard_customize</span>
+          <p class="md3-floorplan-placeholder-text" id="floorplan-placeholder-message">Hier wird der Grundriss angezeigt. Wähle eine Version oder lade einen neuen Grundriss hoch.</p>
+          <div class="md3-floorplan-placeholder-actions">
+            <button type="button" class="md3-action-btn md3-primary-btn" id="floorplan-placeholder-upload">
+              <span class="material-symbols-outlined">upload</span>
+              <span id="floorplan-placeholder-upload-label">Grundriss-Datei hinzufügen</span>
+            </button>
+            <a class="md3-action-btn md3-secondary-btn" id="floorplan-placeholder-download" href="#" target="_blank" style="display: none;">
+              <span class="material-symbols-outlined" id="floorplan-placeholder-download-icon">download</span>
+              <span id="floorplan-placeholder-download-label">Datei öffnen</span>
+            </a>
+          </div>
+          <p class="md3-floorplan-placeholder-help" id="floorplan-placeholder-help">Unterstützt JPG, PNG und PDF</p>
+        </div>
+        <canvas id="floorplan-canvas" class="md3-floorplan-canvas" hidden></canvas>
+        <div id="floorplan-context-menu" class="md3-floorplan-context-menu" role="menu">
+          <div class="md3-floorplan-context-item" data-action="focus">
+            <span class="material-symbols-outlined">center_focus_strong</span>
+            <span>Fokus</span>
+          </div>
+          <div class="md3-floorplan-context-item" data-action="properties">
+            <span class="material-symbols-outlined">settings</span>
+            <span>Eigenschaften</span>
+          </div>
+          <div class="md3-floorplan-context-item" data-action="delete">
+            <span class="material-symbols-outlined">delete</span>
+            <span>Entfernen</span>
+          </div>
+        </div>
+    </div>
+    <div class="md3-floorplan-footer">
+      <div class="md3-floorplan-status" id="floorplan-status"></div>
+      <div class="md3-floorplan-footer-actions">
+        <button type="button" class="md3-action-btn md3-secondary-btn" onclick="closeFloorplanPlanner()">
+          <span class="material-symbols-outlined">close</span>
+          Schließen
+        </button>
+        <button type="button" class="md3-action-btn md3-primary-btn" id="floorplan-save-btn">
+          <span class="material-symbols-outlined">save</span>
+          Änderungen speichern
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="md3-floorplan-properties-modal" id="floorplan-properties-modal" aria-hidden="true">
+  <div class="md3-floorplan-properties-card" role="dialog" aria-modal="true" aria-labelledby="floorplan-properties-title">
+    <div class="md3-floorplan-properties-header">
+      <h3 class="md3-modal-title" id="floorplan-properties-title">Asset-Eigenschaften</h3>
+      <p class="md3-modal-subtitle" id="floorplan-properties-asset-name"></p>
+    </div>
+    <form id="floorplan-properties-form" class="md3-floorplan-properties-form">
+      <div class="md3-form-field">
+        <label class="md3-form-label" for="floorplan-properties-radius">Funkradius (Meter)</label>
+        <input type="number" id="floorplan-properties-radius" class="md3-form-input" min="0" step="0.1" placeholder="z. B. 30">
+        <p class="md3-floorplan-properties-note">Der Radius wird als Kreis im Grundriss visualisiert. Ideal für WLAN-Router oder andere Assets mit Reichweite.</p>
+      </div>
+      <div class="md3-form-field">
+        <label class="md3-form-label" for="floorplan-properties-note">Notiz</label>
+        <textarea id="floorplan-properties-note" class="md3-form-input" rows="3" placeholder="z. B. 4,5 GHz WiFi 6"></textarea>
+      </div>
+    </form>
+    <div class="md3-floorplan-properties-actions">
+      <button type="button" class="md3-action-btn md3-secondary-btn" id="floorplan-properties-close">
+        <span class="material-symbols-outlined">close</span>
+        Abbrechen
+      </button>
+      <button type="button" class="md3-action-btn md3-primary-btn" id="floorplan-properties-save">
+        <span class="material-symbols-outlined">save</span>
+        Speichern
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Location Modal -->
+<div class="md3-location-modal" id="edit-location-modal" style="display: none;">
+  <div class="md3-modal-content md3-edit-modal">
+    <div class="md3-modal-header">
+      <h2 class="md3-modal-title" id="edit-modal-title">Standort bearbeiten</h2>
+      <button class="md3-modal-close" onclick="closeEditLocationModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="md3-modal-body">
+      <form id="edit-location-form" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" id="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" id="edit-location-id" name="location_id" value="" />
+        
+        <!-- Name Field -->
+        <div class="md3-form-field">
+          <label class="md3-form-label">Name *</label>
+          <input type="text" id="edit-name" name="name" class="md3-form-input" required>
+          <div class="md3-form-error" id="edit-name-error"></div>
+        </div>
+        
+        <!-- Address Fields -->
+        <div class="md3-form-field">
+          <label class="md3-form-label">Straße</label>
+          <input type="text" id="edit-street" name="street" class="md3-form-input">
+        </div>
+        
+        <div class="md3-form-row">
+          <div class="md3-form-field">
+            <label class="md3-form-label">PLZ</label>
+            <input type="text" id="edit-postal-code" name="postal_code" class="md3-form-input">
+          </div>
+          <div class="md3-form-field">
+            <label class="md3-form-label">Stadt</label>
+            <input type="text" id="edit-city" name="city" class="md3-form-input">
+          </div>
+          <div class="md3-form-field">
+            <label class="md3-form-label">Bundesland</label>
+            <input type="text" id="edit-state" name="state" class="md3-form-input">
+          </div>
+        </div>
+        
+        <!-- Size and Capacity Fields -->
+        <div class="md3-form-row">
+          <div class="md3-form-field">
+            <label class="md3-form-label">Größe (m²)</label>
+            <input type="number" id="edit-size-sqm" name="size_sqm" class="md3-form-input" min="0" step="0.01">
+          </div>
+          <div class="md3-form-field">
+            <label class="md3-form-label">Sitzplätze</label>
+            <input type="number" id="edit-seats" name="seats" class="md3-form-input" min="0">
+          </div>
+        </div>
+        
+        <!-- Description Field -->
+        <div class="md3-form-field">
+          <label class="md3-form-label">Beschreibung</label>
+          <textarea id="edit-description" name="description" class="md3-form-textarea" rows="3"></textarea>
+        </div>
+        
+        <!-- Image Upload Field -->
+        <div class="md3-form-field">
+          <label class="md3-form-label">Standort-Bild hochladen</label>
+          <input type="file" id="edit-image" name="image" class="md3-form-file" accept="image/*">
+          <div class="md3-form-help">Nur JPG, PNG, GIF erlaubt</div>
+        </div>
+
+        <div class="md3-form-field md3-floorplan-trigger">
+          <button type="button" id="edit-floorplan-btn" class="md3-action-btn md3-secondary-btn">
+            <span class="material-symbols-outlined">stacks</span>
+            Grundriss-Planer öffnen
+          </button>
+          <div class="md3-form-help">Verwalte Grundriss-Dateien (Bilder & PDFs), Versionen und Asset-Positionsdaten.</div>
+        </div>
+        
+        <!-- Coordinates Fields -->
+        <div class="md3-form-row">
+          <div class="md3-form-field">
+            <label class="md3-form-label">Breitengrad</label>
+            <input type="number" id="edit-latitude" name="latitude" class="md3-form-input" step="any">
+          </div>
+          <div class="md3-form-field">
+            <label class="md3-form-label">Längengrad</label>
+            <input type="number" id="edit-longitude" name="longitude" class="md3-form-input" step="any">
+          </div>
+        </div>
+        
+        <!-- Google Reviews & Navigation Section -->
+        <div class="md3-form-section">
+          <div class="md3-form-section-header">
+            <h3 class="md3-form-section-title">
+              <span class="material-symbols-outlined">star</span>
+              Google Bewertungen & Navigation
+            </h3>
+            <button type="button" class="md3-google-fetch-btn" onclick="fetchGoogleData()" title="Google-Daten automatisch abrufen">
+              <span class="material-symbols-outlined">search</span>
+              Google-Daten abrufen
+            </button>
+          </div>
+          
+          <div class="md3-form-row">
+            <div class="md3-form-field">
+              <label class="md3-form-label">Google Bewertung (1.0-5.0)</label>
+              <input type="number" id="edit-google-rating" name="google_rating" class="md3-form-input" step="0.1" min="1.0" max="5.0" placeholder="z.B. 4.2">
+              <div class="md3-form-help">Sterne-Bewertung von Google (1.0 bis 5.0)</div>
+            </div>
+            <div class="md3-form-field">
+              <label class="md3-form-label">Anzahl Bewertungen</label>
+              <input type="number" id="edit-google-reviews-count" name="google_reviews_count" class="md3-form-input" min="0" placeholder="z.B. 127">
+              <div class="md3-form-help">Anzahl der Google-Bewertungen</div>
+            </div>
+          </div>
+          
+          <div class="md3-form-field">
+            <label class="md3-form-label">Google Maps URL</label>
+            <input type="url" id="edit-google-maps-url" name="google_maps_url" class="md3-form-input" placeholder="https://maps.google.com/?q=...">
+            <div class="md3-form-help">Direkte Google Maps URL für Navigation und Bewertungen</div>
+          </div>
+        </div>
+        
+        <!-- Form Actions -->
+        <div class="md3-form-actions">
+          <button type="button" class="md3-action-btn md3-secondary-btn" onclick="closeEditLocationModal()">
+            <span class="material-symbols-outlined">close</span>
+            Abbrechen
+          </button>
+          <button type="submit" class="md3-action-btn md3-primary-btn">
+            <span class="material-symbols-outlined">save</span>
+            Speichern
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- New Location Modal -->
+<div class="md3-location-modal" id="new-location-modal" style="display: none;">
+  <div class="md3-modal-content md3-edit-modal">
+    <div class="md3-modal-header">
+      <h2 class="md3-modal-title" id="new-modal-title">Neuer Standort</h2>
+      <button class="md3-modal-close" onclick="closeNewLocationModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="md3-modal-body">
+      <form id="new-location-form" method="POST" action="/locations/new" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        
+        <!-- Name Field -->
+        <div class="md3-form-field">
+          <label class="md3-form-label">Name *</label>
+          <input type="text" id="new-name" name="name" class="md3-form-input" required>
+          <div class="md3-form-error" id="new-name-error"></div>
+        </div>
+        
+        <!-- Address Fields -->
+        <div class="md3-form-field">
+          <label class="md3-form-label">Straße</label>
+          <input type="text" id="new-street" name="street" class="md3-form-input">
+        </div>
+        
+        <div class="md3-form-row">
+          <div class="md3-form-field">
+            <label class="md3-form-label">PLZ</label>
+            <input type="text" id="new-postal-code" name="postal_code" class="md3-form-input">
+          </div>
+          <div class="md3-form-field">
+            <label class="md3-form-label">Stadt</label>
+            <input type="text" id="new-city" name="city" class="md3-form-input">
+          </div>
+          <div class="md3-form-field">
+            <label class="md3-form-label">Bundesland</label>
+            <input type="text" id="new-state" name="state" class="md3-form-input">
+          </div>
+        </div>
+        
+        <!-- Size and Capacity Fields -->
+        <div class="md3-form-row">
+          <div class="md3-form-field">
+            <label class="md3-form-label">Größe (m²)</label>
+            <input type="number" id="new-size-sqm" name="size_sqm" class="md3-form-input" min="0" step="0.01">
+          </div>
+          <div class="md3-form-field">
+            <label class="md3-form-label">Sitzplätze</label>
+            <input type="number" id="new-seats" name="seats" class="md3-form-input" min="0">
+          </div>
+        </div>
+        
+        <!-- Description Field -->
+        <div class="md3-form-field">
+          <label class="md3-form-label">Beschreibung</label>
+          <textarea id="new-description" name="description" class="md3-form-input md3-form-textarea" rows="3"></textarea>
+        </div>
+        
+        <!-- Image Upload Field -->
+        <div class="md3-form-field">
+          <label class="md3-form-label">Standort-Bild hochladen</label>
+          <input type="file" id="new-image" name="image" class="md3-form-input" accept=".jpg,.jpeg,.png,.gif">
+          <div class="md3-form-help">Nur JPG, PNG, GIF erlaubt</div>
+        </div>
+        
+        <!-- Coordinates Fields -->
+        <div class="md3-form-row">
+          <div class="md3-form-field">
+            <label class="md3-form-label">Breitengrad</label>
+            <input type="number" id="new-latitude" name="latitude" class="md3-form-input" step="any" placeholder="z.B. 52.521">
+          </div>
+          <div class="md3-form-field">
+            <label class="md3-form-label">Längengrad</label>
+            <input type="number" id="new-longitude" name="longitude" class="md3-form-input" step="any" placeholder="z.B. 13.405">
+          </div>
+        </div>
+        
+        <!-- Form Actions -->
+        <div class="md3-form-actions">
+          <button type="button" class="md3-action-btn md3-secondary-btn" onclick="closeNewLocationModal()">
+            <span class="material-symbols-outlined">close</span>
+            Abbrechen
+          </button>
+          <button type="submit" class="md3-action-btn md3-primary-btn">
+            <span class="material-symbols-outlined">add_location</span>
+            Standort erstellen
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Load locations data from JSON script tag
+function loadLocationsData() {
+  try {
+    const dataElement = document.getElementById('locations-data');
+    if (dataElement) {
+      return JSON.parse(dataElement.textContent);
+    }
+  } catch (error) {
+    console.warn('Failed to load locations data:', error);
+  }
+  return [];
+}
+
+// Google Maps initialization
+let map;
+// locationsData is now initialized later in the script
+
+function initMap() {
+  console.log('Initializing Google Maps...');
+  
+  // Check if Google Maps API is available
+  if (typeof google === 'undefined' || !google.maps) {
+    console.error('Google Maps API not loaded');
+    showMapFallback();
+    return;
+  }
+  
+  // Check if map container exists
+  const mapContainer = document.getElementById('map');
+  if (!mapContainer) {
+    console.error('Map container element not found');
+    return;
+  }
+  
+  // Load locations data
+  locationsData = loadLocationsData();
+  console.log('Loaded locations data:', locationsData);
+  
+  try {
+    // Initialize Google Map with a subtle, muted style
+    map = new google.maps.Map(mapContainer, {
+    zoom: 10,
+    center: { lat: 52.5200, lng: 13.4050 }, // Berlin center
+    disableDefaultUI: true,
+    gestureHandling: 'none',
+    zoomControl: false,
+    scrollwheel: false,
+    disableDoubleClickZoom: true,
+    draggable: false,
+    styles: [
+      {
+        "featureType": "all",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#E8F5E8" }]
+      },
+      {
+        "featureType": "water",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#F3E5F5" }]
+      },
+      {
+        "featureType": "road",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#ffffff" }, { "weight": 0.5 }]
+      },
+      {
+        "featureType": "poi",
+        "stylers": [{ "visibility": "off" }]
+      },
+      {
+        "featureType": "transit",
+        "stylers": [{ "visibility": "off" }]
+      },
+      {
+        "featureType": "administrative",
+        "elementType": "labels",
+        "stylers": [{ "visibility": "off" }]
+      }
+    ]
+  });
+
+  // No markers needed - map will fly to locations when cards are clicked
+  console.log('Map ready for location navigation');
+  
+  // Center map on first location if available
+  if (locationsData && locationsData.length > 0) {
+    const firstLocation = locationsData.find(loc => loc.latitude && loc.longitude);
+    if (firstLocation) {
+      map.setCenter({ 
+        lat: parseFloat(firstLocation.latitude), 
+        lng: parseFloat(firstLocation.longitude) 
+      });
+      map.setZoom(12);
+    }
+  }
+  
+  console.log('Google Maps initialized successfully');
+  
+  } catch (error) {
+    console.error('Error initializing Google Maps:', error);
+    showMapFallback();
+  }
+}
+
+// Fly to location on map with smooth animation
+function flyToLocation(locationId) {
+  const location = locationsData.find(loc => loc.id === locationId);
+  if (location && location.latitude && location.longitude && map) {
+    console.log('Flying to location:', location.name);
+    
+    // Smooth animation to location
+    map.panTo({
+      lat: parseFloat(location.latitude),
+      lng: parseFloat(location.longitude)
+    });
+    
+    // Zoom in for better view
+    map.setZoom(15);
+    
+    // Add a subtle pulse effect at the location
+    setTimeout(() => {
+      addTemporaryLocationPulse(location);
+    }, 500);
+  }
+}
+
+// Add temporary pulse effect at location
+function addTemporaryLocationPulse(location) {
+  if (!map) return;
+  
+  const pulseMarker = new google.maps.Marker({
+    position: { 
+      lat: parseFloat(location.latitude), 
+      lng: parseFloat(location.longitude) 
+    },
+    map: map,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 20,
+      fillColor: '#6750A4',
+      fillOpacity: 0.3,
+      strokeColor: '#6750A4',
+      strokeWeight: 2,
+      strokeOpacity: 0.8
+    },
+    animation: google.maps.Animation.BOUNCE
+  });
+  
+  // Remove pulse after 3 seconds
+  setTimeout(() => {
+    pulseMarker.setMap(null);
+  }, 3000);
+}
+
+// Enhanced fallback and initialization check
+window.addEventListener('load', function() {
+  console.log('Page loaded, checking Google Maps status...');
+  
+  // Check if initMap was called
+  setTimeout(() => {
+    if (!window.google || !map) {
+      console.warn('Google Maps failed to load or initialize, using fallback background');
+      showMapFallback();
+    } else {
+      console.log('Google Maps loaded successfully');
+    }
+  }, 3000);
+});
+
+// Ensure DOM is ready before any map operations
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM ready, map container available:', !!document.getElementById('map'));
+  
+  // If Google Maps is already loaded but initMap wasn't called
+  if (window.google && window.google.maps && !map) {
+    console.log('Google Maps API available, calling initMap manually');
+    initMap();
+  }
+
+  const floorplanButton = document.getElementById('edit-floorplan-btn');
+  if (floorplanButton) {
+    floorplanButton.addEventListener('click', function() {
+      if (typeof window.openFloorplanPlannerFromEdit === 'function') {
+        window.openFloorplanPlannerFromEdit();
+      } else {
+        console.error('❌ ERROR: Floorplan-Planner-Script ist nicht geladen.');
+      }
+    });
+  }
+
+});
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+  const modal = document.getElementById('location-modal');
+  const editModal = document.getElementById('edit-location-modal');
+  if (event.target === modal) {
+    closeLocationModal();
+  }
+  if (event.target === editModal) {
+    closeEditLocationModal();
+  }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeLocationModal();
+  }
+});
+
+// Carousel functionality
+let currentSlide = 0;
+let cardsPerView = 1;
+let totalCards = 0;
+
+document.addEventListener('DOMContentLoaded', function() {
+  initializeCarousel();
+  updateCarouselLayout();
+  window.addEventListener('resize', updateCarouselLayout);
+});
+
+function initializeCarousel() {
+  const cards = document.querySelectorAll('.md3-location-card');
+  totalCards = cards.length;
+  
+  if (totalCards === 0) return;
+  
+  // Generate indicators
+  const indicatorsContainer = document.getElementById('indicators');
+  indicatorsContainer.innerHTML = '';
+  
+  const totalSlides = Math.ceil(totalCards / cardsPerView);
+  for (let i = 0; i < totalSlides; i++) {
+    const indicator = document.createElement('div');
+    indicator.className = 'md3-indicator';
+    if (i === 0) indicator.classList.add('active');
+    indicator.onclick = () => goToSlide(i);
+    indicatorsContainer.appendChild(indicator);
+  }
+  
+  updateCarousel();
+}
+
+function updateCarouselLayout() {
+  const container = document.querySelector('.md3-locations-carousel');
+  if (!container) return;
+  
+  const containerWidth = container.offsetWidth;
+  const cardWidth = 320 + 24; // card width + gap
+  
+  cardsPerView = Math.max(1, Math.floor(containerWidth / cardWidth));
+  
+  // Recalculate current slide to prevent overflow
+  const maxSlide = Math.max(0, Math.ceil(totalCards / cardsPerView) - 1);
+  if (currentSlide > maxSlide) {
+    currentSlide = maxSlide;
+  }
+  
+  initializeCarousel();
+}
+
+function updateCarousel() {
+  const track = document.getElementById('carousel-track');
+  const indicators = document.querySelectorAll('.md3-indicator');
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  
+  if (!track) return;
+  
+  const cardWidth = 320 + 24; // card width + gap
+  const offset = currentSlide * cardsPerView * cardWidth;
+  track.style.transform = `translateX(-${offset}px)`;
+  
+  // Update indicators
+  indicators.forEach((indicator, index) => {
+    indicator.classList.toggle('active', index === currentSlide);
+  });
+  
+  // Update button states
+  const maxSlide = Math.max(0, Math.ceil(totalCards / cardsPerView) - 1);
+  prevBtn.disabled = currentSlide === 0;
+  nextBtn.disabled = currentSlide >= maxSlide;
+}
+
+function nextSlide() {
+  const maxSlide = Math.max(0, Math.ceil(totalCards / cardsPerView) - 1);
+  if (currentSlide < maxSlide) {
+    currentSlide++;
+    updateCarousel();
+  }
+}
+
+function previousSlide() {
+  if (currentSlide > 0) {
+    currentSlide--;
+    updateCarousel();
+  }
+}
+
+function goToSlide(slideIndex) {
+  const maxSlide = Math.max(0, Math.ceil(totalCards / cardsPerView) - 1);
+  currentSlide = Math.max(0, Math.min(slideIndex, maxSlide));
+  updateCarousel();
+}
+
+// View toggle functionality
+function toggleView() {
+  const carouselView = document.getElementById('carousel-view');
+  const gridView = document.getElementById('grid-view');
+  const toggleIcon = document.getElementById('view-toggle-icon');
+  
+  if (carouselView.style.display === 'none') {
+    carouselView.style.display = 'block';
+    gridView.style.display = 'none';
+    toggleIcon.textContent = 'grid_view';
+  } else {
+    carouselView.style.display = 'none';
+    gridView.style.display = 'grid';
+    toggleIcon.textContent = 'view_carousel';
+  }
+}
+
+// Current location ID for modal
+let currentLocationId = null;
+let currentLocationData = null;
+
+// Inject CSRF token from Flask template context
+window.csrfToken = '{{ csrf_token() }}';
+
+// Initialize locations data for JavaScript (for edit modal)
+window.locationsData = [];
+const locationsDataElement = document.getElementById('locations-data');
+if (locationsDataElement) {
+  try {
+    window.locationsData = JSON.parse(locationsDataElement.textContent || '[]') || [];
+  } catch (err) {
+    console.error('❌ ERROR: Unable to parse locations-data JSON', err);
+    window.locationsData = [];
+  }
+} else {
+  console.warn('⚠️ WARN: #locations-data script element not found.');
+}
+
+// Debug: Log locationsData to console
+console.log('🔍 DEBUG: locationsData initialized:', window.locationsData);
+console.log('🔍 DEBUG: locationsData length:', window.locationsData ? window.locationsData.length : 'undefined');
+
+// Debug: Test if locationsData is valid
+if (!window.locationsData || !Array.isArray(window.locationsData)) {
+  console.error('❌ ERROR: locationsData is not a valid array!', window.locationsData);
+} else {
+  console.log('✅ SUCCESS: locationsData is valid array with', window.locationsData.length, 'locations');
+  if (window.locationsData.length > 0) {
+    console.log('🔍 DEBUG: First location sample:', window.locationsData[0]);
+  }
+}
+
+// Open location modal with details and fly to location
+function openLocationModal(locationId) {
+  console.log('🔍 DEBUG: openLocationModal called with locationId:', locationId);
+  console.log('🔍 DEBUG: typeof locationId:', typeof locationId);
+  console.log('🔍 DEBUG: locationsData available:', !!locationsData);
+  
+  // Check if locationsData is available
+  if (!window.locationsData) {
+    console.error('❌ ERROR: locationsData is not available in openLocationModal!');
+    return;
+  }
+  
+  currentLocationId = locationId;
+  
+  // Fly to location on map
+  flyToLocation(locationId);
+  
+  // Show loading state in modal
+  showModalLoading();
+  
+  // Fetch detailed location data from API
+  fetch(`/api/locations/${locationId}/details`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(locationData => {
+      console.log('Loaded detailed location data:', locationData);
+      // Populate modal with detailed data
+      populateLocationModal(locationData);
+    })
+    .catch(error => {
+      console.error('Error loading location details:', error);
+      // Fallback to basic data if available
+      const basicLocation = locationsData.find(loc => loc.id === locationId);
+      if (basicLocation) {
+        populateLocationModal(basicLocation);
+      } else {
+        showModalError('Fehler beim Laden der Standort-Details');
+      }
+    });
+}
+
+function showModalLoading() {
+  const modal = document.getElementById('location-modal');
+  if (!modal) return;
+
+  modal.style.display = 'flex';
+  modal.classList.add('show');
+  document.body.style.overflow = 'hidden';
+
+  const titleEl = document.getElementById('modal-title');
+  if (titleEl) {
+    titleEl.textContent = 'Standort Details';
+  }
+
+  const imageContainer = document.getElementById('modal-image-container');
+  if (imageContainer) {
+    imageContainer.innerHTML = `
+      <div class="md3-modal-image-placeholder">
+        <span class="material-symbols-outlined md3-loading-spinner">sync</span>
+      </div>
+    `;
+  }
+
+  const detailsContainer = document.getElementById('modal-details');
+  if (detailsContainer) {
+    detailsContainer.innerHTML = `
+      <div class="md3-loading-message">
+        <span class="material-symbols-outlined md3-loading-spinner">sync</span>
+        <p>Standort-Details werden geladen...</p>
+      </div>
+    `;
+  }
+
+  const badgesContainer = document.getElementById('modal-badges');
+  if (badgesContainer) {
+    badgesContainer.innerHTML = '';
+  }
+}
+
+function closeLocationModal() {
+  const modal = document.getElementById('location-modal');
+  if (!modal) return;
+
+  modal.classList.remove('show');
+  modal.style.display = 'none';
+  document.body.style.overflow = '';
+  currentLocationId = null;
+  currentLocationData = null;
+}
+
+// Show error state in modal
+function showModalError(message) {
+  document.getElementById('modal-title').textContent = 'Fehler';
+  
+  const detailsContainer = document.getElementById('modal-details');
+  detailsContainer.innerHTML = `
+    <div class="md3-error-message">
+      <span class="material-symbols-outlined">error</span>
+      <p>${message}</p>
+    </div>
+  `;
+}
+
+// Populate modal with location data
+function populateLocationModal(location) {
+  // Set title
+  document.getElementById('modal-title').textContent = location.name;
+  
+  // Set image
+  const imageContainer = document.getElementById('modal-image-container');
+  if (location.image_url && location.image_url.trim()) {
+    imageContainer.innerHTML = `
+      <img src="${location.image_url}" alt="${location.name}" class="md3-modal-image" 
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      <div class="md3-modal-image-placeholder" style="display: none;">
+        <span class="material-symbols-outlined">location_on</span>
+      </div>
+    `;
+  } else {
+    imageContainer.innerHTML = `
+      <div class="md3-modal-image-placeholder">
+        <span class="material-symbols-outlined">location_on</span>
+      </div>
+    `;
+  }
+  
+  // Set details
+  const detailsContainer = document.getElementById('modal-details');
+  
+  // Build full address
+  let fullAddress = '—';
+  if (location.street || location.postal_code || location.city) {
+    const addressParts = [];
+    if (location.street) addressParts.push(location.street);
+    if (location.postal_code && location.city) {
+      addressParts.push(`${location.postal_code} ${location.city}`);
+    } else if (location.postal_code) {
+      addressParts.push(location.postal_code);
+    } else if (location.city) {
+      addressParts.push(location.city);
+    }
+    if (location.state) addressParts.push(location.state);
+    fullAddress = addressParts.join(', ');
+  }
+  
+  detailsContainer.innerHTML = `
+    <div class="md3-modal-detail-item">
+      <span class="md3-modal-detail-label">VOLLSTÄNDIGE ADRESSE</span>
+      <span class="md3-modal-detail-value">${fullAddress}</span>
+    </div>
+    <div class="md3-modal-detail-item">
+      <span class="md3-modal-detail-label">TYP</span>
+      <span class="md3-modal-detail-value">${location.location_type || 'Büro'}</span>
+    </div>
+    <div class="md3-modal-detail-item">
+      <span class="md3-modal-detail-label">GRÖSSE</span>
+      <span class="md3-modal-detail-value">${location.size_sqm ? location.size_sqm + ' m²' : '—'}</span>
+    </div>
+    <div class="md3-modal-detail-item">
+      <span class="md3-modal-detail-label">SITZPLÄTZE</span>
+      <span class="md3-modal-detail-value">${location.seats || '—'}</span>
+    </div>
+    <div class="md3-modal-detail-item">
+      <span class="md3-modal-detail-label">KAPAZITÄT</span>
+      <span class="md3-modal-detail-value">${location.capacity || '—'}</span>
+    </div>
+    <div class="md3-modal-detail-item">
+      <span class="md3-modal-detail-label">ASSETS</span>
+      <span class="md3-modal-detail-value">${location.asset_count || '0'}</span>
+    </div>
+  `;
+  
+  // Add description section if available
+  if (location.description && location.description.trim()) {
+    detailsContainer.innerHTML += `
+      <div class="md3-modal-description-section">
+        <h3 class="md3-modal-section-title">Beschreibung</h3>
+        <p class="md3-modal-description-text">${location.description}</p>
+      </div>
+    `;
+  }
+  
+  // Create vertical sections container for assets and categories
+  let hasAssets = location.assets && location.assets.length > 0;
+  let hasCategories = location.category_stats && location.category_stats.length > 0;
+  
+  if (hasAssets || hasCategories) {
+    let sectionsHtml = `
+      <div class="md3-modal-sections">
+    `;
+    
+    // Add assets section if there are assets
+    if (hasAssets) {
+      sectionsHtml += `
+        <div class="md3-modal-assets-section">
+          <h3 class="md3-modal-section-title">Assets am Standort</h3>
+          <div class="md3-modal-assets-grid">
+      `;
+      
+      location.assets.forEach(asset => {
+        const statusClass = asset.status === 'Aktiv' || asset.is_active ? 'active' : 'inactive';
+        sectionsHtml += `
+          <div class="md3-modal-asset-card">
+            <div class="md3-asset-name">${asset.name || 'Unbekanntes Asset'}</div>
+            <div class="md3-asset-value">${asset.value ? asset.value + ' €' : '88.9 €'}</div>
+            <div class="md3-asset-badges">
+              <span class="md3-asset-category">${asset.category || 'HARDWARE'}</span>
+              <span class="md3-asset-status md3-status-${statusClass}">${asset.status === 'Aktiv' || asset.is_active ? 'INACTIVE' : 'INACTIVE'}</span>
+            </div>
+          </div>
+        `;
+      });
+      
+      sectionsHtml += `
+          </div>
+        </div>
+      `;
+    }
+    
+    // Add category breakdown if available
+    if (hasCategories) {
+      sectionsHtml += `
+        <div class="md3-modal-categories-section">
+          <h3 class="md3-modal-section-title">Bestand nach Kategorien</h3>
+          <div class="md3-modal-categories-grid">
+      `;
+      
+      location.category_stats.forEach(categoryData => {
+        sectionsHtml += `
+          <div class="md3-modal-category-card">
+            <div class="md3-category-header">
+              <div class="md3-category-name">${categoryData.category_name || 'Unbekannt'}</div>
+              <div class="md3-category-count">${categoryData.count || 0}</div>
+            </div>
+            <div class="md3-category-value">${categoryData.total_value ? categoryData.total_value.toFixed(2) + ' €' : '0,00 €'}</div>
+          </div>
+        `;
+      });
+      
+      sectionsHtml += `
+          </div>
+        </div>
+      `;
+    }
+    
+    sectionsHtml += `
+      </div>
+    `;
+    
+    detailsContainer.innerHTML += sectionsHtml;
+  }
+  
+  // Set badges
+  const badgesContainer = document.getElementById('modal-badges');
+  const statusClass = location.is_active ? '' : 'inactive';
+  const availabilityClass = location.available ? 'md3-badge-available' : 'md3-badge-unavailable';
+  const availabilityText = location.available ? 'Verfügbar' : 'Belegt';
+  
+  badgesContainer.innerHTML = `
+    <span class="md3-badge md3-badge-type">${location.location_type || 'Büro'}</span>
+    <span class="md3-badge md3-badge-status ${statusClass}">
+      ${location.is_active ? 'Aktiv' : 'Inaktiv'}
+    </span>
+    <span class="md3-badge ${availabilityClass}">
+      ${availabilityText}
+    </span>
+  `;
+}
+
+// Location action functions
+// Edit Location Functions
+function editLocation(locationId) {
+  console.log('🔍 DEBUG: editLocation called with locationId:', locationId);
+  console.log('🔍 DEBUG: typeof locationId:', typeof locationId);
+  console.log('🔍 DEBUG: locationsData available:', !!window.locationsData);
+  console.log('🔍 DEBUG: locationsData length:', window.locationsData ? window.locationsData.length : 'undefined');
+
+  if (!locationId) {
+    console.error('❌ ERROR: editLocation called without locationId');
+    return;
+  }
+
+  if (typeof closeLocationModal === 'function') {
+    closeLocationModal();
+  }
+
+  // Show edit modal
+  openEditLocationModal();
+
+  currentLocationId = locationId;
+  setCsrfTokenForEdit();
+
+  const fallback = Array.isArray(window.locationsData)
+    ? window.locationsData.find((loc) => String(loc.id) === String(locationId))
+    : null;
+
+  if (fallback) {
+    console.log('ℹ️ INFO: Prefilling edit form from window.locationsData');
+    applyEditLocationData(fallback);
+  }
+
+  fetch(`/api/locations/${locationId}/details`)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json();
+    })
+    .then((payload) => {
+      const detailed = payload?.location || payload;
+      if (!detailed) {
+        throw new Error('Leere Antwort vom Server');
+      }
+      console.log('✅ SUCCESS: Loaded detailed location data for edit modal', detailed);
+      applyEditLocationData(detailed);
+    })
+    .catch((error) => {
+      console.error('❌ ERROR: Failed to load detailed location data', error);
+      if (!fallback) {
+        showErrorMessage('Standortdaten konnten nicht geladen werden.');
+        closeEditLocationModal();
+      }
+    });
+}
+
+function openEditLocationModal() {
+  const editModal = document.getElementById('edit-location-modal');
+  if (!editModal) {
+    console.error('❌ ERROR: openEditLocationModal called but #edit-location-modal not found');
+    return;
+  }
+
+  editModal.style.display = 'flex';
+  requestAnimationFrame(() => {
+    editModal.classList.add('show');
+    const modalStyles = getComputedStyle(editModal);
+    const modalRect = editModal.getBoundingClientRect();
+    const content = editModal.querySelector('.md3-modal-content');
+    const contentRect = content ? content.getBoundingClientRect() : null;
+    console.log('✅ DEBUG: Edit modal opened.', {
+      display: modalStyles.display,
+      visibility: modalStyles.visibility,
+      opacity: modalStyles.opacity,
+      rect: modalRect,
+      contentRect
+    });
+    document.body.style.overflow = 'hidden';
+  });
+}
+
+function closeEditLocationModal() {
+  const editModal = document.getElementById('edit-location-modal');
+  if (!editModal) return;
+
+  editModal.classList.remove('show');
+  editModal.style.display = 'none';
+  document.body.style.overflow = '';
+  clearEditForm();
+  currentLocationId = null;
+}
+
+function clearEditForm() {
+  const form = document.getElementById('edit-location-form');
+  if (!form) return;
+
+  const inputs = form.querySelectorAll('input, textarea');
+  inputs.forEach((input) => {
+    if (input.type !== 'hidden' && input.name !== 'csrf_token') {
+      input.value = '';
+    }
+  });
+
+  const errors = form.querySelectorAll('.md3-form-error');
+  errors.forEach((error) => {
+    error.classList.remove('show');
+    error.textContent = '';
+  });
+}
+
+function setCsrfTokenForEdit() {
+  const form = document.getElementById('edit-location-form');
+  if (!form) {
+    console.warn('⚠️ WARN: edit-location-form not found when trying to set CSRF token');
+    return;
+  }
+
+  const hiddenTokenInput = form.querySelector('input[name="csrf_token"]');
+  const templateTokenInput = document.getElementById('csrf_token');
+
+  const tokenValue = templateTokenInput?.value || window.csrfToken;
+
+  if (!tokenValue) {
+    console.error('❌ ERROR: No CSRF token available for edit form submission');
+    return;
+  }
+
+  if (hiddenTokenInput) {
+    hiddenTokenInput.value = tokenValue;
+  } else {
+    const newInput = document.createElement('input');
+    newInput.type = 'hidden';
+    newInput.name = 'csrf_token';
+    newInput.value = tokenValue;
+    form.appendChild(newInput);
+  }
+}
+
+function applyEditLocationData(location) {
+  if (!location) return;
+
+  currentLocationData = location;
+
+  const updateInput = (selector, value) => {
+    const element = document.querySelector(selector);
+    if (element) {
+      element.value = value ?? '';
+    }
+  };
+
+  updateInput('#edit-location-id', location.id ?? location.location_id ?? '');
+  updateInput('#edit-name', location.name ?? '');
+  updateInput('#edit-street', location.street ?? location.address_line1 ?? '');
+  updateInput('#edit-postal-code', location.postal_code ?? '');
+  updateInput('#edit-city', location.city ?? '');
+  updateInput('#edit-state', location.state ?? '');
+  updateInput('#edit-size-sqm', location.size_sqm ?? location.size ?? '');
+  updateInput('#edit-seats', location.seats ?? '');
+  updateInput('#edit-description', location.description ?? '');
+  updateInput('#edit-latitude', location.latitude ?? '');
+  updateInput('#edit-longitude', location.longitude ?? '');
+
+  populateGoogleReviewsFields(location);
+
+  const titleEl = document.getElementById('edit-modal-title');
+  if (titleEl) {
+    titleEl.textContent = `${location.name || 'Standort'} bearbeiten`;
+  }
+
+  const form = document.getElementById('edit-location-form');
+  if (form) {
+    form.action = `/locations/${location.id ?? location.location_id ?? currentLocationId}/edit`;
+  }
+
+  if (Array.isArray(window.locationsData)) {
+    const idx = window.locationsData.findIndex((loc) => String(loc.id) === String(location.id ?? location.location_id));
+    if (idx !== -1) {
+      window.locationsData[idx] = { ...window.locationsData[idx], ...location };
+    }
+  }
+}
+
+function deleteLocation(locationId) {
+  console.log('Deleting location:', locationId);
+  // TODO: Implement location delete confirmation
+  if (confirm('Möchten Sie diesen Standort wirklich löschen?')) {
+    alert('Delete-Funktion wird noch implementiert');
+  }
+}
+
+function openNewLocationModal() {
+  console.log('Opening new location modal');
+  // TODO: Implement new location modal
+}
+
+function importLocations() {
+  console.log('Importing locations');
+  // TODO: Implement CSV import functionality
+}
+
+// Form Submission Logic
+document.addEventListener('DOMContentLoaded', function() {
+  const editForm = document.getElementById('edit-location-form');
+  if (editForm) {
+    editForm.addEventListener('submit', handleEditFormSubmission);
+  }
+});
+
+function handleEditFormSubmission(event) {
+  event.preventDefault();
+  
+  const form = event.target;
+  const formData = new FormData(form);
+  const locationId = formData.get('location_id');
+  
+  // Debug logging
+  console.log('Form submission started for location:', locationId);
+  console.log('Form data entries:');
+  for (let [key, value] of formData.entries()) {
+    if (value instanceof File) {
+      console.log(`${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
+    } else {
+      console.log(`${key}: ${value}`);
+    }
+  }
+  
+  // Validate required fields
+  if (!validateEditForm(form)) {
+    return;
+  }
+  
+  // Show loading state
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const originalText = submitBtn.innerHTML;
+  submitBtn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Speichern...';
+  submitBtn.disabled = true;
+  
+  // Set the form action and submit traditionally (backend expects HTML form submission)
+  form.action = `/locations/${locationId}/edit`;
+  form.method = 'POST';
+  
+  // Submit the form traditionally to work with existing backend
+  form.submit();
+  
+  // Note: The page will redirect after successful submission
+  // The backend handles success/error messages via flash messages
+}
+
+function validateEditForm(form) {
+  let isValid = true;
+  
+  // Clear previous errors
+  const errors = form.querySelectorAll('.md3-form-error');
+  errors.forEach(error => {
+    error.classList.remove('show');
+    error.textContent = '';
+  });
+  
+  // Validate name field (required)
+  const nameField = form.querySelector('#edit-name');
+  if (!nameField.value.trim()) {
+    showFieldError('edit-name-error', 'Name ist erforderlich');
+    isValid = false;
+  }
+  
+  // Validate size_sqm (must be positive if provided)
+  const sizeField = form.querySelector('#edit-size-sqm');
+  if (sizeField.value && parseFloat(sizeField.value) < 0) {
+    showFieldError('edit-size-error', 'Größe muss positiv sein');
+    isValid = false;
+  }
+  
+  // Validate seats (must be positive if provided)
+  const seatsField = form.querySelector('#edit-seats');
+  if (seatsField.value && parseInt(seatsField.value) < 0) {
+    showFieldError('edit-seats-error', 'Sitzplätze müssen positiv sein');
+    isValid = false;
+  }
+  
+  return isValid;
+}
+
+function showFieldError(errorId, message) {
+  const errorElement = document.getElementById(errorId);
+  if (errorElement) {
+    errorElement.textContent = message;
+    errorElement.classList.add('show');
+  }
+}
+
+function showSuccessMessage(message) {
+  // Create and show success notification
+  const notification = document.createElement('div');
+  notification.className = 'md3-notification md3-success';
+  notification.innerHTML = `
+    <span class="material-symbols-outlined">check_circle</span>
+    <span>${message}</span>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Auto-remove after 3 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 3000);
+}
+
+function showErrorMessage(message) {
+  // Create and show error notification
+  const notification = document.createElement('div');
+  notification.className = 'md3-notification md3-error';
+  notification.innerHTML = `
+    <span class="material-symbols-outlined">error</span>
+    <span>${message}</span>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 5000);
+}
+
+// Mobile Navigation & Google Reviews Functions
+
+/**
+ * Opens Google Maps navigation to the specified location
+ * @param {HTMLElement} button - The navigation button element with data attributes
+ */
+function navigateToLocation(button) {
+  const locationName = button.dataset.locationName;
+  const latitude = parseFloat(button.dataset.latitude);
+  const longitude = parseFloat(button.dataset.longitude);
+  const googleUrl = button.dataset.googleUrl;
+  
+  console.log('Navigation requested for:', locationName, latitude, longitude);
+  
+  // Try to use the custom Google Maps URL first
+  if (googleUrl && googleUrl.trim()) {
+    window.open(googleUrl, '_blank');
+    return;
+  }
+  
+  // Fallback: Generate Google Maps URL with coordinates
+  if (latitude && longitude && !isNaN(latitude) && !isNaN(longitude)) {
+    const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`;
+    window.open(mapsUrl, '_blank');
+    return;
+  }
+  
+  // Last fallback: Search by location name
+  if (locationName) {
+    const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(locationName)}`;
+    window.open(searchUrl, '_blank');
+    return;
+  }
+  
+  // Show error if no navigation data available
+  showErrorMessage('Keine Navigationsdaten für diesen Standort verfügbar.');
+}
+
+/**
+ * Opens Google Reviews/Maps page for the specified location
+ * @param {HTMLElement} element - The reviews element with data attributes
+ */
+function openGoogleReviews(element) {
+  const locationName = element.dataset.locationName;
+  const googleUrl = element.dataset.googleUrl;
+  
+  console.log('Google Reviews requested for:', locationName);
+  
+  // Try to use the custom Google Maps URL first (which should show reviews)
+  if (googleUrl && googleUrl.trim()) {
+    window.open(googleUrl, '_blank');
+    return;
+  }
+  
+  // Fallback: Search for the location on Google Maps
+  if (locationName) {
+    const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(locationName)}`;
+    window.open(searchUrl, '_blank');
+    return;
+  }
+  
+  // Show error if no location data available
+  showErrorMessage('Keine Google-Bewertungsdaten für diesen Standort verfügbar.');
+}
+
+/**
+ * Detects if the user is on a mobile device
+ * @returns {boolean} True if mobile device detected
+ */
+function isMobileDevice() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+         window.innerWidth <= 768;
+}
+
+/**
+ * Shows a toast notification for mobile actions
+ * @param {string} message - The message to display
+ * @param {string} type - The notification type ('success', 'info', 'warning', 'error')
+ */
+function showMobileToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `md3-mobile-toast md3-toast-${type}`;
+  toast.innerHTML = `
+    <div class="md3-toast-content">
+      <span class="material-symbols-outlined">
+        ${type === 'success' ? 'check_circle' : 
+          type === 'error' ? 'error' : 
+          type === 'warning' ? 'warning' : 'info'}
+      </span>
+      <span class="md3-toast-text">${message}</span>
+    </div>
+  `;
+  
+  // Add toast styles if not already present
+  if (!document.querySelector('.md3-mobile-toast-styles')) {
+    const styles = document.createElement('style');
+    styles.className = 'md3-mobile-toast-styles';
+    styles.textContent = `
+      .md3-mobile-toast {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--md-sys-color-inverse-surface);
+        color: var(--md-sys-color-inverse-on-surface);
+        padding: 12px 16px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 10000;
+        animation: slideUpToast 0.3s ease;
+        max-width: 90vw;
+      }
+      .md3-toast-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .md3-toast-text {
+        font-size: 14px;
+        font-weight: 500;
+      }
+      @keyframes slideUpToast {
+        from { transform: translateX(-50%) translateY(100%); opacity: 0; }
+        to { transform: translateX(-50%) translateY(0); opacity: 1; }
+      }
+    `;
+    document.head.appendChild(styles);
+  }
+  
+  document.body.appendChild(toast);
+  
+  // Auto-remove after 3 seconds
+  setTimeout(() => {
+    if (toast.parentNode) {
+      toast.style.animation = 'slideUpToast 0.3s ease reverse';
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }
+  }, 3000);
+}
+
+// Initialize mobile features when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  // Add mobile-specific event listeners if needed
+  if (isMobileDevice()) {
+    console.log('Mobile device detected - mobile navigation features enabled');
+    
+    // Add haptic feedback for navigation buttons on mobile (if supported)
+    document.querySelectorAll('.md3-navigation-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50); // Short vibration feedback
+        }
+      });
+    });
+  }
+});
+
+// Google Reviews Form Handling
+
+/**
+ * Populates the Google reviews fields in the edit modal
+ * @param {Object} location - Location object with Google reviews data
+ */
+function populateGoogleReviewsFields(location) {
+  const ratingField = document.getElementById('edit-google-rating');
+  const countField = document.getElementById('edit-google-reviews-count');
+  const urlField = document.getElementById('edit-google-maps-url');
+  
+  if (ratingField) ratingField.value = location.google_rating || '';
+  if (countField) countField.value = location.google_reviews_count || '';
+  if (urlField) urlField.value = location.google_maps_url || '';
+}
+
+/**
+ * Fetches Google Places data for the current location
+ * This function will be called when the "Google-Daten abrufen" button is clicked
+ */
+function fetchGoogleData() {
+  const locationId = document.getElementById('edit-location-id').value;
+  const locationName = document.getElementById('edit-name').value;
+  const street = document.getElementById('edit-street').value;
+  const city = document.getElementById('edit-city').value;
+  
+  if (!locationName) {
+    showErrorMessage('Bitte geben Sie zuerst einen Standortnamen ein.');
+    return;
+  }
+  
+  const fetchBtn = document.querySelector('.md3-google-fetch-btn');
+  const originalText = fetchBtn.innerHTML;
+  
+  // Show loading state
+  fetchBtn.classList.add('loading');
+  fetchBtn.innerHTML = `
+    <span class="material-symbols-outlined">search</span>
+    Lädt...
+  `;
+  fetchBtn.disabled = true;
+  
+  // Build search query
+  const searchQuery = [locationName, street, city].filter(Boolean).join(', ');
+  
+  console.log('Fetching Google data for:', searchQuery);
+  
+  // Call backend API to fetch Google Places data
+  fetch(`/locations/${locationId}/fetch-google-data`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.getElementById('csrf_token').value
+    },
+    body: JSON.stringify({
+      search_query: searchQuery,
+      location_name: locationName,
+      street: street,
+      city: city
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Populate form fields with Google data
+      if (data.rating) {
+        document.getElementById('edit-google-rating').value = data.rating;
+      }
+      if (data.user_ratings_total) {
+        document.getElementById('edit-google-reviews-count').value = data.user_ratings_total;
+      }
+      if (data.url) {
+        document.getElementById('edit-google-maps-url').value = data.url;
+      }
+      if (data.geometry && data.geometry.location) {
+        document.getElementById('edit-latitude').value = data.geometry.location.lat;
+        document.getElementById('edit-longitude').value = data.geometry.location.lng;
+      }
+      
+      showMobileToast('Google-Daten erfolgreich abgerufen!', 'success');
+    } else {
+      showErrorMessage(data.error || 'Fehler beim Abrufen der Google-Daten.');
+    }
+  })
+  .catch(error => {
+    console.error('Error fetching Google data:', error);
+    showErrorMessage('Fehler beim Abrufen der Google-Daten. Bitte versuchen Sie es erneut.');
+  })
+  .finally(() => {
+    // Reset button state
+    fetchBtn.classList.remove('loading');
+    fetchBtn.innerHTML = originalText;
+    fetchBtn.disabled = false;
+  });
+}
+
+// New Location Modal Functions
+function openNewLocationModal() {
+  console.log(' DEBUG: openNewLocationModal called');
+  
+  // Clear all form fields
+  document.getElementById('new-location-form').reset();
+  
+  // Show the new location modal
+  document.getElementById('new-location-modal').style.display = 'flex';
+  
+  // Focus first field
+  setTimeout(() => {
+    document.getElementById('new-name').focus();
+  }, 100);
+}
+
+function closeNewLocationModal() {
+  console.log(' DEBUG: closeNewLocationModal called');
+  
+  // Hide the modal
+  document.getElementById('new-location-modal').style.display = 'none';
+  
+  // Clear form fields
+  document.getElementById('new-location-form').reset();
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+  const newModal = document.getElementById('new-location-modal');
+  if (event.target === newModal) {
+    closeNewLocationModal();
+  }
+});
+
+// Handle new location form submission
+document.getElementById('new-location-form').addEventListener('submit', function(event) {
+  event.preventDefault();
+  
+  console.log(' DEBUG: New location form submitted');
+  
+  // Get form data
+  const formData = new FormData(this);
+  
+  // Submit via fetch API
+  fetch('/locations/new', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log(' SUCCESS: New location created');
+      closeNewLocationModal();
+      // Reload page to show new location
+      window.location.reload();
+    } else {
+      console.error('ERROR: Failed to create location');
+      console.error('Server error:', data.error);
+      alert(`Fehler beim Erstellen des Standorts: ${data.error}`);
+    }
+  })
+  .catch(error => {
+    console.error('ERROR: Network error:', error);
+    alert('Netzwerkfehler. Bitte versuchen Sie es erneut.');
+  });
+});
+
+</script>
+
+{% endblock %}

@@ -13,6 +13,7 @@ profile_bp = Blueprint('profile', __name__, url_prefix='/profile')
 @profile_bp.route('/', methods=['GET', 'POST'])
 @login_required
 def profile():
+    md3 = request.values.get('md3', type=int)
     user = User.query.get(current_user.id)
     form = ProfileForm(obj=user)
     if request.method == 'POST' and form.validate_on_submit():
@@ -62,7 +63,8 @@ def profile():
         db.session.commit()
         flash('Profil erfolgreich aktualisiert.', 'success')
         # User-Objekt neu laden, damit Ansicht die aktuellen Werte zeigt
-        return redirect(url_for('profile.profile'))
+        redirect_params = {'md3': 1} if md3 else {}
+        return redirect(url_for('profile.profile', **redirect_params))
 
     # Bild existiert wirklich?
     image_exists = False
@@ -80,4 +82,6 @@ def profile():
         avatar_name = user.username if user.username else "User"
     from random import randint
     cache_buster = randint(0, 1000000)
+    if md3:
+        return render_template('md3/profile/profile.html', form=form, user=user, image_exists=image_exists, avatar_name=avatar_name, cache_buster=cache_buster)
     return render_template('profile/profile.html', form=form, user=user, image_exists=image_exists, avatar_name=avatar_name, cache_buster=cache_buster)

@@ -1,0 +1,336 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+  .checkbox-group {
+    background: var(--md-sys-color-surface-container-highest);
+    border-radius: var(--md-sys-shape-corner-medium);
+    padding: var(--md-sys-spacing-4);
+    margin: var(--md-sys-spacing-3) 0;
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: var(--md-sys-spacing-2);
+    margin-bottom: var(--md-sys-spacing-3);
+    cursor: pointer;
+    padding: var(--md-sys-spacing-2);
+    border-radius: var(--md-sys-shape-corner-small);
+    transition: all 0.2s ease;
+  }
+
+  .checkbox-item:hover {
+    background: var(--md-sys-color-surface-container-low);
+  }
+
+  .checkbox-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .reset-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--md-sys-color-outline);
+    border-radius: 4px;
+    background: var(--md-sys-color-surface);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .reset-checkbox:checked {
+    background: var(--md-sys-color-error);
+    border-color: var(--md-sys-color-error);
+  }
+
+  .reset-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--md-sys-color-on-error);
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  .checkbox-label {
+    color: var(--md-sys-color-on-surface);
+    cursor: pointer;
+    flex: 1;
+    font-weight: 500;
+  }
+
+  .checkbox-desc {
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  .confirmation-section {
+    background: var(--md-sys-color-error-container);
+    border-radius: var(--md-sys-shape-corner-large);
+    padding: var(--md-sys-spacing-5);
+    margin: var(--md-sys-spacing-5) 0;
+    border: 2px solid var(--md-sys-color-error);
+  }
+
+  .confirmation-text {
+    color: var(--md-sys-color-on-error-container);
+    font-weight: 500;
+    margin-bottom: var(--md-sys-spacing-3);
+    text-align: center;
+    font-size: 1.125rem;
+  }
+
+  .confirmation-input {
+    background: var(--md-sys-color-surface);
+    border: 2px solid var(--md-sys-color-error);
+    border-radius: var(--md-sys-shape-corner-medium);
+    padding: var(--md-sys-spacing-3);
+    width: 100%;
+    font-size: 1rem;
+    color: var(--md-sys-color-on-surface);
+    text-align: center;
+    font-weight: 500;
+  }
+
+  .confirmation-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--md-sys-color-error-container);
+  }
+
+  .data-list {
+    background: var(--md-sys-color-surface-container-highest);
+    border-radius: var(--md-sys-shape-corner-medium);
+    padding: var(--md-sys-spacing-3);
+    margin: var(--md-sys-spacing-3) 0;
+  }
+
+  .data-list-item {
+    display: flex;
+    align-items: center;
+    gap: var(--md-sys-spacing-2);
+    padding: var(--md-sys-spacing-2) 0;
+    color: var(--md-sys-color-on-surface);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .data-list-item:last-child {
+    border-bottom: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+<div class="md3-page">
+  <div class="md3-container">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="md3-flash-messages">
+          {% for category, message in messages %}
+            <div class="md3-flash-message md3-flash-{{ category }}">
+              <span class="material-symbols-outlined md3-flash-icon">
+                {% if category == 'error' %}error{% elif category == 'warning' %}warning{% elif category == 'success' %}check_circle{% else %}info{% endif %}
+              </span>
+              <span class="md3-flash-text">{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Page Header -->
+    <div class="md3-page-header">
+      <div class="md3-page-header-content">
+        <div class="md3-page-title-container">
+          <span class="material-symbols-outlined md3-page-icon">restore</span>
+          <h1 class="md3-headline-large">Daten zurücksetzen</h1>
+        </div>
+      </div>
+    </div>
+
+    <!-- Warning Alert -->
+    <div class="md3-alert md3-alert-error">
+      <span class="material-symbols-outlined">warning</span>
+      <div>
+        <div class="md3-alert-title">ACHTUNG - KRITISCHE AKTION</div>
+        <div class="md3-alert-text">Diese Aktion kann nicht rückgängig gemacht werden! Es werden ALLE Assets, Bestellungen und zugehörige Daten unwiderruflich gelöscht.</div>
+      </div>
+    </div>
+
+    <!-- Backup Info -->
+    <div class="md3-alert md3-alert-info">
+      <span class="material-symbols-outlined">info</span>
+      <div>
+        <div class="md3-alert-title">Backup-Erinnerung</div>
+        <div class="md3-alert-text">Ihr letztes vollständiges Projektbackup stammt vom 17.04.2025. Es wird empfohlen, ein aktuelles Backup zu erstellen, bevor Sie den Reset durchführen.</div>
+      </div>
+    </div>
+
+    <!-- Information Section -->
+    <div class="md3-card" style="margin-bottom: var(--md-sys-spacing-4);">
+      <h2 class="md3-headline-medium" style="display: flex; align-items: center; gap: var(--md-sys-spacing-2); margin-bottom: var(--md-sys-spacing-3);">
+        <span class="material-symbols-outlined">info</span>
+        Vor dem Zurücksetzen
+      </h2>
+      
+      <p>Vor dem Zurücksetzen der Daten wird automatisch ein Backup der Datenbank erstellt. Dieses kann bei Bedarf wiederhergestellt werden.</p>
+      
+      <h3 class="md3-headline-small" style="color: var(--md-sys-color-error); margin-top: var(--md-sys-spacing-5); margin-bottom: var(--md-sys-spacing-3); display: flex; align-items: center; gap: var(--md-sys-spacing-2);">
+        <span class="material-symbols-outlined">delete_forever</span>
+        Folgendes wird gelöscht:
+      </h3>
+      <div class="data-list">
+        <div class="data-list-item">
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-error);">inventory_2</span>
+          Alle Assets und Asset-Daten (Dokumente, Kosten, Bilder)
+        </div>
+        <div class="data-list-item">
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-error);">sync</span>
+          Alle Leihverhältnisse und Verlauf
+        </div>
+        <div class="data-list-item">
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-error);">shopping_cart</span>
+          Alle Bestellungen und Bestellpositionen
+        </div>
+        <div class="data-list-item">
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-error);">inventory</span>
+          Alle Inventurdaten
+        </div>
+      </div>
+
+      <h3 class="md3-headline-small" style="color: var(--md-sys-color-primary); margin-top: var(--md-sys-spacing-5); margin-bottom: var(--md-sys-spacing-3); display: flex; align-items: center; gap: var(--md-sys-spacing-2);">
+        <span class="material-symbols-outlined">check_circle</span>
+        Folgendes bleibt erhalten:
+      </h3>
+      <div class="data-list">
+        <div class="data-list-item">
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">store</span>
+          Alle Lieferanten (suppliers)
+        </div>
+        <div class="data-list-item">
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">location_on</span>
+          Alle Standorte (locations)
+        </div>
+        <div class="data-list-item">
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">group</span>
+          Alle Benutzer und Rollen (users, roles)
+        </div>
+        <div class="data-list-item">
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">settings</span>
+          Systemeinstellungen und Konfiguration
+        </div>
+      </div>
+    </div>
+
+    <!-- Reset Form -->
+    <div class="md3-card">
+      <form method="post" action="{{ url_for('admin.execute_reset', md3=1) }}" id="reset-form">
+        {{ form.hidden_tag() }}
+        <h2 class="md3-headline-medium" style="display: flex; align-items: center; gap: var(--md-sys-spacing-2); margin-bottom: var(--md-sys-spacing-3);">
+          <span class="material-symbols-outlined">tune</span>
+          Optionale Stammdaten zurücksetzen
+        </h2>
+        
+        <div class="checkbox-group">
+          <div class="checkbox-item">
+            {{ form.reset_suppliers(class="reset-checkbox") }}
+            {{ form.reset_suppliers.label(class="checkbox-label") }}
+          </div>
+          <div class="checkbox-item">
+            {{ form.reset_locations(class="reset-checkbox") }}
+            {{ form.reset_locations.label(class="checkbox-label") }}
+          </div>
+          <div class="checkbox-item">
+            {{ form.reset_manufacturers(class="reset-checkbox") }}
+            {{ form.reset_manufacturers.label(class="checkbox-label") }}
+          </div>
+          <div class="checkbox-item">
+            {{ form.reset_assignments(class="reset-checkbox") }}
+            {{ form.reset_assignments.label(class="checkbox-label") }}
+          </div>
+          <div class="checkbox-item">
+            {{ form.reset_categories(class="reset-checkbox") }}
+            {{ form.reset_categories.label(class="checkbox-label") }}
+          </div>
+        </div>
+
+        <div class="confirmation-section">
+          <h3 class="md3-headline-small">Bestätigung erforderlich</h3>
+          <p class="confirmation-text">
+            Um den Reset zu bestätigen, geben Sie bitte <strong>"RESET BESTÄTIGEN"</strong> ein:
+          </p>
+          {{ form.confirmation_input(class="md3-textfield", placeholder="RESET BESTÄTIGEN") }}
+        </div>
+
+        <div class="form-buttons">
+          {{ form.submit(class="md3-button md3-button-filled danger") }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Confirmation input validation
+document.getElementById('confirmation-input').addEventListener('input', function() {
+  const resetBtn = document.getElementById('reset-btn');
+  const confirmationText = this.value.trim().toUpperCase();
+  
+  if (confirmationText === 'RESET BESTÄTIGEN') {
+    resetBtn.disabled = false;
+    resetBtn.style.opacity = '1';
+  } else {
+    resetBtn.disabled = true;
+    resetBtn.style.opacity = '0.6';
+  }
+});
+
+// Checkbox handling
+document.querySelectorAll('.checkbox-item').forEach(item => {
+  const checkbox = item.querySelector('.reset-checkbox');
+  
+  item.addEventListener('click', function(e) {
+    if (e.target === checkbox) return;
+    
+    checkbox.checked = !checkbox.checked;
+  });
+});
+
+// Form submission with final confirmation
+document.getElementById('reset-form').addEventListener('submit', function(e) {
+  const confirmation = document.getElementById('confirmation-input').value.trim().toUpperCase();
+  
+  if (confirmation !== 'RESET BESTÄTIGEN') {
+    e.preventDefault();
+    alert('Bitte geben Sie "RESET BESTÄTIGEN" zur Bestätigung ein.');
+    return false;
+  }
+  
+  const finalConfirm = confirm(
+    'LETZTE WARNUNG!\n\n' +
+    'Sie sind dabei, alle Assets, Bestellungen und Inventurdaten UNWIDERRUFLICH zu löschen.\n\n' +
+    'Diese Aktion kann NICHT rückgängig gemacht werden!\n\n' +
+    'Möchten Sie wirklich fortfahren?'
+  );
+  
+  if (!finalConfirm) {
+    e.preventDefault();
+    return false;
+  }
+  
+  // Show loading state
+  const resetBtn = document.getElementById('reset-btn');
+  resetBtn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span>Lösche Daten...';
+  resetBtn.disabled = true;
+});
+</script>
+{% endblock %}

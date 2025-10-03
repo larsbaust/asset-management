@@ -1,0 +1,388 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+
+<style>
+  .md3-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+    margin-top: 80px;
+  }
+  
+  .md3-header {
+    margin-bottom: 24px;
+  }
+  
+  .md3-title {
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+  }
+  
+  .md3-subtitle {
+    font-size: 14px;
+    color: var(--md-sys-color-on-surface-variant);
+    margin-top: 8px;
+  }
+  
+  .md3-card {
+    background: var(--md-sys-color-surface);
+    border-radius: 16px;
+    box-shadow: var(--md-sys-elevation-1);
+    padding: 24px;
+  }
+  
+  .asset-selection {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-top: 24px;
+  }
+  
+  .asset-card {
+    background: var(--md-sys-color-surface-container);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .asset-card:hover {
+    border-color: var(--md-sys-color-primary);
+    box-shadow: var(--md-sys-elevation-2);
+  }
+  
+  .asset-card.selected {
+    border-color: var(--md-sys-color-primary);
+    background: var(--md-sys-color-primary-container);
+  }
+  
+  .asset-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .asset-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+  }
+  
+  .selected-count {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    padding: 16px 24px;
+    border-radius: 28px;
+    box-shadow: var(--md-sys-elevation-3);
+    display: none;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+    font-weight: 500;
+    z-index: 1000;
+  }
+  
+  .selected-count.visible {
+    display: flex;
+  }
+</style>
+
+<div class="md3-container">
+  <div class="md3-header">
+    <h1 class="md3-title">Sammelausleihe</h1>
+    <div class="md3-subtitle">Mehrere Assets gleichzeitig ausleihen</div>
+  </div>
+  
+  <div class="md3-card">
+    <div style="margin-bottom: 16px;">
+      <strong style="color: var(--md-sys-color-on-surface);">{{ assets|length }} Assets verfügbar</strong>
+    </div>
+    
+    {% if assets %}
+    <div class="asset-selection">
+      {% for asset in assets %}
+      <div class="asset-card" onclick="toggleAssetSelection(this, {{ asset.id }})">
+        <div class="asset-card-header">
+          <input type="checkbox" class="asset-checkbox" data-asset-id="{{ asset.id }}">
+          {% if asset.image_url %}
+          <img src="{{ asset.image_url }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;">
+          {% endif %}
+        </div>
+        <div>
+          <div style="font-weight: 500; color: var(--md-sys-color-on-surface); margin-bottom: 4px;">{{ asset.name }}</div>
+          {% if asset.article_number %}
+          <div style="font-size: 12px; color: var(--md-sys-color-on-surface-variant);">Art.-Nr.: {{ asset.article_number }}</div>
+          {% endif %}
+          {% if asset.category %}
+          <div style="font-size: 11px; color: var(--md-sys-color-outline); margin-top: 4px;">{{ asset.category.name }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 60px; color: var(--md-sys-color-on-surface-variant);">
+      <span class="material-symbols-outlined" style="font-size: 64px; opacity: 0.3;">inventory</span>
+      <div style="margin-top: 16px; font-size: 18px;">Keine verfügbaren Assets</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Floating Action Button für ausgewählte Assets -->
+<div class="selected-count" id="selected-count">
+  <span id="selected-number">0</span> Assets ausgewählt
+  <button onclick="proceedToMultiLoan()" style="background: var(--md-sys-color-on-primary); color: var(--md-sys-color-primary); border: none; padding: 8px 16px; border-radius: 20px; font-weight: 500; cursor: pointer; margin-left: 8px;">
+    Weiter
+  </button>
+</div>
+
+<!-- Sammelausleihe-Modal -->
+<div id="multi-loan-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
+  <div style="background: var(--md-sys-color-surface); border-radius: 28px; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: var(--md-sys-elevation-3);">
+    <!-- Header -->
+    <div style="padding: 24px 24px 16px 24px; border-bottom: 1px solid var(--md-sys-color-outline-variant);">
+      <h2 style="margin: 0; font-size: 24px; font-weight: 500; color: var(--md-sys-color-on-surface);">Sammelausleihe</h2>
+      <p style="margin: 8px 0 0 0; color: var(--md-sys-color-on-surface-variant); font-size: 14px;">
+        <span id="multi-loan-asset-count">0</span> Assets werden ausgeliehen
+      </p>
+    </div>
+    
+    <!-- Form -->
+    <form id="multi-loan-form" style="padding: 24px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="asset_ids" id="multi-loan-asset-ids">
+      
+      <!-- Ausgewählte Assets Liste -->
+      <div style="margin-bottom: 24px; padding: 16px; background: var(--md-sys-color-surface-container); border-radius: 12px;">
+        <h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface);">Ausgewählte Assets:</h3>
+        <div id="selected-assets-list" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+      </div>
+      
+      <!-- Name des Ausleihenden -->
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface);">
+          <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">person</span>
+          Name des Ausleihenden *
+        </label>
+        <input type="text" name="borrower_name" id="multi-loan-borrower-name" required
+          style="width: 100%; padding: 12px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 14px;">
+      </div>
+      
+      <!-- Datumfelder -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+        <div>
+          <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface);">
+            <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">calendar_today</span>
+            Startdatum *
+          </label>
+          <input type="date" name="start_date" id="multi-loan-start-date" required
+            style="width: 100%; padding: 12px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 14px;">
+        </div>
+        <div>
+          <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface);">
+            <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">event</span>
+            Rückgabedatum *
+          </label>
+          <input type="date" name="expected_return_date" id="multi-loan-return-date" required
+            style="width: 100%; padding: 12px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 14px;">
+        </div>
+      </div>
+      
+      <!-- Notizen -->
+      <div style="margin-bottom: 24px;">
+        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface);">
+          <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">note</span>
+          Notizen (optional)
+        </label>
+        <textarea name="notes" id="multi-loan-notes" rows="3"
+          style="width: 100%; padding: 12px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 14px; resize: vertical;"></textarea>
+      </div>
+      
+      <!-- Unterschriften -->
+      <div style="margin-bottom: 24px;">
+        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface);">
+          <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">draw</span>
+          Unterschrift Mitarbeiter *
+        </label>
+        <div style="border: 1px solid var(--md-sys-color-outline); border-radius: 8px; padding: 8px; background: white;">
+          <canvas id="multi-signature-pad-employee" width="620" height="150" style="border: 1px dashed #ccc; touch-action: none;"></canvas>
+        </div>
+        <button type="button" onclick="clearMultiSignature('employee')" style="margin-top: 8px; padding: 6px 12px; background: var(--md-sys-color-surface-variant); color: var(--md-sys-color-on-surface-variant); border: none; border-radius: 8px; cursor: pointer; font-size: 12px;">
+          <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">refresh</span> Zurücksetzen
+        </button>
+        <input type="hidden" name="signature" id="multi-signature-employee-data">
+      </div>
+      
+      <div style="margin-bottom: 24px;">
+        <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface);">
+          <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">draw</span>
+          Unterschrift Arbeitgeber *
+        </label>
+        <div style="border: 1px solid var(--md-sys-color-outline); border-radius: 8px; padding: 8px; background: white;">
+          <canvas id="multi-signature-pad-employer" width="620" height="150" style="border: 1px dashed #ccc; touch-action: none;"></canvas>
+        </div>
+        <button type="button" onclick="clearMultiSignature('employer')" style="margin-top: 8px; padding: 6px 12px; background: var(--md-sys-color-surface-variant); color: var(--md-sys-color-on-surface-variant); border: none; border-radius: 8px; cursor: pointer; font-size: 12px;">
+          <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">refresh</span> Zurücksetzen
+        </button>
+        <input type="hidden" name="signature_employer" id="multi-signature-employer-data">
+      </div>
+      
+      <!-- Buttons -->
+      <div style="display: flex; gap: 12px; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--md-sys-color-outline-variant);">
+        <button type="button" onclick="closeMultiLoanModal()" style="padding: 10px 24px; background: var(--md-sys-color-surface-variant); color: var(--md-sys-color-on-surface-variant); border: none; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer;">
+          Abbrechen
+        </button>
+        <button type="submit" style="padding: 10px 24px; background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); border: none; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+          <span class="material-symbols-outlined" style="font-size: 18px;">check_circle</span>
+          Assets ausleihen
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/signature_pad.min.js') }}"></script>
+<script>
+let selectedAssets = new Set();
+let multiSignaturePadEmployee, multiSignaturePadEmployer;
+
+// Signature Pads initialisieren
+document.addEventListener('DOMContentLoaded', function() {
+  const canvasEmployee = document.getElementById('multi-signature-pad-employee');
+  const canvasEmployer = document.getElementById('multi-signature-pad-employer');
+  
+  if (canvasEmployee && typeof SignaturePad !== 'undefined') {
+    multiSignaturePadEmployee = new SignaturePad(canvasEmployee);
+  }
+  if (canvasEmployer && typeof SignaturePad !== 'undefined') {
+    multiSignaturePadEmployer = new SignaturePad(canvasEmployer);
+  }
+});
+
+function toggleAssetSelection(card, assetId) {
+  const checkbox = card.querySelector('.asset-checkbox');
+  checkbox.checked = !checkbox.checked;
+  
+  if (checkbox.checked) {
+    selectedAssets.add(assetId);
+    card.classList.add('selected');
+  } else {
+    selectedAssets.delete(assetId);
+    card.classList.remove('selected');
+  }
+  
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  const countDisplay = document.getElementById('selected-count');
+  const numberDisplay = document.getElementById('selected-number');
+  
+  numberDisplay.textContent = selectedAssets.size;
+  
+  if (selectedAssets.size > 0) {
+    countDisplay.classList.add('visible');
+  } else {
+    countDisplay.classList.remove('visible');
+  }
+}
+
+function proceedToMultiLoan() {
+  if (selectedAssets.size === 0) {
+    alert('Bitte wählen Sie mindestens ein Asset aus.');
+    return;
+  }
+  
+  // Modal öffnen und Asset-IDs setzen
+  document.getElementById('multi-loan-asset-ids').value = Array.from(selectedAssets).join(',');
+  document.getElementById('multi-loan-asset-count').textContent = selectedAssets.size;
+  
+  // Asset-Liste im Modal anzeigen
+  const assetsList = document.getElementById('selected-assets-list');
+  assetsList.innerHTML = '';
+  selectedAssets.forEach(assetId => {
+    const assetCard = document.querySelector(`[data-asset-id="${assetId}"]`).closest('.asset-card');
+    const assetName = assetCard.querySelector('div[style*="font-weight: 500"]').textContent;
+    const chip = document.createElement('div');
+    chip.style.cssText = 'padding: 4px 12px; background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); border-radius: 8px; font-size: 12px;';
+    chip.textContent = assetName;
+    assetsList.appendChild(chip);
+  });
+  
+  // Datum-Felder vorausfüllen
+  const today = new Date().toISOString().split('T')[0];
+  const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  document.getElementById('multi-loan-start-date').value = today;
+  document.getElementById('multi-loan-return-date').value = nextWeek;
+  
+  // Modal anzeigen
+  const modal = document.getElementById('multi-loan-modal');
+  modal.style.display = 'flex';
+}
+
+function closeMultiLoanModal() {
+  document.getElementById('multi-loan-modal').style.display = 'none';
+  document.getElementById('multi-loan-form').reset();
+  if (multiSignaturePadEmployee) multiSignaturePadEmployee.clear();
+  if (multiSignaturePadEmployer) multiSignaturePadEmployer.clear();
+}
+
+function clearMultiSignature(type) {
+  if (type === 'employee' && multiSignaturePadEmployee) {
+    multiSignaturePadEmployee.clear();
+  } else if (type === 'employer' && multiSignaturePadEmployer) {
+    multiSignaturePadEmployer.clear();
+  }
+}
+
+// Form Submit
+document.getElementById('multi-loan-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  
+  // Unterschriften validieren
+  if (!multiSignaturePadEmployee || multiSignaturePadEmployee.isEmpty()) {
+    alert('Bitte Unterschrift des Mitarbeiters hinzufügen!');
+    return;
+  }
+  if (!multiSignaturePadEmployer || multiSignaturePadEmployer.isEmpty()) {
+    alert('Bitte Unterschrift des Arbeitgebers hinzufügen!');
+    return;
+  }
+  
+  // Unterschriften speichern
+  document.getElementById('multi-signature-employee-data').value = multiSignaturePadEmployee.toDataURL();
+  document.getElementById('multi-signature-employer-data').value = multiSignaturePadEmployer.toDataURL();
+  
+  const formData = new FormData(this);
+  
+  fetch('/multi_loan', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert(`Sammelausleihe erfolgreich! ${data.count} Assets wurden ausgeliehen.`);
+      closeMultiLoanModal();
+      window.location.href = '/md3/loans';
+    } else {
+      alert('Fehler bei der Sammelausleihe: ' + (data.message || 'Unbekannter Fehler'));
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Fehler bei der Sammelausleihe: ' + error.message);
+  });
+});
+</script>
+{% endblock %}

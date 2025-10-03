@@ -1,8 +1,10 @@
-from flask import Flask
+from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_mail import Mail  # Flask-Mail für E-Mail-Versand
+from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFError
 import os
 
 mail = Mail()  # Mail-Objekt global initialisieren
@@ -14,6 +16,7 @@ from app.models import (
     InventoryItem, Location, LocationImage, AssetLog, Role, Permission
 )
 login_manager = LoginManager()
+csrf = CSRFProtect()
 
 from jinja2 import ChoiceLoader, FileSystemLoader
 from .chat_socket import socketio, chat_bp
@@ -26,6 +29,9 @@ def create_app():
 
     # Rechte-Check als Jinja-Global
     def has_permission(user, perm_name):
+        # Admin-Rolle hat automatisch ALLE Permissions
+        if user and user.role and user.role.name == 'Admin':
+            return True
         return user and user.role and any(p.name == perm_name for p in user.role.permissions)
     app.jinja_env.globals['has_permission'] = has_permission
     
@@ -97,7 +103,7 @@ def create_app():
         
     # Location Blueprint registrieren
     from .location import location as location_module
-    app.register_blueprint(location_module, name='location_module')
+    app.register_blueprint(location_module, url_prefix='/locations', name='location_module')
     
     # MD3 Inventory Blueprint registrieren
     from .inventory.md3_routes import inventory_bp
@@ -106,9 +112,17 @@ def create_app():
     # MD3 Order Blueprint registrieren
     try:
         from .order.md3_routes import md3_order_bp
-        app.register_blueprint(md3_order_bp, name='md3_order')
+        app.register_blueprint(md3_order_bp)
     except Exception as e:
         print("Warnung: MD3 Order Blueprint konnte nicht registriert werden:", e)
+
+    # MD3 Categories Blueprint registrieren
+    from .categories import categories_bp
+    app.register_blueprint(categories_bp, url_prefix='/md3/categories', name='md3_categories')
+
+    # MD3 Manufacturers Blueprint registrieren
+    from .manufacturers import manufacturers_bp
+    app.register_blueprint(manufacturers_bp, url_prefix='/md3/manufacturers', name='md3_manufacturers')
 
     print("JINJA LOADER SUCHT IN:")
     for loader in app.jinja_loader.loaders:
@@ -144,6 +158,15 @@ def create_app():
     # Login manager setup
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
+    # CSRF protection
+    csrf.init_app(app)
+
+    # Freundlicher Fehler-Handler für CSRF-Fehler
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        # Render a friendly MD3-styled error page
+        reason = getattr(e, 'description', 'CSRF-Validierung fehlgeschlagen')
+        return render_template('errors/csrf_error.html', reason=reason), 400
 
     from app.models import User
     @login_manager.user_loader
@@ -172,6 +195,10 @@ def create_app():
     # API-Routen registrieren
     from . import api_routes
     api_routes.init_api_routes(app)
+    
+    # Calendar API Blueprint registrieren
+    from app.api import bp as api_bp
+    app.register_blueprint(api_bp)
     
     with app.app_context():
         db.create_all()

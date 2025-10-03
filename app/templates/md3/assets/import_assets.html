@@ -1,0 +1,491 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+  .md3-import-page {
+    padding: 24px;
+    padding-top: 80px;
+    background: var(--md-sys-color-surface-container-lowest);
+    min-height: 100vh;
+  }
+
+  .md3-import-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .md3-import-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .md3-import-title {
+    font: var(--md-sys-typescale-headline-medium-font);
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .md3-import-subtitle {
+    font: var(--md-sys-typescale-body-large-font);
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .md3-card {
+    background: var(--md-sys-color-surface);
+    border-radius: 20px;
+    border: 1px solid var(--md-sys-color-outline-variant);
+    box-shadow: var(--md-sys-elevation-level1);
+    padding: 28px;
+  }
+
+  .md3-card-title {
+    font: var(--md-sys-typescale-title-medium-font);
+    color: var(--md-sys-color-on-surface);
+    margin-bottom: 16px;
+  }
+
+  .md3-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .md3-label {
+    font: var(--md-sys-typescale-label-large-font);
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .md3-input,
+  .md3-select,
+  .md3-textarea {
+    border-radius: 16px;
+    border: 1px solid var(--md-sys-color-outline);
+    background: var(--md-sys-color-surface-container-highest);
+    color: var(--md-sys-color-on-surface);
+    padding: 12px 16px;
+    font: var(--md-sys-typescale-body-large-font);
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+
+  .md3-input:focus,
+  .md3-select:focus,
+  .md3-textarea:focus {
+    outline: none;
+    border-color: var(--md-sys-color-primary);
+    box-shadow: 0 0 0 1px var(--md-sys-color-primary);
+  }
+
+  .md3-file-drop {
+    border: 2px dashed var(--md-sys-color-outline);
+    border-radius: 20px;
+    padding: 32px;
+    text-align: center;
+    color: var(--md-sys-color-on-surface-variant);
+    background: var(--md-sys-color-surface-container-highest);
+    transition: border-color .2s ease, background .2s ease;
+  }
+
+  .md3-file-drop:hover {
+    border-color: var(--md-sys-color-primary);
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+  }
+
+  .md3-file-drop span.material-symbols-outlined {
+    font-size: 32px;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .md3-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+
+  .md3-button {
+    border: none;
+    border-radius: 999px;
+    padding: 12px 28px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font: var(--md-sys-typescale-label-large-font);
+    cursor: pointer;
+    transition: transform .2s ease, box-shadow .2s ease;
+    text-decoration: none;
+  }
+
+  .md3-button-filled {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+  }
+
+  .md3-button-tonal {
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+  }
+
+  .md3-button-text {
+    background: transparent;
+    color: var(--md-sys-color-primary);
+  }
+
+  .md3-button:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--md-sys-elevation-level2);
+  }
+
+  .md3-table-wrapper {
+    overflow-x: auto;
+    border-radius: 16px;
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  table.md3-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  table.md3-table thead {
+    background: var(--md-sys-color-surface-variant);
+  }
+
+  table.md3-table th,
+  table.md3-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    font: var(--md-sys-typescale-body-medium-font);
+    color: var(--md-sys-color-on-surface);
+  }
+
+  table.md3-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .md3-alert {
+    border-radius: 16px;
+    padding: 16px 20px;
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .md3-alert span.material-symbols-outlined {
+    font-size: 24px;
+  }
+
+  .md3-inline-forms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .md3-small-input {
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--md-sys-color-outline);
+    background: var(--md-sys-color-surface-container-highest);
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .md3-preview-title {
+    font: var(--md-sys-typescale-title-small-font);
+    color: var(--md-sys-color-on-surface);
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 768px) {
+    .md3-import-container {
+      padding-bottom: 40px;
+    }
+
+    .md3-card {
+      padding: 20px;
+    }
+
+    .md3-actions {
+      justify-content: stretch;
+    }
+
+    .md3-button {
+      flex: 1 1 auto;
+      justify-content: center;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  {% include 'md3-nav.html' %}
+  <div class="md3-import-page">
+    <div class="md3-import-container">
+      <div class="md3-import-header">
+        <h1 class="md3-import-title">Assets importieren</h1>
+        <p class="md3-import-subtitle">CSV-Datei hochladen, Felder zuordnen und Assets komfortabel importieren.</p>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="md3-card" style="border-left: 4px solid var(--md-sys-color-primary);">
+              <div class="md3-alert">
+                <span class="material-symbols-outlined">{{ 'info' if category in ['info','success'] else 'warning' }}</span>
+                <div>{{ message|safe }}</div>
+              </div>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% if not csv_headers %}
+      <div class="md3-card">
+        <h2 class="md3-card-title">CSV-Datei hochladen</h2>
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('import_assets.import_assets_upload', md3=1) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="md3-form-field">
+            <label class="md3-label" for="csvfile">CSV-Datei</label>
+            <label class="md3-file-drop" for="csvfile">
+              <span class="material-symbols-outlined">upload_file</span>
+              <strong>{{ file_name if false else 'CSV-Datei auswählen oder hier ablegen' }}</strong>
+              <div id="selected-file-name">Keine Datei ausgewählt</div>
+            </label>
+            <input class="md3-input" type="file" id="csvfile" name="csvfile" accept=".csv" onchange="updateFileName(this)" style="display:none;">
+          </div>
+
+          <div class="md3-actions">
+            <a href="{{ url_for('md3_assets') }}" class="md3-button md3-button-text">
+              <span class="material-symbols-outlined">arrow_back</span>
+              Abbrechen
+            </a>
+            <button type="submit" class="md3-button md3-button-filled">
+              <span class="material-symbols-outlined">file_upload</span>
+              Importieren
+            </button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if csv_headers %}
+      <div class="md3-card">
+        <h2 class="md3-card-title">Zuordnung & Optionen</h2>
+
+        <div class="md3-inline-forms">
+          <form method="post" action="{{ url_for('import_assets.import_assets_upload', md3=1) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="load_template" value="1">
+            <label class="md3-label" for="template_select">Mapping-Vorlage laden</label>
+            <select class="md3-select" name="template_name" id="template_select" onchange="this.form.submit()">
+              <option value="">-- Vorlage wählen --</option>
+              {% for tpl in mapping_templates %}
+                <option value="{{ tpl }}">{{ tpl }}</option>
+              {% endfor %}
+            </select>
+          </form>
+
+          <form method="post" action="{{ url_for('import_assets.save_mapping_template_route') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="md3-label" for="save_template_name">Als Vorlage speichern</label>
+            <div style="display:flex; gap:8px;">
+              <input class="md3-small-input" type="text" id="save_template_name" name="save_template_name" placeholder="Vorlagenname" required>
+              <button type="submit" class="md3-button md3-button-tonal">
+                <span class="material-symbols-outlined">save</span>
+                Speichern
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="md3-alert" style="margin-bottom: 24px;">
+          <span class="material-symbols-outlined">info</span>
+          <div>Mindestens eine CSV-Spalte muss dem Feld <strong>"Name"</strong> zugeordnet werden.</div>
+        </div>
+
+        <form method="post" action="{{ url_for('import_assets.import_assets_apply_mapping') }}" id="mapping-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="md3-form-field">
+            <label class="md3-label" for="location_id">Standort für alle Assets</label>
+            <select class="md3-select" name="location_id" id="location_id" required>
+              <option value="">-- Standort wählen --</option>
+              {% for loc in locations %}
+                <option value="{{ loc.id }}">{{ loc.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="md3-form-field">
+            <label class="md3-label" for="global_category_id">Kategorie (optional)</label>
+            <select class="md3-select" name="global_category_id" id="global_category_id">
+              <option value="">-- Kategorie wählen --</option>
+              {% for cat in system_categories %}
+                <option value="{{ cat.id }}">{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="md3-form-field">
+            <label class="md3-label" for="global_supplier_id">Lieferant (optional)</label>
+            <select class="md3-select" name="global_supplier_id" id="global_supplier_id">
+              <option value="">-- Lieferant wählen --</option>
+              {% for supplier in suppliers %}
+                <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="md3-table-wrapper">
+            <table class="md3-table">
+              <thead>
+                <tr>
+                  <th>CSV-Spalte</th>
+                  <th>Systemfeld</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for col in csv_headers %}
+                <tr>
+                  <td>{{ col }}</td>
+                  <td>
+                    <select class="md3-select" name="category_mapping_{{ safe_csv_categories[col] }}">
+                      <option value="">Ignorieren</option>
+                      {% for field in system_fields %}
+                        <option value="{{ field }}"
+                          {% if mapping_prefill is defined and mapping_prefill[loop.index0] == field %}
+                            selected
+                          {% elif mapping_prefill is not defined and field=='name' and ('name' in col|lower or 'bezeichnung' in col|lower or 'title' in col|lower) %}
+                            selected
+                          {% endif %}>
+                          {{ field_labels[field] }}{% if field == 'name' %} *{% endif %}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div id="mapping-warning" class="md3-alert" style="display:none; margin-top:16px; background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container);">
+            <span class="material-symbols-outlined">warning</span>
+            <div>Bitte ordne mindestens eine Spalte dem Feld <strong>Name</strong> zu.</div>
+          </div>
+
+          <div class="md3-actions">
+            <a href="{{ url_for('import_assets.import_assets_upload', md3=1) }}" class="md3-button md3-button-text">
+              <span class="material-symbols-outlined">restart_alt</span>
+              CSV neu laden
+            </a>
+            <button type="submit" class="md3-button md3-button-filled">
+              <span class="material-symbols-outlined">play_arrow</span>
+              Import starten
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {% if csv_preview %}
+      <div class="md3-card">
+        <h2 class="md3-card-title">CSV-Vorschau</h2>
+        <div class="md3-preview-title">Erste {{ csv_preview|length }} Datenzeilen</div>
+        <div class="md3-table-wrapper">
+          <table class="md3-table">
+            <thead>
+              <tr>
+                {% for col in csv_headers %}
+                  <th>{{ col }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in csv_preview %}
+              <tr>
+                {% for val in row %}
+                  <td>{{ val }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+      {% endif %}
+
+      <div class="md3-card">
+        <h2 class="md3-card-title">CSV-Format</h2>
+        <div class="md3-table-wrapper">
+          <table class="md3-table">
+            <thead>
+              <tr>
+                <th>Spalte</th>
+                <th>Beschreibung</th>
+                <th>Format</th>
+                <th>Pflicht</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>name</td>
+                <td>Name des Assets</td>
+                <td>Text</td>
+                <td class="md3-required-yes">Ja</td>
+              </tr>
+              <tr>
+                <td>category</td>
+                <td>Kategorie des Assets</td>
+                <td>Text</td>
+                <td class="md3-required-yes">Ja</td>
+              </tr>
+              <tr>
+                <td>value</td>
+                <td>Wert in Euro</td>
+                <td>Dezimalzahl (z. B. 1234.56)</td>
+                <td class="md3-required-yes">Ja</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <pre class="md3-code-block">name,category,value
+Laptop,Hardware,1200.00
+Monitor,Hardware,350.00
+Software-Lizenz,Software,500.00</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function updateFileName(input) {
+      const fileName = input.files[0] ? input.files[0].name : 'Keine Datei ausgewählt';
+      const target = document.getElementById('selected-file-name');
+      if (target) {
+        target.textContent = fileName;
+      }
+    }
+
+    const mappingForm = document.getElementById('mapping-form');
+    if (mappingForm) {
+      mappingForm.addEventListener('submit', function (e) {
+        const hasName = Array.from(mappingForm.querySelectorAll('select')).some(sel => sel.value === 'name');
+        if (!hasName) {
+          e.preventDefault();
+          const warning = document.getElementById('mapping-warning');
+          if (warning) warning.style.display = 'flex';
+        }
+      });
+    }
+  </script>
+{% endblock %}

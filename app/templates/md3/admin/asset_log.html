@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block styles %}
+  {{ super() }}
+  <style>
+    .md3-page { padding: 24px; padding-top: 80px; }
+    .md3-container { max-width: 1200px; margin: 0 auto; }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+    .title { font: var(--md-sys-typescale-headline-small-font); color: var(--md-sys-color-on-surface); }
+    
+    .card { background: var(--md-sys-color-surface); border-radius: 16px; box-shadow: var(--md-sys-elevation-level2); padding: 24px; }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    thead th { text-align: left; color: var(--md-sys-color-on-surface-variant); padding: 12px 16px; border-bottom: 1px solid var(--md-sys-color-outline-variant); font: var(--md-sys-typescale-title-small-font); }
+    tbody td { padding: 12px 16px; border-bottom: 1px solid var(--md-sys-color-outline-variant); color: var(--md-sys-color-on-surface); }
+    tbody tr:hover { background: var(--md-sys-color-surface-variant); }
+    tbody tr:nth-child(even) { background: var(--md-sys-color-surface-container-lowest); }
+    
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--md-sys-color-on-surface-variant); }
+    .empty-state .material-symbols-outlined { font-size: 48px; margin-bottom: 16px; opacity: 0.6; }
+  </style>
+{% endblock %}
+
+{% block content %}
+  {% include 'md3-nav.html' %}
+  <div class="md3-page">
+    <div class="md3-container">
+      <div class="header">
+        <div class="title">Asset-Logbuch</div>
+      </div>
+
+      <div class="card">
+        {% if logs %}
+        <table>
+          <thead>
+            <tr>
+              <th>Zeitpunkt</th>
+              <th>Nutzer</th>
+              <th>Aktion</th>
+              <th>Asset-ID</th>
+              <th>Details</th>
+              <th>IP-Adresse</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+            <tr>
+              <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+              <td>{{ log.username }}</td>
+              <td>{{ log.action }}</td>
+              <td>{{ log.asset_id }}</td>
+              <td>{{ log.details or '' }}</td>
+              <td>{{ log.ip_address or '' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+          <div class="material-symbols-outlined">receipt_long</div>
+          <div>Keine Log-Einträge vorhanden.</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

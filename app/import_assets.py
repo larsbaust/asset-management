@@ -56,13 +56,22 @@ def list_mapping_templates():
 @import_assets.route('/import/assets', methods=['GET', 'POST'])
 def import_assets_upload():
     from app.models import Location
+    md3 = request.values.get('md3', type=int)
     headers = session.get('import_csv_headers')
     content = session.get('import_csv_content')
     from app.models import Supplier
-    suppliers = Supplier.query.order_by(Supplier.name).all()
+    initial_suppliers = Supplier.query.order_by(Supplier.name).all()
+
+    template_name = 'md3/assets/import_assets.html' if md3 else 'import_assets.html'
+
+    def render_import_template(**context):
+        context.setdefault('md3', md3)
+        return render_template(template_name, **context)
+
     if request.method != 'POST' and (not headers or not content):
         # Zeige nur das Upload-Formular (kein Mapping-UI)
-        return render_template('import_assets.html', suppliers=suppliers)
+        return render_import_template(suppliers=initial_suppliers)
+
     locations = Location.query.order_by(Location.name).all() if headers and content else []
     from app.models import Supplier
     suppliers = Supplier.query.order_by(Supplier.name).all() if headers and content else []
@@ -93,13 +102,13 @@ def import_assets_upload():
         from app.models import Category
         system_categories = Category.query.order_by(Category.name).all()
         safe_csv_categories = {col: safe_name(col) for col in headers}
-        return render_template('import_assets.html', csv_headers=headers, csv_preview=preview_rows, system_fields=SYSTEM_FIELDS, field_labels=FIELD_LABELS, mapping_templates=templates, mapping_prefill=mapping_prefill, system_categories=system_categories, safe_csv_categories=safe_csv_categories, suppliers=suppliers)
+        return render_import_template(csv_headers=headers, csv_preview=preview_rows, system_fields=SYSTEM_FIELDS, field_labels=FIELD_LABELS, mapping_templates=templates, mapping_prefill=mapping_prefill, system_categories=system_categories, safe_csv_categories=safe_csv_categories, suppliers=suppliers, locations=locations)
     # Standard-Upload-Flow
     if request.method == 'POST' and 'csvfile' in request.files:
         file = request.files['csvfile']
         if not file.filename.endswith('.csv'):
             flash('Nur CSV-Dateien sind erlaubt.', 'danger')
-            return redirect(url_for('import_assets.import_assets_upload'))
+            return redirect(url_for('import_assets.import_assets_upload', md3=1 if md3 else None))
         content = file.read().decode('utf-8')
         # Trennzeichen automatisch erkennen, Fallback auf ;
         try:
@@ -125,10 +134,10 @@ def import_assets_upload():
         from app.models import Category
         system_categories = Category.query.order_by(Category.name).all()
         safe_csv_categories = {col: safe_name(col) for col in headers}
-        return render_template('import_assets.html', csv_headers=headers, csv_preview=preview_rows, system_fields=SYSTEM_FIELDS, field_labels=FIELD_LABELS, mapping_templates=templates, locations=locations, system_categories=system_categories, safe_csv_categories=safe_csv_categories, suppliers=suppliers)
+        return render_import_template(csv_headers=headers, csv_preview=preview_rows, system_fields=SYSTEM_FIELDS, field_labels=FIELD_LABELS, mapping_templates=templates, locations=locations, system_categories=system_categories, safe_csv_categories=safe_csv_categories, suppliers=suppliers)
     else:
         flash('Ungültige Datei. Bitte eine CSV-Datei wählen.', 'danger')
-        return redirect(url_for('import_assets.import_assets_upload'))
+        return redirect(url_for('import_assets.import_assets_upload', md3=1 if md3 else None))
 
 # Endpunkt zum Speichern einer Mapping-Vorlage
 @import_assets.route('/import/assets/save_mapping_template', methods=['POST'])
@@ -145,7 +154,7 @@ def save_mapping_template_route():
     name = request.form.get('save_template_name')
     save_mapping_template(name, mapping, headers)
     flash(f'Mapping-Vorlage "{name}" gespeichert!', 'success')
-    return redirect(url_for('import_assets.import_assets_upload'))
+    return redirect(url_for('import_assets.import_assets_upload', md3=1 if request.values.get('md3', type=int) else None))
 
 @import_assets.route('/import/assets/mapping', methods=['POST'])
 def import_assets_apply_mapping():
@@ -195,7 +204,7 @@ def import_assets_apply_mapping():
         flash('Mindestens eine CSV-Spalte muss dem Feld "Name" zugeordnet werden!', 'danger')
         # Erzeuge safe_csv_categories für alle Spalten
         safe_csv_categories = {col: col.replace(' ', '_').replace('-', '_').replace('.', '_').lower() for col in headers}
-        return render_template('import_assets.html', csv_headers=headers, csv_preview=None, system_fields=SYSTEM_FIELDS, field_labels=FIELD_LABELS, mapping_prefill=mapping, locations=Location.query.order_by(Location.name).all(), safe_csv_categories=safe_csv_categories)
+        return render_import_template(csv_headers=headers, csv_preview=None, system_fields=SYSTEM_FIELDS, field_labels=FIELD_LABELS, mapping_prefill=mapping, locations=Location.query.order_by(Location.name).all(), safe_csv_categories=safe_csv_categories)
 
     # Importiere Assets mit Mapping
     category_mapping = {}
@@ -258,7 +267,7 @@ def import_assets_apply_mapping():
             safe_csv_categories = {col: safe_name(col) for col in headers}
             from app.models import Category
             system_categories = Category.query.order_by(Category.name).all()
-            return render_template('import_assets.html', csv_headers=headers, csv_preview=None, system_fields=SYSTEM_FIELDS, field_labels=FIELD_LABELS, mapping_prefill=mapping, locations=Location.query.order_by(Location.name).all(), system_categories=system_categories, safe_csv_categories=safe_csv_categories)
+            return render_import_template(csv_headers=headers, csv_preview=None, system_fields=SYSTEM_FIELDS, field_labels=FIELD_LABELS, mapping_prefill=mapping, locations=Location.query.order_by(Location.name).all(), system_categories=system_categories, safe_csv_categories=safe_csv_categories)
         # Anzahl bestimmen
         try:
             qty = int(row[quantity_idx]) if quantity_idx is not None and row[quantity_idx] else 1

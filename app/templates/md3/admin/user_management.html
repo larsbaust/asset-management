@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+  .actions {
+    display: flex;
+    gap: var(--md-sys-spacing-2, 8px);
+  }
+  
+  .md3-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--md-sys-color-surface);
+    border-radius: var(--md-sys-shape-corner-medium, 8px);
+    overflow: hidden;
+    margin-top: var(--md-sys-spacing-4, 16px);
+  }
+  
+  .md3-table th {
+    background: var(--md-sys-color-surface-container-highest);
+    padding: var(--md-sys-spacing-3, 12px) var(--md-sys-spacing-4, 16px);
+    text-align: left;
+    color: var(--md-sys-color-on-surface-variant);
+    font-weight: 500;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+  
+  .md3-table td {
+    padding: var(--md-sys-spacing-3, 12px) var(--md-sys-spacing-4, 16px);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
+  }
+  
+  .md3-table tr:hover {
+    background: var(--md-sys-color-surface-container-lowest);
+  }
+  
+  .md3-table tr:last-child td {
+    border-bottom: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  {% include 'md3-nav.html' %}
+  <div class="md3-page">
+    <div class="md3-container">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--md-sys-spacing-6, 24px);">
+        <h1 class="md3-headline-large">Benutzerverwaltung</h1>
+        <a href="{{ url_for('admin.add_user', md3=1) }}" class="md3-button md3-button-filled">
+          <span class="material-symbols-outlined">person_add</span>
+          Neuen Benutzer anlegen
+        </a>
+      </div>
+
+      <div class="md3-card">
+        <table class="md3-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Benutzername</th>
+              <th>Rolle</th>
+              <th>Aktionen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr>
+              <td>{{ user.id }}</td>
+              <td>{{ user.username }}</td>
+              <td>
+                <span class="md3-chip md3-chip-outlined">{{ user.role.name|capitalize if user.role else 'Keine Rolle' }}</span>
+              </td>
+              <td>
+                <div class="actions">
+                  <a href="{{ url_for('admin.edit_user', user_id=user.id, md3=1) }}" class="md3-button md3-button-text">
+                    <span class="material-symbols-outlined">edit</span>
+                    Bearbeiten
+                  </a>
+                  <a href="{{ url_for('admin.delete_user', user_id=user.id, md3=1) }}" class="md3-button md3-button-text" onclick="return confirm('Benutzer wirklich löschen?');" style="color: var(--md-sys-color-error);">
+                    <span class="material-symbols-outlined">delete</span>
+                    Löschen
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}

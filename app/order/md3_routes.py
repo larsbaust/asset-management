@@ -1,17 +1,10 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from app.models import Supplier, Order, OrderItem, Asset
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from flask_login import login_required, current_user
+from app.models import Asset, Supplier, Order, OrderItem, Location, OrderTemplate, OrderTemplateItem
 from app import db
-from flask_login import login_required
-from app.order.forms import (
-    WizardStep1Form,
-    WizardStep2Form,
-    WizardStep3Form,
-    WizardStep4Form,
-    AssetOrderForm,
-)
+from app.order.forms import WizardStep1Form, WizardStep2Form, WizardStep3Form, WizardStep4Form, AssetOrderForm
 from app.order.wizard_routes import send_order_email  # reuse existing email helper
 from app.order.order_utils import import_assets_from_order  # reuse import logic
-
 # Optional: Tracking helpers (used to compute status badges similar to legacy overview)
 try:
     from app.aftership_tracking import get_tracking_status, add_tracking_number  # type: ignore
@@ -253,6 +246,7 @@ def wizard_step1():
     if form.validate_on_submit():
         _update_wizard_session('supplier_id', form.supplier_id.data)
         _update_wizard_session('location_id', form.location.data)
+        _update_wizard_session('budget', float(form.budget.data) if form.budget.data else None)
         return redirect(url_for('md3_order.wizard_step2'))
 
     return render_template('md3/order/wizard/step1.html', form=form, suppliers=suppliers)
@@ -267,20 +261,31 @@ def wizard_step2():
         flash('Bitte zuerst Schritt 1 abschließen.', 'warning')
         return redirect(url_for('md3_order.wizard_step1'))
 
+    # Lade Bestellvorlagen für diesen Lieferanten
+    from app.models import OrderTemplate
+    templates = OrderTemplate.query.filter_by(supplier_id=supplier_id).order_by(OrderTemplate.name).all()
+    
+    # Budget aus Session holen
+    budget = data.get('budget')
+
     form = WizardStep2Form()
 
     # Populate select choices to satisfy WTForms validation
     try:
-        from app.models import Category, Manufacturer
+        from app.models import Category, Manufacturer, Supplier
         form.filter_category.choices = [(0, 'Alle Kategorien')] + [
             (c.id, c.name) for c in Category.query.order_by(Category.name).all()
         ]
         form.filter_manufacturer.choices = [(0, 'Alle Hersteller')] + [
             (m.id, m.name) for m in Manufacturer.query.order_by(Manufacturer.name).all()
         ]
+        form.filter_supplier.choices = [(0, 'Alle Lieferanten')] + [
+            (s.id, s.name) for s in Supplier.query.order_by(Supplier.name).all()
+        ]
     except Exception:
         form.filter_category.choices = [(0, 'Alle Kategorien')]
         form.filter_manufacturer.choices = [(0, 'Alle Hersteller')]
+        form.filter_supplier.choices = [(0, 'Alle Lieferanten')]
 
     # Build asset list based on filters
     query = Asset.query.filter(Asset.status == 'active')
@@ -311,6 +316,13 @@ def wizard_step2():
                 query = query.filter(Asset.manufacturers.any(Manufacturer.id == int(form.filter_manufacturer.data)))
             except Exception:
                 pass
+        if form.filter_supplier.data and int(form.filter_supplier.data) != 0:
+            try:
+                # supplier m2m
+                from app.models import Supplier
+                query = query.filter(Asset.suppliers.any(Supplier.id == int(form.filter_supplier.data)))
+            except Exception:
+                pass
     
     assets = query.order_by(Asset.name).limit(100).all()
 
@@ -333,7 +345,7 @@ def wizard_step2():
             entry.quantity.data = 1
             entry.select.data = False
             form.assets.append_entry(entry.data)
-        return render_template('md3/order/wizard/step2.html', form=form, assets=assets)
+        return render_template('md3/order/wizard/step2.html', form=form, assets=assets, templates=templates, supplier_id=supplier_id, budget=budget)
 
     if form.validate_on_submit():
         selected = []
@@ -353,7 +365,7 @@ def wizard_step2():
             _update_wizard_session('items', selected)
             return redirect(url_for('md3_order.wizard_step3'))
 
-    return render_template('md3/order/wizard/step2.html', form=form, assets=assets)
+    return render_template('md3/order/wizard/step2.html', form=form, assets=assets, templates=templates, supplier_id=supplier_id, budget=budget)
 
 
 @md3_order_bp.route('/wizard/step3', methods=['GET', 'POST'])
@@ -472,14 +484,46 @@ def wizard_step4():
             order.status = 'erledigt'
         db.session.commit()
 
+        # KALENDER-EVENT für Liefertermin erstellen
+        if order.expected_delivery_date:
+            from app.models import CalendarEvent, EVENT_TYPE_DELIVERY, EVENT_STATUS_PLANNED
+            from flask_login import current_user
+            
+            # Titel mit Lieferantenname
+            supplier_name = supplier.name if supplier else 'Unbekannter Lieferant'
+            event_title = f"Lieferung: Bestellung #{order.id}"
+            event_description = f"Erwartete Lieferung von {supplier_name}"
+            
+            # Artikel-Details hinzufügen
+            if data.get('items'):
+                item_count = len(data.get('items', []))
+                event_description += f"\n{item_count} Artikel"
+            
+            calendar_event = CalendarEvent(
+                title=event_title,
+                description=event_description,
+                start_datetime=order.expected_delivery_date,
+                event_type=EVENT_TYPE_DELIVERY,
+                status=EVENT_STATUS_PLANNED,
+                order_id=order.id,
+                created_by_id=current_user.id if current_user.is_authenticated else None
+            )
+            db.session.add(calendar_event)
+            db.session.commit()
+            print(f"DEBUG: Kalender-Event #{calendar_event.id} für Bestellung #{order.id} erstellt")
+
+        # AUTOMATISCHER ASSET-IMPORT für alle Bestellungen mit Status 'erledigt'
+        if order.status == 'erledigt':
+            # Expliziter Aufruf des Asset-Imports für ALLE Bestellungen mit Status 'erledigt'
+            created_assets, skipped_items = import_assets_from_order(order)
+            print(f"DEBUG: MD3 Asset-Import für Bestellung #{order.id} wurde automatisch ausgelöst - {len(created_assets)} Assets erstellt")
+
         # Side effects after commit
         try:
             if action == 'send_email':
                 ok = send_order_email(order.id)
                 if not ok:
                     flash('Bestellung gespeichert, aber E-Mail-Versand fehlgeschlagen.', 'warning')
-            elif action == 'import_assets':
-                import_assets_from_order(order.id)
         except Exception:
             # Fail gracefully, order was created
             flash('Bestellung gespeichert, Nebenaktion teilweise fehlgeschlagen.', 'warning')
@@ -487,14 +531,8 @@ def wizard_step4():
         _reset_wizard_session()
         if action == 'import_assets':
             flash(f'Bestellung #{order.id} gespeichert und Assets importiert.', 'success')
-            # Try to go to assets overview (MD3 or legacy)
-            try:
-                return redirect(url_for('main.assets'))
-            except Exception:
-                try:
-                    return redirect(url_for('assets'))
-                except Exception:
-                    return redirect(url_for('md3_order.overview'))
+            # Redirect to MD3 Assets page
+            return redirect('/md3/assets')
         elif action == 'send_email':
             flash(f'Bestellung #{order.id} gespeichert und E-Mail gesendet.', 'success')
         else:
@@ -509,3 +547,76 @@ def wizard_step4():
         data=data,
         form=form,
     )
+
+
+# ========================
+# API Routes für Bestellvorlagen
+# ========================
+
+@md3_order_bp.route('/api/order-template/<int:template_id>', methods=['GET'])
+@login_required
+def get_order_template(template_id):
+    """API: Bestellvorlage laden"""
+    try:
+        template = OrderTemplate.query.get_or_404(template_id)
+        
+        # Template-Items laden
+        items = []
+        for item in template.items:
+            items.append({
+                'asset_id': item.asset_id,
+                'quantity': item.quantity
+            })
+        
+        return jsonify({
+            'success': True,
+            'template_id': template.id,
+            'name': template.name,
+            'supplier_id': template.supplier_id,
+            'items': items
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@md3_order_bp.route('/api/order-template/save', methods=['POST'])
+@login_required
+def save_order_template():
+    """API: Neue Bestellvorlage speichern"""
+    try:
+        data = request.get_json()
+        
+        if not data or not data.get('name'):
+            return jsonify({'success': False, 'message': 'Name ist erforderlich'}), 400
+        
+        if not data.get('items') or len(data['items']) == 0:
+            return jsonify({'success': False, 'message': 'Mindestens ein Artikel erforderlich'}), 400
+        
+        # Neue Vorlage erstellen
+        template = OrderTemplate(
+            name=data['name'],
+            supplier_id=data.get('supplier_id'),
+            location_id=None  # Optional: könnte auch aus Session kommen
+        )
+        db.session.add(template)
+        db.session.flush()  # Um template.id zu erhalten
+        
+        # Items hinzufügen
+        for item_data in data['items']:
+            item = OrderTemplateItem(
+                template_id=template.id,
+                asset_id=int(item_data['asset_id']),
+                quantity=int(item_data.get('quantity', 1))
+            )
+            db.session.add(item)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'template_id': template.id,
+            'message': 'Vorlage erfolgreich gespeichert'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500

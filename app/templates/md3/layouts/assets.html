@@ -229,23 +229,37 @@ document.addEventListener('DOMContentLoaded', function() {
               </div>
               <div style="padding: 16px; background: #ffffff; border: 1px solid #e0e0e0; border-radius: 16px;">
                 <h4 style="margin: 0 0 8px 0; color: #6750a4; font-size: 14px; font-weight: 500;">Standort</h4>
-                <div style="color: #1c1b1f; font-size: 16px;">${asset.location ? asset.location.name : 'Kein Standort'}</div>
+                <div style="color: #1c1b1f; font-size: 16px;">${asset.location_obj ? asset.location_obj.name : 'Kein Standort'}</div>
               </div>
               <div style="padding: 16px; background: #ffffff; border: 1px solid #e0e0e0; border-radius: 16px;">
                 <h4 style="margin: 0 0 8px 0; color: #6750a4; font-size: 14px; font-weight: 500;">Wert</h4>
                 <div style="color: #1c1b1f; font-size: 16px;">${asset.value ? parseFloat(asset.value).toFixed(2) + ' €' : '0.00 €'}</div>
               </div>
             </div>
-            <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
-              <button onclick="window.location.href='/assets/${asset.id}/edit'" class="md3-action-btn md3-primary-btn">
+            <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap;">
+              <button onclick="closeSingleAssetModal(); loadAssetForEdit(${asset.id})" class="md3-action-btn md3-primary-btn">
                 <span class="material-symbols-outlined" style="font-size: 18px;">edit</span>Bearbeiten
               </button>
-              <button onclick="window.location.href='/assets/${asset.id}/documents'" class="md3-action-btn md3-secondary-btn">
-              <button onclick="window.location.href='/assets/${asset.id}/documents'" style="
+              <button onclick="window.location.href='/md3/assets/${asset.id}/documents'" style="
                 background: #ffd8e4; color: #31111d; border: none; padding: 8px 16px; border-radius: 20px;
                 font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px;">
                 <span class="material-symbols-outlined" style="font-size: 18px;">description</span>Dokumente
               </button>
+              ${asset.status === 'active' ? `
+                <button onclick="closeSingleAssetModal(); openLoanModal(${asset.id})" style="
+                  background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); border: none; 
+                  padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; 
+                  display: flex; align-items: center; gap: 8px;">
+                  <span class="material-symbols-outlined" style="font-size: 18px;">local_shipping</span>Ausleihen
+                </button>
+              ` : asset.status === 'on_loan' ? `
+                <button onclick="returnAsset(${asset.id})" style="
+                  background: var(--md-sys-color-secondary); color: var(--md-sys-color-on-secondary); border: none; 
+                  padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; cursor: pointer; 
+                  display: flex; align-items: center; gap: 8px;">
+                  <span class="material-symbols-outlined" style="font-size: 18px;">undo</span>Zurückgeben
+                </button>
+              ` : ''}
             </div>
           </div>
         `;
@@ -331,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
               </div>
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #49454f;">
                 <div><div style="font-weight: 500; margin-bottom: 2px;">Kategorie</div><div>${asset.category.name}</div></div>
-                <div><div style="font-weight: 500; margin-bottom: 2px;">Standort</div><div>${asset.location.name}</div></div>
+                <div><div style="font-weight: 500; margin-bottom: 2px;">Standort</div><div>${asset.location_obj.name}</div></div>
                 <div><div style="font-weight: 500; margin-bottom: 2px;">Wert</div><div style="font-weight: 500; color: #6750a4;">${asset.value} €</div></div>
               </div>
             </div>
@@ -379,33 +393,57 @@ document.addEventListener('DOMContentLoaded', function() {
     masterCheckbox.addEventListener('change', function() {
       const isChecked = this.checked;
       assetCheckboxes.forEach(checkbox => {
-        checkbox.checked = isChecked;
+        if (checkbox) {
+          checkbox.checked = isChecked;
+        }
       });
     });
   }
 
   // Update Master Checkbox when individual checkboxes change
-  assetCheckboxes.forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
-      const checkedCount = document.querySelectorAll('input[name="selected_assets"]:checked').length;
-      const totalCount = assetCheckboxes.length;
-      
-      if (checkedCount === 0) {
-        masterCheckbox.checked = false;
-        masterCheckbox.indeterminate = false;
-      } else if (checkedCount === totalCount) {
-        masterCheckbox.checked = true;
-        masterCheckbox.indeterminate = false;
-      } else {
-        masterCheckbox.checked = false;
-        masterCheckbox.indeterminate = true;
+  if (assetCheckboxes.length > 0) {
+    assetCheckboxes.forEach(checkbox => {
+      if (checkbox) {
+        checkbox.addEventListener('change', function() {
+          const checkedCount = document.querySelectorAll('input[name="selected_assets"]:checked').length;
+          const totalCount = assetCheckboxes.length;
+          
+          if (masterCheckbox) {
+            if (checkedCount === 0) {
+              masterCheckbox.checked = false;
+              masterCheckbox.indeterminate = false;
+            } else if (checkedCount === totalCount) {
+              masterCheckbox.checked = true;
+              masterCheckbox.indeterminate = false;
+            } else {
+              masterCheckbox.checked = false;
+              masterCheckbox.indeterminate = true;
+            }
+          }
+        });
       }
     });
-  });
+  }
 
   // Neues Asset Modal öffnen
   window.openNewAssetModal = function() {
     console.log('🆕 Öffne Neues Asset Modal');
+    
+    // Aktualisiere Dropdown-Daten über AJAX
+    fetch('/api/dropdown-data')
+      .then(response => response.json())
+      .then(dropdownData => {
+        createAssetModal(dropdownData);
+      })
+      .catch(error => {
+        console.error('Fehler beim Laden der Dropdown-Daten:', error);
+        // Fallback mit leeren Daten
+        createAssetModal({categories: [], manufacturers: [], suppliers: [], assignments: [], locations: []});
+      });
+  };
+  
+  function createAssetModal(dropdownData) {
+    console.log('📊 Dropdown-Daten geladen:', dropdownData);
     
     const modal = document.createElement('div');
     modal.id = 'new-asset-modal';
@@ -494,16 +532,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Kategorie</label>
                 <select name="category" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
                   <option value="">Kategorie auswählen...</option>
-                  {% for category in categories %}
-                  <option value="{{ category.id }}">{{ category.name }}</option>
-                  {% endfor %}
+                  ${dropdownData.categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('')}
                 </select>
               </div>
               
               <!-- Standort -->
               <div class="md3-field" style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Standort</label>
-                <input type="text" name="location" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
+                <select name="location_id" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
+                  <option value="">Standort auswählen...</option>
+                  ${dropdownData.locations.map(loc => `<option value="${loc.id}">${loc.name}</option>`).join('')}
+                </select>
               </div>
               
               <!-- Hersteller -->
@@ -511,9 +550,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Hersteller</label>
                 <select name="manufacturers" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
                   <option value="">Hersteller auswählen...</option>
-                  {% for manufacturer in manufacturers %}
-                  <option value="{{ manufacturer.id }}">{{ manufacturer.name }}</option>
-                  {% endfor %}
+                  ${dropdownData.manufacturers.map(mfg => `<option value="${mfg.id}">${mfg.name}</option>`).join('')}
                 </select>
               </div>
               
@@ -522,9 +559,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Lieferant</label>
                 <select name="suppliers" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
                   <option value="">Lieferant auswählen...</option>
-                  {% for supplier in suppliers %}
-                  <option value="{{ supplier.id }}">{{ supplier.name }}</option>
-                  {% endfor %}
+                  ${dropdownData.suppliers.map(sup => `<option value="${sup.id}">${sup.name}</option>`).join('')}
                 </select>
               </div>
               
@@ -533,9 +568,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <label style="display: block; margin-bottom: 8px; color: var(--md-sys-color-on-surface); font-size: 14px; font-weight: 500;">Zuordnung</label>
                 <select name="assignments" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 8px; font-size: 16px;">
                   <option value="">Zuordnung auswählen...</option>
-                  {% for assignment in assignments %}
-                  <option value="{{ assignment.id }}">{{ assignment.name }}</option>
-                  {% endfor %}
+                  ${dropdownData.assignments.map(assgn => `<option value="${assgn.id}">${assgn.name}</option>`).join('')}
                 </select>
               </div>
               
@@ -597,11 +630,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   };
 
-  // Delete Asset Functionality
+  // Delete Asset Functionality - with null checks
   document.querySelectorAll('.md3-delete-btn').forEach(button => {
-    button.addEventListener('click', function() {
-      const assetId = this.getAttribute('data-asset-id');
-      const assetName = this.getAttribute('data-asset-name');
+    if (button) {
+      button.addEventListener('click', function() {
+        const assetId = this.getAttribute('data-asset-id');
+        const assetName = this.getAttribute('data-asset-name');
       
       if (confirm(`Sind Sie sicher, dass Sie das Asset "${assetName}" löschen möchten?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`)) {
         // Send DELETE request to backend
@@ -609,21 +643,22 @@ document.addEventListener('DOMContentLoaded', function() {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+            'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
           }
         })
-        .then(response => {
-          if (response.ok) {
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
             // Remove the row from the table
             this.closest('tr').remove();
             
             // Show success message
             alert(`Asset "${assetName}" wurde erfolgreich gelöscht.`);
             
-            // Optionally reload the page to update counts
-            // window.location.reload();
+            // Reload to update counts
+            window.location.reload();
           } else {
-            throw new Error('Fehler beim Löschen');
+            throw new Error(data.error || 'Fehler beim Löschen');
           }
         })
         .catch(error => {
@@ -631,7 +666,8 @@ document.addEventListener('DOMContentLoaded', function() {
           alert(`Fehler beim Löschen des Assets "${assetName}". Bitte versuchen Sie es erneut.`);
         });
       }
-    });
+      });
+    }
   });
 
   // Asset bearbeiten Modal öffnen
@@ -710,8 +746,9 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         
         <!-- Asset bearbeiten Form -->
-        <form method="POST" action="/assets/edit/${asset.id}" enctype="multipart/form-data">
+        <form id="edit-asset-form" method="POST" enctype="multipart/form-data">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="asset_id" id="edit-asset-id">
           
           <!-- Zwei-Spalten Layout -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
@@ -818,6 +855,52 @@ document.addEventListener('DOMContentLoaded', function() {
                 ">
               </div>
               
+              <!-- Seriennummer -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Seriennummer</label>
+                <input type="text" name="serial_number" value="${asset.serial_number || ''}" style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+              </div>
+              
+              <!-- Kaufdatum -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Kaufdatum</label>
+                <input type="date" name="purchase_date" value="${asset.purchase_date || ''}" style="
+                  width: 100%;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+              </div>
+              
               <!-- Beschreibung -->
               <div style="margin-bottom: 16px;">
                 <label style="
@@ -863,7 +946,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   color: var(--md-sys-color-on-surface-variant);
                   margin-bottom: 8px;
                 ">Kategorie</label>
-                <select name="category" style="
+                <select name="category_id" id="edit-category-id" style="
                   width: 100%;
                   padding: 16px;
                   border: 1px solid var(--md-sys-color-outline);
@@ -875,10 +958,6 @@ document.addEventListener('DOMContentLoaded', function() {
                   box-sizing: border-box;
                 ">
                   <option value="">Kategorie auswählen...</option>
-                  <option value="Hardware" ${asset.category === 'Hardware' ? 'selected' : ''}>Hardware</option>
-                  <option value="Software" ${asset.category === 'Software' ? 'selected' : ''}>Software</option>
-                  <option value="Lizenz" ${asset.category === 'Lizenz' ? 'selected' : ''}>Lizenz</option>
-                  <option value="Zubehör" ${asset.category === 'Zubehör' ? 'selected' : ''}>Zubehör</option>
                 </select>
               </div>
               
@@ -892,7 +971,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   color: var(--md-sys-color-on-surface-variant);
                   margin-bottom: 8px;
                 ">Standort</label>
-                <select name="location_id" style="
+                <select name="location_id" id="edit-location-id" style="
                   width: 100%;
                   padding: 16px;
                   border: 1px solid var(--md-sys-color-outline);
@@ -904,9 +983,6 @@ document.addEventListener('DOMContentLoaded', function() {
                   box-sizing: border-box;
                 ">
                   <option value="">Standort auswählen...</option>
-                  <option value="1" ${asset.location_id === 1 ? 'selected' : ''}>Büro Hamburg</option>
-                  <option value="2" ${asset.location_id === 2 ? 'selected' : ''}>Lager Berlin</option>
-                  <option value="3" ${asset.location_id === 3 ? 'selected' : ''}>Homeoffice</option>
                 </select>
               </div>
               
@@ -920,7 +996,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   color: var(--md-sys-color-on-surface-variant);
                   margin-bottom: 8px;
                 ">Status</label>
-                <select name="status" style="
+                <select name="status" id="edit-status" style="
                   width: 100%;
                   padding: 16px;
                   border: 1px solid var(--md-sys-color-outline);
@@ -931,11 +1007,117 @@ document.addEventListener('DOMContentLoaded', function() {
                   font-size: var(--md-sys-typescale-body-large-font-size);
                   box-sizing: border-box;
                 ">
-                  <option value="active" ${asset.status === 'active' ? 'selected' : ''}>Aktiv</option>
-                  <option value="inactive" ${asset.status === 'inactive' ? 'selected' : ''}>Inaktiv</option>
-                  <option value="maintenance" ${asset.status === 'maintenance' ? 'selected' : ''}>Wartung</option>
-                  <option value="retired" ${asset.status === 'retired' ? 'selected' : ''}>Ausgemustert</option>
+                  <option value="Aktiv">Aktiv</option>
+                  <option value="Inaktiv">Inaktiv</option>
+                  <option value="Wartung">Wartung</option>
+                  <option value="Ausgemustert">Ausgemustert</option>
                 </select>
+              </div>
+              
+              <!-- Hersteller -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Hersteller</label>
+                <select name="manufacturer_ids[]" id="edit-manufacturers" multiple style="
+                  width: 100%;
+                  min-height: 80px;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+                </select>
+                <div style="
+                  font-size: 12px;
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-top: 4px;
+                ">Mehrfachauswahl mit Strg/Cmd + Klick</div>
+              </div>
+              
+              <!-- Lieferant -->
+              <div style="margin-bottom: 16px;">
+                <label style="
+                  display: block;
+                  font-family: var(--md-sys-typescale-body-small-font-family-name);
+                  font-size: var(--md-sys-typescale-body-small-font-size);
+                  font-weight: var(--md-sys-typescale-body-small-font-weight);
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-bottom: 8px;
+                ">Lieferant</label>
+                <select name="supplier_ids[]" id="edit-suppliers" multiple style="
+                  width: 100%;
+                  min-height: 80px;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+                </select>
+                <div style="
+                  font-size: 12px;
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-top: 4px;
+                ">Mehrfachauswahl mit Strg/Cmd + Klick</div>
+              </div>
+              
+              <!-- Zuordnungen -->
+              <div style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <label style="
+                    font-family: var(--md-sys-typescale-body-small-font-family-name);
+                    font-size: var(--md-sys-typescale-body-small-font-size);
+                    font-weight: var(--md-sys-typescale-body-small-font-weight);
+                    color: var(--md-sys-color-on-surface-variant);
+                    margin: 0;
+                  ">Zuordnungen</label>
+                  <button type="button" onclick="openNewAssignmentModal()" style="
+                    background: var(--md-sys-color-primary);
+                    color: var(--md-sys-color-on-primary);
+                    border: none;
+                    border-radius: 50%;
+                    width: 24px;
+                    height: 24px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    font-size: 16px;
+                    font-weight: 500;
+                  " title="Neue Zuordnung hinzufügen">+</button>
+                </div>
+                <select name="assignment_ids[]" id="edit-assignments" multiple style="
+                  width: 100%;
+                  min-height: 80px;
+                  padding: 16px;
+                  border: 1px solid var(--md-sys-color-outline);
+                  border-radius: 8px;
+                  background: var(--md-sys-color-surface);
+                  color: var(--md-sys-color-on-surface);
+                  font-family: var(--md-sys-typescale-body-large-font-family-name);
+                  font-size: var(--md-sys-typescale-body-large-font-size);
+                  box-sizing: border-box;
+                ">
+                </select>
+                <div style="
+                  font-size: 12px;
+                  color: var(--md-sys-color-on-surface-variant);
+                  margin-top: 4px;
+                ">Mehrfachauswahl mit Strg/Cmd + Klick</div>
               </div>
               
               <!-- Asset Bild -->
@@ -1029,7 +1211,7 @@ document.addEventListener('DOMContentLoaded', function() {
               <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
               Abbrechen
             </button>
-            <button type="submit" style="
+            <button type="button" onclick="submitEditAssetForm()" style="
               padding: 12px 24px;
               border: none;
               border-radius: 20px;
@@ -1095,6 +1277,592 @@ document.addEventListener('DOMContentLoaded', function() {
       container.style.display = 'none';
     }
   };
+  
+  // Load asset data for editing
+  window.loadAssetForEdit = function(assetId) {
+    fetch(`/api/assets/${assetId}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data) {
+          showEditAssetModal(data.asset);
+          populateEditForm(data);
+        }
+      })
+      .catch(error => {
+        console.error('Fehler beim Laden des Assets:', error);
+        alert('Fehler beim Laden des Assets.');
+      });
+  };
+  
+  // Populate edit form with asset data
+  function populateEditForm(data) {
+    const asset = data.asset;
+    const form = document.getElementById('edit-asset-form');
+    
+    // Set asset ID
+    document.getElementById('edit-asset-id').value = asset.id;
+    
+    // Populate basic fields
+    form.querySelector('input[name="name"]').value = asset.name || '';
+    form.querySelector('input[name="article_number"]').value = asset.article_number || '';
+    form.querySelector('input[name="ean"]').value = asset.ean || '';
+    form.querySelector('input[name="value"]').value = asset.value || '';
+    form.querySelector('input[name="serial_number"]').value = asset.serial_number || '';
+    form.querySelector('input[name="purchase_date"]').value = asset.purchase_date || '';
+    form.querySelector('textarea[name="description"]').value = asset.description || '';
+    
+    // Populate categories dropdown
+    const categorySelect = document.getElementById('edit-category-id');
+    categorySelect.innerHTML = '<option value="">Kategorie auswählen...</option>';
+    data.categories.forEach(category => {
+      const option = document.createElement('option');
+      option.value = category.id;
+      option.textContent = category.name;
+      if (category.id === asset.category_id) {
+        option.selected = true;
+      }
+      categorySelect.appendChild(option);
+    });
+    
+    // Populate locations dropdown
+    const locationSelect = document.getElementById('edit-location-id');
+    locationSelect.innerHTML = '<option value="">Standort auswählen...</option>';
+    data.locations.forEach(location => {
+      const option = document.createElement('option');
+      option.value = location.id;
+      option.textContent = location.name;
+      if (location.id === asset.location_id) {
+        option.selected = true;
+      }
+      locationSelect.appendChild(option);
+    });
+    
+    // Set status - map English to German
+    const statusMapping = {
+      'active': 'Aktiv',
+      'inactive': 'Inaktiv',
+      'on_loan': 'Ausgeliehen',
+      'defect': 'Defekt',
+      'maintenance': 'Wartung',
+      'retired': 'Ausgemustert'
+    };
+    const mappedStatus = statusMapping[asset.status] || asset.status || 'Aktiv';
+    document.getElementById('edit-status').value = mappedStatus;
+    
+    // Populate manufacturers dropdown
+    const manufacturerSelect = document.getElementById('edit-manufacturers');
+    manufacturerSelect.innerHTML = '';
+    data.manufacturers.forEach(manufacturer => {
+      const option = document.createElement('option');
+      option.value = manufacturer.id;
+      option.textContent = manufacturer.name;
+      if (asset.manufacturer_ids && asset.manufacturer_ids.includes(manufacturer.id)) {
+        option.selected = true;
+      }
+      manufacturerSelect.appendChild(option);
+    });
+    
+    // Populate suppliers dropdown
+    const supplierSelect = document.getElementById('edit-suppliers');
+    supplierSelect.innerHTML = '';
+    data.suppliers.forEach(supplier => {
+      const option = document.createElement('option');
+      option.value = supplier.id;
+      option.textContent = supplier.name;
+      if (asset.supplier_ids && asset.supplier_ids.includes(supplier.id)) {
+        option.selected = true;
+      }
+      supplierSelect.appendChild(option);
+    });
+    
+    // Populate assignments dropdown
+    const assignmentSelect = document.getElementById('edit-assignments');
+    assignmentSelect.innerHTML = '';
+    data.assignments.forEach(assignment => {
+      const option = document.createElement('option');
+      option.value = assignment.id;
+      option.textContent = assignment.name;
+      if (asset.assignment_ids && asset.assignment_ids.includes(assignment.id)) {
+        option.selected = true;
+      }
+      assignmentSelect.appendChild(option);
+    });
+  }
+  
+  // Submit edit form via AJAX
+  window.submitEditAssetForm = function() {
+    const form = document.getElementById('edit-asset-form');
+    const formData = new FormData(form);
+    const assetId = document.getElementById('edit-asset-id').value;
+    
+    if (!assetId) {
+      alert('Asset ID fehlt!');
+      return;
+    }
+    
+    fetch(`/api/assets/${assetId}/update`, {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        closeEditAssetModal();
+        showNotification(data.message, 'success');
+        // Dynamisch nur die Asset-Liste aktualisieren
+        refreshAssetList();
+      } else {
+        showNotification(data.message || 'Fehler beim Speichern', 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Fehler beim Speichern:', error);
+      showNotification('Fehler beim Speichern des Assets', 'error');
+    });
+  };
+  
+  // Show notification function
+  function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `md3-notification md3-notification-${type}`;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${type === 'success' ? 'var(--md-sys-color-primary-container)' : 
+                   type === 'error' ? 'var(--md-sys-color-error-container)' : 
+                   'var(--md-sys-color-surface-container)'};
+      color: ${type === 'success' ? 'var(--md-sys-color-on-primary-container)' : 
+               type === 'error' ? 'var(--md-sys-color-on-error-container)' : 
+               'var(--md-sys-color-on-surface)'};
+      padding: 16px 24px;
+      border-radius: 12px;
+      box-shadow: var(--md-sys-elevation-3);
+      z-index: 10000;
+      font-family: var(--md-sys-typescale-body-medium-font-family);
+      font-size: var(--md-sys-typescale-body-medium-font-size);
+      font-weight: 500;
+      max-width: 400px;
+      animation: slideInRight 0.3s ease-out;
+    `;
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+      notification.style.animation = 'slideOutRight 0.3s ease-in';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, 4000);
+  }
+  
+  // Add CSS animations for notifications
+  if (!document.querySelector('#notification-styles')) {
+    const style = document.createElement('style');
+    style.id = 'notification-styles';
+    style.textContent = `
+      @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  // Refresh asset list dynamically without page reload
+  function refreshAssetList() {
+    console.log('Aktualisiere Asset-Liste...');
+    
+    // Get current filter and pagination state
+    const currentPage = new URLSearchParams(window.location.search).get('page') || '1';
+    const currentCategory = document.querySelector('#category-filter')?.value || '';
+    const currentStatus = document.querySelector('#status-filter')?.value || '';
+    const currentSearch = document.querySelector('#search-input')?.value || '';
+    
+    // Build API URL with current filters
+    const params = new URLSearchParams();
+    if (currentPage !== '1') params.append('page', currentPage);
+    if (currentCategory) params.append('category', currentCategory);
+    if (currentStatus) params.append('status', currentStatus);
+    if (currentSearch) params.append('search', currentSearch);
+    
+    const apiUrl = `/api/assets?${params.toString()}`;
+    
+    fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.assets) {
+        updateAssetTable(data.assets, data.pagination);
+        console.log('Asset-Liste erfolgreich aktualisiert');
+      } else {
+        console.error('Fehler beim Laden der Assets:', data.message);
+        // Fallback to page reload if API fails
+        location.reload();
+      }
+    })
+    .catch(error => {
+      console.error('Fehler beim Laden der Asset-Liste:', error);
+      // Fallback to page reload if API fails
+      location.reload();
+    });
+  }
+  
+  // Update asset table with new data
+  function updateAssetTable(assets, pagination) {
+    const tableBody = document.querySelector('#assets-table tbody');
+    if (!tableBody) {
+      console.error('Asset-Tabelle nicht gefunden');
+      return;
+    }
+    
+    // Clear current table content
+    tableBody.innerHTML = '';
+    
+    // Add new rows
+    assets.forEach(asset => {
+      const row = createAssetTableRow(asset);
+      tableBody.appendChild(row);
+    });
+    
+    // Update pagination if provided
+    if (pagination) {
+      updatePagination(pagination);
+    }
+    
+    // Update asset count display
+    const countElement = document.querySelector('.asset-count');
+    if (countElement && pagination) {
+      countElement.textContent = `${pagination.total} Assets`;
+    }
+  }
+  
+  // Create a single asset table row
+  function createAssetTableRow(asset) {
+    const row = document.createElement('tr');
+    
+    // Format status with proper styling
+    const statusLower = asset.status?.toLowerCase() || '';
+    const statusClass = statusLower === 'active' ? 'status-active' : 'status-inactive';
+    const statusIcon = statusLower === 'active' ? 'check_circle' : 'cancel';
+    const statusText = statusLower === 'active' ? 'Aktiv' : 
+                       statusLower === 'inactive' ? 'Inaktiv' :
+                       statusLower === 'on_loan' ? 'Ausgeliehen' :
+                       statusLower === 'maintenance' ? 'Wartung' :
+                       statusLower === 'retired' ? 'Ausgemustert' : 'Inaktiv';
+    
+    // Format category
+    const categoryText = asset.category ? asset.category.replace('<Category ', '').replace('>', '') : '-';
+    
+    // Format dates
+    const createdDate = asset.created_at ? new Date(asset.created_at).toLocaleDateString('de-DE') : '-';
+    const updatedDate = asset.updated_at ? new Date(asset.updated_at).toLocaleDateString('de-DE') : '-';
+    
+    row.innerHTML = `
+      <td>
+        <input type="checkbox" class="asset-checkbox" value="${asset.id}">
+      </td>
+      <td>
+        <span class="material-symbols-outlined" style="font-size: 18px; color: var(--md-sys-color-primary);">
+          ${getCategoryIcon(asset.category)}
+        </span>
+      </td>
+      <td><strong>${asset.asset_id || '-'}</strong></td>
+      <td>${asset.name || '-'}</td>
+      <td>${asset.artikelnummer || '-'}</td>
+      <td>${categoryText}</td>
+      <td>${asset.ean || '-'}</td>
+      <td>${asset.start || '-'}</td>
+      <td>${asset.hersteller || '-'}</td>
+      <td>${asset.serialnumber || '-'}</td>
+      <td>${asset.lieferant || '-'}</td>
+      <td>${createdDate}</td>
+      <td>${updatedDate}</td>
+      <td>${asset.aktionen || '-'}</td>
+      <td>
+        <div class="status-indicator ${statusClass}">
+          <span class="material-symbols-outlined">${statusIcon}</span>
+          <span>${statusText}</span>
+        </div>
+      </td>
+      <td>
+        <div class="action-buttons">
+          <button type="button" class="md-button md-button-icon" onclick="editAsset(${asset.id})" title="Bearbeiten">
+            <span class="material-symbols-outlined">edit</span>
+          </button>
+          <button type="button" class="md-button md-button-icon md-button-danger" onclick="deleteAsset(${asset.id})" title="Löschen">
+            <span class="material-symbols-outlined">delete</span>
+          </button>
+        </div>
+      </td>
+    `;
+    
+    return row;
+  }
+  
+  // Get appropriate icon for category
+  function getCategoryIcon(category) {
+    if (!category) return 'category';
+    
+    const categoryLower = category.toLowerCase();
+    if (categoryLower.includes('lizenz')) return 'key';
+    if (categoryLower.includes('server')) return 'dns';
+    if (categoryLower.includes('hardware')) return 'memory';
+    if (categoryLower.includes('software')) return 'apps';
+    if (categoryLower.includes('netzwerk')) return 'router';
+    return 'category';
+  }
+  
+  // Update pagination controls
+  function updatePagination(pagination) {
+    const paginationContainer = document.querySelector('.pagination-container');
+    if (!paginationContainer || !pagination) return;
+    
+    // This would need to be implemented based on your pagination structure
+    console.log('Pagination update:', pagination);
+  }
+  
+  // Open new assignment modal
+  window.openNewAssignmentModal = function() {
+    const modal = document.createElement('div');
+    modal.id = 'new-assignment-modal';
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center;
+      align-items: center; z-index: 10001; animation: fadeIn 0.3s ease-out;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: var(--md-sys-color-surface);
+      border-radius: 28px;
+      box-shadow: var(--md-sys-elevation-level5);
+      width: 90vw;
+      max-width: 500px;
+      animation: slideUp 0.3s ease-out;
+      overflow: hidden;
+    `;
+    
+    modalContent.innerHTML = `
+      <div style="padding: 32px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <h2 style="
+            font-family: var(--md-sys-typescale-headline-small-font-family-name);
+            font-size: var(--md-sys-typescale-headline-small-font-size);
+            font-weight: var(--md-sys-typescale-headline-small-font-weight);
+            color: var(--md-sys-color-on-surface);
+            margin: 0;
+          ">Neue Zuordnung erstellen</h2>
+          <button onclick="closeNewAssignmentModal()" style="
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 20px;
+            color: var(--md-sys-color-on-surface-variant);
+          ">
+            <span class="material-symbols-outlined" style="font-size: 24px;">close</span>
+          </button>
+        </div>
+        
+        <form id="new-assignment-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          
+          <!-- Name -->
+          <div style="margin-bottom: 16px;">
+            <label style="
+              display: block;
+              font-family: var(--md-sys-typescale-body-small-font-family-name);
+              font-size: var(--md-sys-typescale-body-small-font-size);
+              font-weight: var(--md-sys-typescale-body-small-font-weight);
+              color: var(--md-sys-color-on-surface-variant);
+              margin-bottom: 8px;
+            ">Name *</label>
+            <input type="text" name="name" required style="
+              width: 100%;
+              padding: 16px;
+              border: 1px solid var(--md-sys-color-outline);
+              border-radius: 8px;
+              background: var(--md-sys-color-surface);
+              color: var(--md-sys-color-on-surface);
+              font-family: var(--md-sys-typescale-body-large-font-family-name);
+              font-size: var(--md-sys-typescale-body-large-font-size);
+              box-sizing: border-box;
+            " placeholder="z.B. IT-Ausstattung, Büroeinrichtung, etc.">
+          </div>
+          
+          <!-- Beschreibung -->
+          <div style="margin-bottom: 24px;">
+            <label style="
+              display: block;
+              font-family: var(--md-sys-typescale-body-small-font-family-name);
+              font-size: var(--md-sys-typescale-body-small-font-size);
+              font-weight: var(--md-sys-typescale-body-small-font-weight);
+              color: var(--md-sys-color-on-surface-variant);
+              margin-bottom: 8px;
+            ">Beschreibung</label>
+            <textarea name="description" rows="3" style="
+              width: 100%;
+              padding: 16px;
+              border: 1px solid var(--md-sys-color-outline);
+              border-radius: 8px;
+              background: var(--md-sys-color-surface);
+              color: var(--md-sys-color-on-surface);
+              font-family: var(--md-sys-typescale-body-large-font-family-name);
+              font-size: var(--md-sys-typescale-body-large-font-size);
+              box-sizing: border-box;
+              resize: vertical;
+            " placeholder="Optionale Beschreibung der Zuordnung"></textarea>
+          </div>
+          
+          <!-- Modal Actions -->
+          <div style="
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding-top: 24px;
+            border-top: 1px solid var(--md-sys-color-outline-variant);
+          ">
+            <button type="button" onclick="closeNewAssignmentModal()" style="
+              padding: 12px 24px;
+              border: 1px solid var(--md-sys-color-outline);
+              border-radius: 20px;
+              background: var(--md-sys-color-surface);
+              color: var(--md-sys-color-on-surface);
+              font-family: var(--md-sys-typescale-label-large-font-family-name);
+              font-size: var(--md-sys-typescale-label-large-font-size);
+              font-weight: var(--md-sys-typescale-label-large-font-weight);
+              cursor: pointer;
+              transition: all 0.2s ease;
+            ">Abbrechen</button>
+            <button type="button" onclick="submitNewAssignmentForm()" style="
+              padding: 12px 24px;
+              border: none;
+              border-radius: 20px;
+              background: var(--md-sys-color-primary);
+              color: var(--md-sys-color-on-primary);
+              font-family: var(--md-sys-typescale-label-large-font-family-name);
+              font-size: var(--md-sys-typescale-label-large-font-size);
+              font-weight: var(--md-sys-typescale-label-large-font-weight);
+              cursor: pointer;
+              transition: all 0.2s ease;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            ">
+              <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+              Erstellen
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+    
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // Focus on name input
+    setTimeout(() => {
+      const nameInput = modal.querySelector('input[name="name"]');
+      if (nameInput) nameInput.focus();
+    }, 100);
+    
+    // Click outside to close
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) {
+        closeNewAssignmentModal();
+      }
+    });
+    
+    // ESC key to close
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeNewAssignmentModal();
+      }
+    });
+  };
+  
+  // Close new assignment modal
+  window.closeNewAssignmentModal = function() {
+    const modal = document.getElementById('new-assignment-modal');
+    if (modal) {
+      modal.style.animation = 'fadeOut 0.3s ease-out';
+      setTimeout(() => {
+        modal.remove();
+      }, 300);
+    }
+  };
+  
+  // Submit new assignment form
+  window.submitNewAssignmentForm = function() {
+    const form = document.getElementById('new-assignment-form');
+    const formData = new FormData(form);
+    
+    fetch('/api/assignments/create', {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        closeNewAssignmentModal();
+        showNotification(data.message, 'success');
+        // Refresh assignments dropdown and auto-select new assignment
+        refreshAssignmentsDropdown(data.assignment.id);
+      } else {
+        showNotification(data.message || 'Fehler beim Erstellen', 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Fehler beim Erstellen:', error);
+      showNotification('Fehler beim Erstellen der Zuordnung', 'error');
+    });
+  };
+  
+  // Refresh assignments dropdown after creating new assignment
+  function refreshAssignmentsDropdown(newAssignmentId = null) {
+    fetch('/api/assignments')
+      .then(response => response.json())
+      .then(data => {
+        const assignmentSelect = document.getElementById('edit-assignments');
+        if (assignmentSelect && data.assignments) {
+          const selectedValues = Array.from(assignmentSelect.selectedOptions).map(option => option.value);
+          
+          // Add new assignment ID to selected values if provided
+          if (newAssignmentId && !selectedValues.includes(newAssignmentId.toString())) {
+            selectedValues.push(newAssignmentId.toString());
+          }
+          
+          assignmentSelect.innerHTML = '';
+          data.assignments.forEach(assignment => {
+            const option = document.createElement('option');
+            option.value = assignment.id;
+            option.textContent = assignment.name;
+            if (selectedValues.includes(assignment.id.toString())) {
+              option.selected = true;
+            }
+            assignmentSelect.appendChild(option);
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Fehler beim Laden der Zuordnungen:', error);
+      });
+  }
 });
 </script>
 {% endblock %}
@@ -1104,19 +1872,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <div class="md3-container" style="margin-top: 80px;">
   <div class="md3-assets-header">
-    <h1 class="md3-assets-title">Assets</h1>
+    <h1 class="md3-assets-title">
+      Assets
+      {% if request.args.get('status', 'active') == 'all' %}
+      <span style="font-size: 14px; font-weight: 400; color: var(--md-sys-color-on-surface-variant); margin-left: 8px;">(inkl. inaktive)</span>
+      {% endif %}
+    </h1>
     <div class="md3-action-buttons">
       <button onclick="openNewAssetModal()" class="md3-action-btn md3-primary-btn">
         <span class="material-symbols-outlined">add</span>
         Neues Asset
       </button>
-      <button data-href="{{ url_for('main.import_assets') }}" class="md3-action-btn md3-secondary-btn md3-nav-btn">
+      <button data-href="{{ url_for('import_assets.import_assets_upload', md3=1) }}" class="md3-action-btn md3-secondary-btn md3-nav-btn">
         <span class="material-symbols-outlined">upload_file</span>
         CSV Import
       </button>
       <button data-href="{{ url_for('md3_assets', group_duplicates='true' if not group_duplicates else 'false') }}" class="md3-action-btn md3-secondary-btn md3-nav-btn">
         <span class="material-symbols-outlined">{{ 'group_work' if not group_duplicates else 'splitscreen' }}</span>
         {{ 'Duplikate gruppieren' if not group_duplicates else 'Alle Assets anzeigen' }}
+      </button>
+      <button 
+        data-href="{{ url_for('md3_assets', status='all' if request.args.get('status', 'active') != 'all' else 'active') }}" 
+        class="md3-action-btn md3-secondary-btn md3-nav-btn"
+        style="{% if request.args.get('status', 'active') == 'all' %}background: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container);{% endif %}"
+      >
+        <span class="material-symbols-outlined">{{ 'visibility' if request.args.get('status', 'active') == 'all' else 'visibility_off' }}</span>
+        {{ 'Nur aktive Assets' if request.args.get('status', 'active') == 'all' else 'Alle Assets (inkl. inaktive)' }}
       </button>
     </div>
   </div>
@@ -1292,7 +2073,7 @@ document.addEventListener('DOMContentLoaded', function() {
             {% if asset.is_group %}
             <span style="color: var(--md-sys-color-primary);">Versch</span>
             {% else %}
-            {{ (asset.location.name if asset.location else '—')[:6] }}{{ '...' if asset.location and asset.location.name|length > 6 else '' }}
+            {{ (asset.location_obj.name if asset.location_obj else '—')[:6] }}{{ '...' if asset.location_obj and asset.location_obj.name|length > 6 else '' }}
             {% endif %}
           </td>
           <!-- Hersteller -->
@@ -1300,7 +2081,7 @@ document.addEventListener('DOMContentLoaded', function() {
             {% if asset.is_group %}
             <span style="color: var(--md-sys-color-primary);">Versch</span>
             {% else %}
-            {{ (asset.manufacturer if asset.manufacturer else '—')[:6] }}{{ '...' if asset.manufacturer and asset.manufacturer|length > 6 else '' }}
+            {% if asset.manufacturers %}{{ (asset.manufacturers[0].name)[:6] }}{{ '...' if asset.manufacturers[0].name|length > 6 else '' }}{% else %}—{% endif %}
             {% endif %}
           </td>
           <!-- Lieferant -->
@@ -1308,7 +2089,7 @@ document.addEventListener('DOMContentLoaded', function() {
             {% if asset.is_group %}
             <span style="color: var(--md-sys-color-primary);">Versch</span>
             {% else %}
-            {{ (asset.supplier if asset.supplier else '—')[:6] }}{{ '...' if asset.supplier and asset.supplier|length > 6 else '' }}
+            {% if asset.suppliers %}{{ (asset.suppliers[0].name)[:6] }}{{ '...' if asset.suppliers[0].name|length > 6 else '' }}{% else %}—{% endif %}
             {% endif %}
           </td>
           <!-- Zuordnung -->
@@ -1316,7 +2097,7 @@ document.addEventListener('DOMContentLoaded', function() {
             {% if asset.is_group %}
             <span style="color: var(--md-sys-color-primary);">Versch</span>
             {% else %}
-            {{ (asset.assignment if asset.assignment else '—')[:6] }}{{ '...' if asset.assignment and asset.assignment|length > 6 else '' }}
+            {% if asset.assignments %}{{ (asset.assignments[0].name)[:6] }}{{ '...' if asset.assignments[0].name|length > 6 else '' }}{% else %}—{% endif %}
             {% endif %}
           </td>
           <!-- Aktionen -->
@@ -1335,10 +2116,28 @@ document.addEventListener('DOMContentLoaded', function() {
             </button>
             {% endif %}
             <button class="md3-action-icon" 
-                    onclick="openEditAssetModal('{{ asset.id }}')"
+                    onclick="loadAssetForEdit('{{ asset.id }}')"
                     title="Asset bearbeiten">
               <span class="material-symbols-outlined" style="font-size: 16px;">edit</span>
             </button>
+            <button class="md3-action-icon" 
+                    onclick="window.location.href='/costs/{{ asset.id }}'"
+                    title="Kostenverwaltung">
+              <span class="material-symbols-outlined" style="font-size: 16px; color: var(--md-sys-color-tertiary);">account_balance_wallet</span>
+            </button>
+            {% if asset.status == 'active' %}
+            <button class="md3-action-icon" 
+                    onclick="openLoanModal({{ asset.id }})"
+                    title="Asset ausleihen">
+              <span class="material-symbols-outlined" style="font-size: 16px; color: var(--md-sys-color-primary);">local_shipping</span>
+            </button>
+            {% elif asset.status == 'on_loan' %}
+            <button class="md3-action-icon" 
+                    onclick="returnAsset({{ asset.id }})"
+                    title="Asset zurückgeben">
+              <span class="material-symbols-outlined" style="font-size: 16px; color: var(--md-sys-color-secondary);">undo</span>
+            </button>
+            {% endif %}
             <button class="md3-action-icon md3-delete-btn" data-asset-id="{{ asset.id }}" data-asset-name="{{ asset.name }}" title="Löschen">
               <span class="material-symbols-outlined" style="font-size: 16px; color: var(--md-sys-color-error);">delete</span>
             </button>
@@ -1355,4 +2154,241 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
   {% endif %}
 </div>
+
+<!-- Ausleih-Modal -->
+<div id="loan-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
+  <div style="background: var(--md-sys-color-surface); border-radius: 28px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: var(--md-sys-elevation-3);">
+    <!-- Header -->
+    <div style="padding: 24px; border-bottom: 1px solid var(--md-sys-color-outline-variant);">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0; color: var(--md-sys-color-on-surface); font-size: 24px; font-weight: 500;">Asset ausleihen</h2>
+        <button onclick="closeLoanModal()" style="background: transparent; border: none; cursor: pointer; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-on-surface-variant);">close</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Asset Info -->
+    <div id="loan-asset-info" style="padding: 16px 24px; background: var(--md-sys-color-surface-container); border-bottom: 1px solid var(--md-sys-color-outline-variant);">
+      <!-- Wird dynamisch befüllt -->
+    </div>
+
+    <!-- Form -->
+    <form id="loan-form" style="padding: 24px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" id="loan-asset-id" name="asset_id">
+
+      <!-- Ausleiher Name -->
+      <div style="margin-bottom: 24px;">
+        <label style="display: block; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface); margin-bottom: 8px;">
+          <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">person</span>
+          Name des Ausleihenden *
+        </label>
+        <input type="text" name="borrower_name" required style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 12px; background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 16px;">
+      </div>
+
+      <!-- Datums-Felder -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+        <div>
+          <label style="display: block; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface); margin-bottom: 8px;">
+            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">event</span>
+            Startdatum *
+          </label>
+          <input type="date" name="start_date" required style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 12px; background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 16px;">
+        </div>
+        <div>
+          <label style="display: block; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface); margin-bottom: 8px;">
+            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">event_available</span>
+            Rückgabedatum *
+          </label>
+          <input type="date" name="expected_return_date" required style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 12px; background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 16px;">
+        </div>
+      </div>
+
+      <!-- Notizen -->
+      <div style="margin-bottom: 24px;">
+        <label style="display: block; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface); margin-bottom: 8px;">
+          <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">notes</span>
+          Notizen (optional)
+        </label>
+        <textarea name="notes" rows="3" style="width: 100%; padding: 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 12px; background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-size: 16px; resize: vertical;"></textarea>
+      </div>
+
+      <!-- Unterschrift Mitarbeiter -->
+      <div style="margin-bottom: 24px;">
+        <label style="display: block; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface); margin-bottom: 8px;">
+          <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">draw</span>
+          Unterschrift Mitarbeiter *
+        </label>
+        <div style="border: 1px solid var(--md-sys-color-outline); border-radius: 12px; padding: 12px; background: var(--md-sys-color-surface-container);">
+          <canvas id="signature-pad-employee" width="500" height="150" style="border: 1px solid var(--md-sys-color-outline-variant); background: white; border-radius: 8px; width: 100%; touch-action: none;"></canvas>
+          <button type="button" onclick="clearSignature('employee')" style="margin-top: 8px; padding: 8px 16px; background: var(--md-sys-color-surface); border: 1px solid var(--md-sys-color-outline); border-radius: 8px; color: var(--md-sys-color-on-surface); cursor: pointer; font-size: 14px;">
+            <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">refresh</span>
+            Zurücksetzen
+          </button>
+        </div>
+        <input type="hidden" name="signature" id="signature-data-employee">
+      </div>
+
+      <!-- Unterschrift Arbeitgeber -->
+      <div style="margin-bottom: 24px;">
+        <label style="display: block; font-size: 14px; font-weight: 500; color: var(--md-sys-color-on-surface); margin-bottom: 8px;">
+          <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">badge</span>
+          Unterschrift Arbeitgeber *
+        </label>
+        <div style="border: 1px solid var(--md-sys-color-outline); border-radius: 12px; padding: 12px; background: var(--md-sys-color-surface-container);">
+          <canvas id="signature-pad-employer" width="500" height="150" style="border: 1px solid var(--md-sys-color-outline-variant); background: white; border-radius: 8px; width: 100%; touch-action: none;"></canvas>
+          <button type="button" onclick="clearSignature('employer')" style="margin-top: 8px; padding: 8px 16px; background: var(--md-sys-color-surface); border: 1px solid var(--md-sys-color-outline); border-radius: 8px; color: var(--md-sys-color-on-surface); cursor: pointer; font-size: 14px;">
+            <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">refresh</span>
+            Zurücksetzen
+          </button>
+        </div>
+        <input type="hidden" name="signature_employer" id="signature-data-employer">
+      </div>
+
+      <!-- Buttons -->
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button type="button" onclick="closeLoanModal()" style="padding: 12px 24px; background: var(--md-sys-color-surface); border: 1px solid var(--md-sys-color-outline); border-radius: 20px; color: var(--md-sys-color-on-surface); cursor: pointer; font-size: 16px; font-weight: 500;">
+          Abbrechen
+        </button>
+        <button type="submit" style="padding: 12px 24px; background: var(--md-sys-color-primary); border: none; border-radius: 20px; color: var(--md-sys-color-on-primary); cursor: pointer; font-size: 16px; font-weight: 500;">
+          <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">check_circle</span>
+          Asset ausleihen
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/signature_pad.min.js') }}"></script>
+<script>
+// Signature Pads initialisieren
+let signaturePadEmployee, signaturePadEmployer;
+
+document.addEventListener('DOMContentLoaded', function() {
+  const canvasEmployee = document.getElementById('signature-pad-employee');
+  const canvasEmployer = document.getElementById('signature-pad-employer');
+  
+  if (canvasEmployee && typeof SignaturePad !== 'undefined') {
+    signaturePadEmployee = new SignaturePad(canvasEmployee);
+  }
+  if (canvasEmployer && typeof SignaturePad !== 'undefined') {
+    signaturePadEmployer = new SignaturePad(canvasEmployer);
+  }
+});
+
+window.openLoanModal = function(assetId) {
+  const modal = document.getElementById('loan-modal');
+  document.getElementById('loan-asset-id').value = assetId;
+  
+  // Asset-Info laden
+  fetch(`/api/assets/${assetId}`)
+    .then(response => response.json())
+    .then(data => {
+      const asset = data.asset;
+      const infoContainer = document.getElementById('loan-asset-info');
+      infoContainer.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 16px;">
+          ${asset.image_url ? `<img src="${asset.image_url}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;">` : ''}
+          <div>
+            <div style="font-size: 18px; font-weight: 500; color: var(--md-sys-color-on-surface);">${asset.name}</div>
+            <div style="font-size: 14px; color: var(--md-sys-color-on-surface-variant); margin-top: 4px;">
+              ${asset.article_number ? `Art.-Nr.: ${asset.article_number}` : ''}
+              ${asset.serial_number ? ` | SN: ${asset.serial_number}` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+  
+  // Heute als Start-Datum setzen
+  const today = new Date().toISOString().split('T')[0];
+  document.querySelector('#loan-form input[name="start_date"]').value = today;
+  
+  modal.style.display = 'flex';
+};
+
+window.closeLoanModal = function() {
+  const modal = document.getElementById('loan-modal');
+  modal.style.display = 'none';
+  document.getElementById('loan-form').reset();
+  if (signaturePadEmployee) signaturePadEmployee.clear();
+  if (signaturePadEmployer) signaturePadEmployer.clear();
+};
+
+window.clearSignature = function(type) {
+  if (type === 'employee' && signaturePadEmployee) {
+    signaturePadEmployee.clear();
+  } else if (type === 'employer' && signaturePadEmployer) {
+    signaturePadEmployer.clear();
+  }
+};
+
+// Form Submit
+document.getElementById('loan-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  
+  // Unterschriften speichern
+  if (signaturePadEmployee && !signaturePadEmployee.isEmpty()) {
+    document.getElementById('signature-data-employee').value = signaturePadEmployee.toDataURL();
+  }
+  if (signaturePadEmployer && !signaturePadEmployer.isEmpty()) {
+    document.getElementById('signature-data-employer').value = signaturePadEmployer.toDataURL();
+  }
+  
+  // Validierung
+  if (signaturePadEmployee.isEmpty() || signaturePadEmployer.isEmpty()) {
+    alert('Bitte beide Unterschriften ausfüllen!');
+    return;
+  }
+  
+  const formData = new FormData(this);
+  const assetId = document.getElementById('loan-asset-id').value;
+  
+  fetch(`/loan_asset/${assetId}`, {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('Asset erfolgreich ausgeliehen!');
+      closeLoanModal();
+      window.location.reload();
+    } else {
+      alert('Fehler beim Ausleihen: ' + (data.message || 'Unbekannter Fehler'));
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Fehler beim Ausleihen: ' + error.message);
+  });
+});
+
+// Rückgabe-Funktion
+window.returnAsset = function(assetId) {
+  if (confirm('Möchten Sie dieses Asset wirklich zurückgeben?')) {
+    fetch(`/return_asset/${assetId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `csrf_token={{ csrf_token() }}`
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Asset erfolgreich zurückgegeben!');
+        window.location.reload();
+      } else {
+        alert('Fehler beim Zurückgeben: ' + (data.message || 'Unbekannter Fehler'));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Fehler beim Zurückgeben: ' + (error.message || 'Unbekannter Fehler'));
+    });
+  }
+};
+</script>
 {% endblock %}

@@ -1,0 +1,674 @@
+{% extends "base.html" %}
+
+{% block title %}Kategorien - Asset Management{% endblock %}
+
+{% block head %}
+<style>
+  .md3-categories-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  .md3-categories-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+  }
+
+  .md3-categories-title {
+    font-size: 2rem;
+    font-weight: 400;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+  }
+
+  .md3-categories-stats {
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 1rem;
+  }
+
+  .md3-categories-actions {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .md3-categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 24px;
+  }
+
+  .md3-category-card {
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--md-sys-color-outline-variant);
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .md3-category-card:hover {
+    background: var(--md-sys-color-surface-container);
+    box-shadow: var(--md-sys-elevation-1);
+  }
+
+  .md3-category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .md3-category-title {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+  }
+
+  .md3-category-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .md3-category-description {
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: 16px;
+    min-height: 40px;
+  }
+
+  .md3-category-stats {
+    display: flex;
+    gap: 24px;
+    margin-top: 16px;
+  }
+
+  .md3-category-stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 0.875rem;
+  }
+
+  .md3-category-stat .material-symbols-outlined {
+    font-size: 18px;
+    color: var(--md-sys-color-primary);
+  }
+
+  .md3-empty-state {
+    text-align: center;
+    padding: 64px 24px;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .md3-empty-icon {
+    font-size: 64px;
+    color: var(--md-sys-color-outline);
+    margin-bottom: 24px;
+  }
+
+  .md3-empty-title {
+    font-size: 1.5rem;
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+
+  .md3-empty-subtitle {
+    font-size: 1rem;
+    margin-bottom: 32px;
+  }
+
+  /* Modal Styles */
+  .md3-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.32);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .md3-modal-overlay.active {
+    display: flex;
+  }
+
+  .md3-modal {
+    background: var(--md-sys-color-surface-container-high);
+    border-radius: 28px;
+    max-width: 520px;
+    width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: var(--md-sys-elevation-3);
+  }
+
+  .md3-modal-header {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .md3-modal-title {
+    font-size: 1.375rem;
+    font-weight: 400;
+    margin: 0;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .md3-modal-body {
+    padding: 24px;
+  }
+
+  .md3-modal-footer {
+    padding: 16px 24px 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .md3-text-field {
+    width: 100%;
+    margin-bottom: 24px;
+  }
+
+  .md3-text-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .md3-text-field input,
+  .md3-text-field textarea {
+    width: 100%;
+    padding: 16px;
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: 8px;
+    background: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+    font-family: inherit;
+    font-size: 1rem;
+    box-sizing: border-box;
+  }
+
+  .md3-text-field textarea {
+    min-height: 80px;
+    resize: vertical;
+  }
+
+  .md3-text-field input:focus,
+  .md3-text-field textarea:focus {
+    outline: none;
+    border-color: var(--md-sys-color-primary);
+    box-shadow: 0 0 0 2px rgba(103, 80, 164, 0.12);
+  }
+
+  /* Modal Styles */
+  .md3-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .md3-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .md3-modal {
+    background: var(--md-sys-color-surface);
+    border-radius: 16px;
+    box-shadow: var(--md-sys-elevation-3);
+    max-width: 500px;
+    width: 90vw;
+    max-height: 80vh;
+    overflow: hidden;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+  }
+
+  .md3-modal-overlay.active .md3-modal {
+    transform: scale(1);
+  }
+
+  .md3-modal-header {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .md3-modal-title {
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+  }
+
+  .md3-modal-body {
+    padding: 24px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .md3-modal-footer {
+    padding: 16px 24px 24px;
+    display: flex;
+    gap: 16px;
+    justify-content: flex-end;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  /* Button Styles */
+  .md3-button {
+    border: none;
+    border-radius: 20px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+
+  .md3-button-filled {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+  }
+
+  .md3-button-filled:hover {
+    background: var(--md-sys-color-primary);
+    box-shadow: var(--md-sys-elevation-1);
+  }
+
+  .md3-button-text {
+    background: transparent;
+    color: var(--md-sys-color-primary);
+  }
+
+  .md3-button-text:hover {
+    background: rgba(103, 80, 164, 0.08);
+  }
+
+  .md3-icon-button {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 20px;
+    background: transparent;
+    color: var(--md-sys-color-on-surface-variant);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .md3-icon-button:hover {
+    background: rgba(0, 0, 0, 0.08);
+  }
+
+  @media (max-width: 768px) {
+    .md3-categories-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .md3-categories-header {
+      flex-direction: column;
+      gap: 16px;
+      align-items: stretch;
+    }
+    
+    .md3-categories-actions {
+      justify-content: center;
+    }
+
+    .md3-modal {
+      width: 95vw;
+      margin: 16px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+<div class="md3-page">
+  <div class="md3-categories-container">
+    
+    <!-- Header -->
+    <div class="md3-categories-header">
+      <div>
+        <h1 class="md3-categories-title">Kategorien</h1>
+        <p class="md3-categories-stats">{{ total_categories }} Kategorien insgesamt</p>
+      </div>
+      
+      <div class="md3-categories-actions">
+        <button class="md3-button md3-button-filled" onclick="openAddModal()">
+          <span class="material-symbols-outlined">add</span>
+          Kategorie hinzufügen
+        </button>
+      </div>
+    </div>
+
+    <!-- Categories Grid -->
+    {% if categories %}
+    <div class="md3-categories-grid">
+      {% for category in categories %}
+      <div class="md3-category-card">
+        <div class="md3-category-header">
+          <h2 class="md3-category-title">{{ category.name }}</h2>
+          <div class="md3-category-actions">
+            <button class="md3-icon-button edit-btn" 
+                    data-id="{{ category.id }}" 
+                    data-name="{{ category.name|e }}" 
+                    data-description="{{ (category.description or '')|e }}"
+                    title="Bearbeiten">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button class="md3-icon-button delete-btn" 
+                    data-id="{{ category.id }}" 
+                    data-name="{{ category.name|e }}"
+                    title="Löschen">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </div>
+        </div>
+        
+        {% if category.description %}
+        <div class="md3-category-description">{{ category.description }}</div>
+        {% else %}
+        <div class="md3-category-description" style="color: var(--md-sys-color-outline);">Keine Beschreibung</div>
+        {% endif %}
+        
+        <div class="md3-category-stats">
+          <div class="md3-category-stat">
+            <span class="material-symbols-outlined">inventory_2</span>
+            <span>{{ category.asset_count }} Assets</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="md3-empty-state">
+      <span class="material-symbols-outlined md3-empty-icon">category</span>
+      <h2 class="md3-empty-title">Keine Kategorien vorhanden</h2>
+      <p class="md3-empty-subtitle">Erstellen Sie Ihre erste Kategorie, um Assets zu organisieren</p>
+      <button class="md3-button md3-button-filled" onclick="openAddModal()">
+        <span class="material-symbols-outlined">add</span>
+        Erste Kategorie erstellen
+      </button>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- Add Category Modal -->
+<div class="md3-modal-overlay" id="addModal">
+  <div class="md3-modal">
+    <div class="md3-modal-header">
+      <h2 class="md3-modal-title">Neue Kategorie erstellen</h2>
+    </div>
+    <div class="md3-modal-body">
+      <form id="addCategoryForm">
+        <div class="md3-text-field">
+          <label for="addName">Name *</label>
+          <input type="text" id="addName" name="name" required maxlength="100">
+        </div>
+        <div class="md3-text-field">
+          <label for="addDescription">Beschreibung</label>
+          <textarea id="addDescription" name="description" maxlength="500"></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="md3-modal-footer">
+      <button class="md3-button md3-button-text" onclick="closeModal('addModal')">Abbrechen</button>
+      <button class="md3-button md3-button-filled" onclick="saveCategory()">Erstellen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div class="md3-modal-overlay" id="editModal">
+  <div class="md3-modal">
+    <div class="md3-modal-header">
+      <h2 class="md3-modal-title">Kategorie bearbeiten</h2>
+    </div>
+    <div class="md3-modal-body">
+      <form id="editCategoryForm">
+        <input type="hidden" id="editId" name="id">
+        <div class="md3-text-field">
+          <label for="editName">Name *</label>
+          <input type="text" id="editName" name="name" required maxlength="100">
+        </div>
+        <div class="md3-text-field">
+          <label for="editDescription">Beschreibung</label>
+          <textarea id="editDescription" name="description" maxlength="500"></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="md3-modal-footer">
+      <button class="md3-button md3-button-text" onclick="closeModal('editModal')">Abbrechen</button>
+      <button class="md3-button md3-button-filled" onclick="updateCategory()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Modal Management
+function openAddModal() {
+  document.getElementById('addModal').classList.add('active');
+  document.getElementById('addName').focus();
+}
+
+function openEditModal(id, name, description) {
+  document.getElementById('editId').value = id;
+  document.getElementById('editName').value = name;
+  document.getElementById('editDescription').value = description || '';
+  document.getElementById('editModal').classList.add('active');
+  document.getElementById('editName').focus();
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.remove('active');
+  
+  // Reset forms
+  if (modalId === 'addModal') {
+    document.getElementById('addCategoryForm').reset();
+  } else if (modalId === 'editModal') {
+    document.getElementById('editCategoryForm').reset();
+  }
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.md3-modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) {
+      closeModal(overlay.id);
+    }
+  });
+});
+
+// CSRF Token
+function getCSRFToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
+// Save new category
+function saveCategory() {
+  const form = document.getElementById('addCategoryForm');
+  const formData = new FormData(form);
+  formData.set('csrf_token', getCSRFToken());
+  
+  fetch('{{ url_for("md3_categories.add_category") }}', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showNotification(data.message, 'success');
+      closeModal('addModal');
+      location.reload(); // Refresh to show new category
+    } else {
+      showNotification(data.message, 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showNotification('Fehler beim Erstellen der Kategorie', 'error');
+  });
+}
+
+// Update existing category
+function updateCategory() {
+  const form = document.getElementById('editCategoryForm');
+  const formData = new FormData(form);
+  formData.set('csrf_token', getCSRFToken());
+  
+  const categoryId = document.getElementById('editId').value;
+  
+  fetch(`{{ url_for("md3_categories.edit_category", category_id=0) }}`.replace('0', categoryId), {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showNotification(data.message, 'success');
+      closeModal('editModal');
+      location.reload(); // Refresh to show updated category
+    } else {
+      showNotification(data.message, 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showNotification('Fehler beim Aktualisieren der Kategorie', 'error');
+  });
+}
+
+// Delete category
+function deleteCategory(id, name) {
+  if (confirm(`Möchten Sie die Kategorie "${name}" wirklich löschen?`)) {
+    const formData = new FormData();
+    formData.set('csrf_token', getCSRFToken());
+    
+    fetch(`{{ url_for("md3_categories.delete_category", category_id=0) }}`.replace('0', id), {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showNotification(data.message, 'success');
+        location.reload(); // Refresh to remove deleted category
+      } else {
+        showNotification(data.message, 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      showNotification('Fehler beim Löschen der Kategorie', 'error');
+    });
+  }
+}
+
+// Simple notification system
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 90px;
+    right: 24px;
+    z-index: 1050;
+    padding: 16px 24px;
+    border-radius: 12px;
+    color: white;
+    font-family: 'Roboto', sans-serif;
+    font-size: 14px;
+    max-width: 400px;
+    box-shadow: var(--md-sys-elevation-3);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  `;
+  
+  // Set colors based on type
+  if (type === 'success') {
+    notification.style.background = '#4CAF50';
+  } else if (type === 'error') {
+    notification.style.background = '#F44336';
+  } else {
+    notification.style.background = '#2196F3';
+  }
+  
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  // Animate in
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)';
+  }, 100);
+  
+  // Remove after 4 seconds
+  setTimeout(() => {
+    notification.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 4000);
+}
+
+// Event Listeners for Edit and Delete buttons
+document.addEventListener('DOMContentLoaded', function() {
+  // Edit button listeners
+  document.querySelectorAll('.edit-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const id = this.dataset.id;
+      const name = this.dataset.name;
+      const description = this.dataset.description;
+      openEditModal(parseInt(id), name, description);
+    });
+  });
+  
+  // Delete button listeners
+  document.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const id = this.dataset.id;
+      const name = this.dataset.name;
+      deleteCategory(parseInt(id), name);
+    });
+  });
+});
+
+console.log('MD3 Categories loaded');
+</script>
+
+{% endblock %}

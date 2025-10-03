@@ -31,15 +31,20 @@ def import_assets_from_order(order):
         quantity = item.quantity if hasattr(item, 'quantity') and item.quantity else 1
         logger.info(f"Verarbeite OrderItem {item.id}, Asset_ID: {item.asset_id if hasattr(item, 'asset_id') else 'N/A'}, Menge: {quantity}")
         
-        # Nur bei Seriennummer prüfen, ob das Asset bereits existiert
-        # (sonst würden wir bei Mengen > 1 keine mehrfachen Assets ohne Seriennummer erstellen können)
+        # Duplikatsprüfung nur bei Seriennummer - aber nicht das ganze Item überspringen
+        # wenn Duplikat gefunden wird, da wir trotzdem mehrere Assets für quantity > 1 erstellen müssen
+        skip_due_to_duplicate = False
         if serial_number:
             existing_asset = Asset.query.filter_by(serial_number=serial_number).first()
             
             if existing_asset:
                 logger.info(f"Asset mit Seriennummer {serial_number} existiert bereits (ID: {existing_asset.id})")
-                skipped_items.append(item)
-                continue
+                skipped_items.append((f"{item.asset.name if item.asset else 'Unknown'} (SN: {serial_number})", "Seriennummer bereits vorhanden"))
+                skip_due_to_duplicate = True
+        
+        # Wenn Duplikat gefunden wurde, dieses Item überspringen
+        if skip_due_to_duplicate:
+            continue
 
         # Gemeinsame Felder übernehmen
         asset_data = {}
@@ -77,12 +82,14 @@ def import_assets_from_order(order):
         # Damit überschreiben wir einen eventuell vom Template-Asset übernommenen Standort
         if hasattr(order, 'location_id') and order.location_id:
             asset_data['location_id'] = order.location_id
+            asset_data['location'] = order.location_id  # Auch das alte location-Feld setzen für Kompatibilität
             logger.info(f"Standort aus Bestellung übernommen: location_id = {order.location_id}")
         else:
             logger.warning(f"Keine location_id in der Bestellung gefunden!")
             # Wenn kein Standort in der Bestellung, dann vom Template-Asset übernehmen
             if template_asset and hasattr(template_asset, 'location_id') and template_asset.location_id:
                 asset_data['location_id'] = template_asset.location_id
+                asset_data['location'] = template_asset.location_id  # Auch das alte location-Feld setzen
                 logger.info(f"Standort vom Template-Asset übernommen: location_id = {template_asset.location_id}")
         
         # Prüfen, ob Name gesetzt ist
@@ -189,6 +196,13 @@ def import_assets_from_order(order):
             msg += f' {len(skipped_items)} Positionen wurden übersprungen.'
     
     if msg:
-        flash(msg.strip(), 'warning' if skipped_items else 'success')
+        try:
+            from flask import has_request_context
+            if has_request_context():
+                flash(msg.strip(), 'warning' if skipped_items else 'success')
+            else:
+                print(f"Import message: {msg.strip()}")
+        except Exception as e:
+            print(f"Import message (flash failed): {msg.strip()}")
     
     return created_assets, skipped_items

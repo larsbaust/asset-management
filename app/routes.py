@@ -3,7 +3,7 @@ from .models import Assignment
 from . import db
 from werkzeug.utils import secure_filename
 from . import db
-from .models import Asset, Assignment, Manufacturer, Supplier, Category
+from .models import Asset, Assignment, Manufacturer, Supplier, Category, Location
 from .forms import AssetForm
 from datetime import datetime
 import os
@@ -13,39 +13,13 @@ from .aftership_tracking import get_all_trackings
 def init_app(app):
     @app.route('/')
     def index():
-        return redirect(url_for('main.assets'))
+        from flask_login import current_user
+        if current_user.is_authenticated:
+            return redirect(url_for('main.md3_assets'))
+        else:
+            return redirect(url_for('auth.login', md3=1))
         
-    @app.route('/dashboard')
-    def dashboard():
-        """Dashboard mit MD3 Design"""
-        # Tracking-Daten für die Karte abrufen
-        try:
-            tracking_data = get_all_trackings()
-            # Für die Karte relevante Daten als JSON serialisieren
-            tracking_json = json.dumps({
-                'locations': tracking_data['locations'],
-                'counts': tracking_data['counts']
-            })
-        except Exception as e:
-            app.logger.error(f"Fehler beim Abrufen der Tracking-Daten: {e}")
-            tracking_json = json.dumps({'locations': [], 'counts': {'in_transit': 0, 'delivered': 0, 'pending': 0, 'total': 0}})
-        
-        # Hersteller-Auswertung für Dashboard (nur aktive Assets)
-        from .models import Manufacturer, Asset
-        manufacturer_data = []
-        manufacturers = Manufacturer.query.order_by(Manufacturer.name).all()
-        for manufacturer in manufacturers:
-            count = Asset.query.filter(Asset.manufacturers.any(Manufacturer.id == manufacturer.id), Asset.status == 'active').count()
-            manufacturer_data.append({'manufacturer': manufacturer.name, 'count': count})
-        # Optional: Nur Hersteller mit mindestens einem Asset anzeigen
-        manufacturer_data = [m for m in manufacturer_data if m['count'] > 0]
-        
-        # Chart-Daten für das Dashboard zusammenstellen
-        chart_data = {
-            'manufacturer_data': manufacturer_data
-        }
-        
-        return render_template('md3/layouts/dashboard.html', tracking_json=tracking_json, chart_data=chart_data)
+    # Dashboard route entfernt - wird von main.py behandelt
     
     @app.route('/preview/md3')
     def md3_preview():
@@ -115,7 +89,7 @@ def init_app(app):
         
         # Filter für Standort
         if location:
-            query = query.filter(Asset.location.ilike(f'%{location}%'))
+            query = query.join(Asset.location_obj).filter(Location.name.ilike(f'%{location}%'))
         
         # Filter für Hersteller
         if manufacturer:
@@ -185,20 +159,130 @@ def init_app(app):
         # CSRF Token für Template bereitstellen
         from flask_wtf.csrf import generate_csrf
         
-        return render_template('md3/layouts/assets.html', 
+        # Dropdown-Daten für Asset-Modal bereitstellen
+        from .models import Assignment, Manufacturer, Supplier, Category, Location
+        categories = Category.query.order_by(Category.name).all()
+        manufacturers = Manufacturer.query.order_by(Manufacturer.name).all()
+        suppliers = Supplier.query.order_by(Supplier.name).all()
+        assignments = Assignment.query.order_by(Assignment.name).all()
+        locations = Location.query.order_by(Location.name).all()
+        
+        from flask import make_response
+        
+        response = make_response(render_template('md3/layouts/assets.html', 
                               assets=result_assets, 
                               selected=selected, 
                               group_duplicates=group_duplicates,
-                              csrf_token=generate_csrf)
+                              categories=categories,
+                              manufacturers=manufacturers,
+                              suppliers=suppliers,
+                              assignments=assignments,
+                              locations=locations,
+                              csrf_token=generate_csrf))
+        
+        # Cache-busting Headers hinzufügen für MD3 Assets
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+
+    @app.route('/api/dropdown-data')
+    def api_dropdown_data():
+        """API Endpoint für aktuelle Dropdown-Daten"""
+        from .models import Assignment, Manufacturer, Supplier, Category, Location
+        
+        data = {
+            'categories': [{'id': c.id, 'name': c.name} for c in Category.query.order_by(Category.name).all()],
+            'manufacturers': [{'id': m.id, 'name': m.name} for m in Manufacturer.query.order_by(Manufacturer.name).all()],
+            'suppliers': [{'id': s.id, 'name': s.name} for s in Supplier.query.order_by(Supplier.name).all()],
+            'assignments': [{'id': a.id, 'name': a.name} for a in Assignment.query.order_by(Assignment.name).all()],
+            'locations': [{'id': l.id, 'name': l.name} for l in Location.query.order_by(Location.name).all()]
+        }
+        
+        return jsonify(data)
 
     @app.route('/assets')
     def assets():
         assets = Asset.query.all()
         return render_template('assets.html', assets=assets)
+    
+    @app.route('/api/assets', methods=['GET'])
+    def api_assets():
+        """API endpoint to get assets list for dynamic refresh"""
+        try:
+            # Get query parameters for filtering
+            page = request.args.get('page', 1, type=int)
+            per_page = 50  # Assets per page
+            category = request.args.get('category', '')
+            status = request.args.get('status', '')
+            search = request.args.get('search', '')
+            
+            # Build query
+            query = Asset.query
+            
+            # Apply filters
+            if category:
+                query = query.filter(Asset.category.like(f'%{category}%'))
+            if status:
+                query = query.filter(Asset.status.like(f'%{status}%'))
+            if search:
+                query = query.filter(
+                    db.or_(
+                        Asset.name.like(f'%{search}%'),
+                        Asset.asset_id.like(f'%{search}%'),
+                        Asset.artikelnummer.like(f'%{search}%'),
+                        Asset.hersteller.like(f'%{search}%')
+                    )
+                )
+            
+            # Paginate
+            pagination = query.paginate(
+                page=page, per_page=per_page, error_out=False
+            )
+            
+            # Convert assets to JSON
+            assets_data = []
+            for asset in pagination.items:
+                assets_data.append({
+                    'id': asset.id,
+                    'asset_id': asset.asset_id,
+                    'name': asset.name,
+                    'artikelnummer': asset.artikelnummer,
+                    'category': str(asset.category) if asset.category else None,
+                    'ean': asset.ean,
+                    'start': asset.start,
+                    'hersteller': asset.hersteller,
+                    'serialnumber': asset.serialnumber,
+                    'lieferant': asset.lieferant,
+                    'created_at': asset.created_at.isoformat() if asset.created_at else None,
+                    'updated_at': asset.updated_at.isoformat() if asset.updated_at else None,
+                    'status': asset.status,
+                    'aktionen': asset.aktionen
+                })
+            
+            return jsonify({
+                'success': True,
+                'assets': assets_data,
+                'pagination': {
+                    'page': pagination.page,
+                    'pages': pagination.pages,
+                    'per_page': pagination.per_page,
+                    'total': pagination.total,
+                    'has_next': pagination.has_next,
+                    'has_prev': pagination.has_prev
+                }
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Fehler beim Laden der Assets: {str(e)}'
+            }), 500
 
     @app.route('/assets/add', methods=['GET', 'POST'])
     def add_asset():
         form = AssetForm()
+        form.update_choices()  # Aktualisiere Dropdown-Optionen
         if form.validate_on_submit():
             # Bild speichern, wenn eins hochgeladen wurde
             image_path = None
@@ -257,8 +341,11 @@ def init_app(app):
 
     @app.route('/assets/<int:id>/edit', methods=['GET', 'POST'])
     def edit_asset(id):
+        from .forms import DocumentForm
+        from .models import Document
         asset = Asset.query.get_or_404(id)
         form = AssetForm(obj=asset)
+        doc_form = DocumentForm()
         if form.validate_on_submit():
             # Bild aktualisieren, wenn ein neues hochgeladen wurde
             if form.image.data:
@@ -315,12 +402,154 @@ def init_app(app):
             db.session.commit()
             flash('Asset erfolgreich aktualisiert.', 'success')
             return redirect(url_for('main.asset_details', id=asset.id))
-        return render_template('edit_asset.html', form=form, asset=asset, is_new=False)
+        
+        documents = Document.query.filter_by(asset_id=id).all()
+        return render_template('edit_asset.html', form=form, doc_form=doc_form, asset=asset, documents=documents, is_new=False)
 
     @app.route('/assets/<int:id>')
     def asset_details(id):
         asset = Asset.query.get_or_404(id)
         return render_template('asset_details.html', asset=asset)
+    
+    @app.route('/api/assets/<int:id>')
+    def get_asset_data(id):
+        """API endpoint to get asset data for modal editing"""
+        asset = Asset.query.get_or_404(id)
+        categories = Category.query.order_by(Category.name).all()
+        locations = Location.query.order_by(Location.name).all()
+        manufacturers = Manufacturer.query.order_by(Manufacturer.name).all()
+        suppliers = Supplier.query.order_by(Supplier.name).all()
+        assignments = Assignment.query.order_by(Assignment.name).all()
+        
+        return jsonify({
+            'asset': {
+                'id': asset.id,
+                'name': asset.name,
+                'description': asset.description,
+                'article_number': asset.article_number,
+                'ean': asset.ean,
+                'value': float(asset.value) if asset.value else 0.0,
+                'status': asset.status,
+                'serial_number': asset.serial_number,
+                'purchase_date': asset.purchase_date.isoformat() if asset.purchase_date else None,
+                'category_id': asset.category_id,
+                'location_id': asset.location_id,
+                'manufacturer_ids': [m.id for m in asset.manufacturers],
+                'supplier_ids': [s.id for s in asset.suppliers],
+                'assignment_ids': [a.id for a in asset.assignments],
+                'image_url': asset.image_url
+            },
+            'categories': [{'id': c.id, 'name': c.name} for c in categories],
+            'locations': [{'id': l.id, 'name': l.name} for l in locations],
+            'manufacturers': [{'id': m.id, 'name': m.name} for m in manufacturers],
+            'suppliers': [{'id': s.id, 'name': s.name} for s in suppliers],
+            'assignments': [{'id': a.id, 'name': a.name} for a in assignments]
+        })
+    
+    @app.route('/api/assets/<int:id>/update', methods=['POST'])
+    def update_asset_api(id):
+        """API endpoint to update asset via AJAX"""
+        from .models import Document
+        asset = Asset.query.get_or_404(id)
+        
+        try:
+            # Update basic fields
+            asset.name = request.form.get('name', '').strip()
+            asset.description = request.form.get('description', '').strip()
+            asset.article_number = request.form.get('article_number', '').strip()
+            asset.ean = request.form.get('ean', '').strip()
+            asset.serial_number = request.form.get('serial_number', '').strip()
+            # Handle status - convert German to English
+            status_form = request.form.get('status', 'Aktiv')
+            status_mapping = {
+                'Aktiv': 'active',
+                'Inaktiv': 'inactive',
+                'Ausgeliehen': 'on_loan',
+                'Defekt': 'defect',
+                'Wartung': 'maintenance',
+                'Ausgemustert': 'retired',
+                'active': 'active',
+                'inactive': 'inactive',
+                'on_loan': 'on_loan',
+                'defect': 'defect',
+                'maintenance': 'maintenance',
+                'retired': 'retired'
+            }
+            asset.status = status_mapping.get(status_form, 'active')
+            
+            # Handle value
+            value_str = request.form.get('value', '0')
+            try:
+                asset.value = float(value_str) if value_str else 0.0
+            except ValueError:
+                asset.value = 0.0
+            
+            # Handle purchase_date
+            purchase_date_str = request.form.get('purchase_date')
+            if purchase_date_str:
+                try:
+                    asset.purchase_date = datetime.strptime(purchase_date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    asset.purchase_date = None
+            else:
+                asset.purchase_date = None
+            
+            # Handle category
+            category_id = request.form.get('category_id')
+            asset.category_id = int(category_id) if category_id and category_id != '' else None
+            
+            # Handle location
+            location_id = request.form.get('location_id')
+            asset.location_id = int(location_id) if location_id and location_id != '' else None
+            
+            # Handle manufacturers (many-to-many)
+            asset.manufacturers = []
+            manufacturer_ids = request.form.getlist('manufacturer_ids[]')
+            if manufacturer_ids:
+                for manufacturer_id in manufacturer_ids:
+                    manufacturer = Manufacturer.query.get(manufacturer_id)
+                    if manufacturer:
+                        asset.manufacturers.append(manufacturer)
+            
+            # Handle suppliers (many-to-many)
+            asset.suppliers = []
+            supplier_ids = request.form.getlist('supplier_ids[]')
+            if supplier_ids:
+                for supplier_id in supplier_ids:
+                    supplier = Supplier.query.get(supplier_id)
+                    if supplier:
+                        asset.suppliers.append(supplier)
+            
+            # Handle assignments (many-to-many)
+            asset.assignments = []
+            assignment_ids = request.form.getlist('assignment_ids[]')
+            if assignment_ids:
+                for assignment_id in assignment_ids:
+                    assignment = Assignment.query.get(assignment_id)
+                    if assignment:
+                        asset.assignments.append(assignment)
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Asset erfolgreich aktualisiert',
+                'asset': {
+                    'id': asset.id,
+                    'name': asset.name,
+                    'description': asset.description,
+                    'value': float(asset.value) if asset.value else 0.0,
+                    'category': asset.category.name if asset.category else None,
+                    'location': asset.location_obj.name if asset.location_obj else None
+                }
+            })
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'message': f'Fehler beim Aktualisieren: {str(e)}'
+            }), 500
 
     @app.route('/assets/<int:id>/qr')
     def asset_qr(id):
@@ -344,23 +573,62 @@ def init_app(app):
         return jsonify({'success': True})
 
     # API-Routen für Zuordnungen
+    @app.route('/api/assignments/create', methods=['POST'])
+    def create_assignment():
+        name = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        if not name:
+            return jsonify({'success': False, 'message': 'Name ist erforderlich'}), 400
+        
+        try:
+            # Check if assignment already exists
+            existing = Assignment.query.filter_by(name=name).first()
+            if existing:
+                return jsonify({'success': False, 'message': 'Eine Zuordnung mit diesem Namen existiert bereits'}), 400
+            
+            assignment = Assignment(name=name, description=description if description else None)
+            db.session.add(assignment)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True, 
+                'message': f'Zuordnung "{name}" erfolgreich erstellt',
+                'assignment': {
+                    'id': assignment.id, 
+                    'name': assignment.name,
+                    'description': assignment.description
+                }
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Fehler beim Erstellen: {str(e)}'}), 500
+
+    @app.route('/api/assignments', methods=['GET'])
+    def get_assignments():
+        try:
+            assignments = Assignment.query.order_by(Assignment.name).all()
+            return jsonify({
+                'success': True,
+                'assignments': [{'id': a.id, 'name': a.name, 'description': a.description} for a in assignments]
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 500
+
     @app.route('/assignments/add', methods=['POST'])
     def add_assignment():
         data = request.get_json()
         if not data or 'name' not in data:
             return jsonify({'success': False, 'message': 'Name ist erforderlich'}), 400
         
-        assignment = Assignment(
-            name=data['name'],
-            description=data.get('description', '')
-        )
-        db.session.add(assignment)
         try:
+            assignment = Assignment(name=data['name'])
+            db.session.add(assignment)
             db.session.commit()
-            return jsonify({'success': True, 'id': assignment.id, 'name': assignment.name})
+            return jsonify({'success': True, 'assignment': {'id': assignment.id, 'name': assignment.name}})
         except Exception as e:
             db.session.rollback()
-            return jsonify({'success': False, 'message': str(e)}), 400
+            return jsonify({'success': False, 'message': str(e)}), 500
     
     @app.route('/md3/locations')
     def md3_locations():
@@ -583,4 +851,23 @@ def init_app(app):
         except Exception as e:
             db.session.rollback()
             return jsonify({'success': False, 'message': str(e)}), 400
-
+    
+    
+    # API-Routen für Ausleihen
+    @app.route('/api/loans/<int:id>')
+    def get_loan_data(id):
+        """API endpoint to get loan data"""
+        from .models import Loan
+        loan = Loan.query.get_or_404(id)
+        
+        return jsonify({
+            'loan': {
+                'id': loan.id,
+                'asset_id': loan.asset_id,
+                'borrower_name': loan.borrower_name,
+                'start_date': loan.start_date.strftime('%Y-%m-%d') if loan.start_date else None,
+                'expected_return_date': loan.expected_return_date.strftime('%Y-%m-%d') if loan.expected_return_date else None,
+                'actual_return_date': loan.actual_return_date.strftime('%Y-%m-%d') if loan.actual_return_date else None,
+                'notes': loan.notes
+            }
+        })

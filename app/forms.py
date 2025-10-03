@@ -79,7 +79,10 @@ class AssetForm(FlaskForm):
 
     def __init__(self, *args, **kwargs):
         super(AssetForm, self).__init__(*args, **kwargs)
-        # Die Choices für die SelectFields werden dynamisch aus der Datenbank geladen
+        self.update_choices()
+    
+    def update_choices(self):
+        """Aktualisiert die Dropdown-Choices mit aktuellen Daten aus der Datenbank"""
         from .models import Assignment, Manufacturer, Supplier, Category, Location
         self.assignments.choices = [(str(a.id), a.name) for a in Assignment.query.order_by(Assignment.name).all()]
         self.manufacturers.choices = [(str(m.id), m.name) for m in Manufacturer.query.order_by(Manufacturer.name).all()]
@@ -277,6 +280,9 @@ class RoleForm(FlaskForm):
     name = StringField('Rollenname', validators=[DataRequired(), Length(max=50)])
     description = StringField('Beschreibung', validators=[Optional(), Length(max=255)])
     permissions = MultiCheckboxField('Rechte', coerce=int)
+    permission_descriptions = {}
+    category_order = ['Assets', 'Dashboard', 'Administration', 'Import', 'Backup', 'Sonstiges']
+
     submit = SubmitField('Speichern')
 
     def __init__(self, *args, **kwargs):
@@ -284,14 +290,59 @@ class RoleForm(FlaskForm):
         from .models import Permission
         perms = Permission.query.order_by(Permission.name).all()
         self.permissions.choices = [(p.id, p.name) for p in perms]
-        # Mapping: permission.id -> description
-        self.permission_descriptions = {p.id: p.description or p.name for p in perms}
+
+        # Mapping: permission.id -> description / category
+        self.permission_descriptions = {p.id: (p.description or p.name) for p in perms}
+
+        permission_category_map = {
+            'view_assets': 'Assets',
+            'edit_assets': 'Assets',
+            'delete_assets': 'Assets',
+            'archive_asset': 'Assets',
+            'restore_asset': 'Assets',
+            'view_asset_log': 'Assets',
+            'manage_users': 'Administration',
+            'manage_roles': 'Administration',
+            'import_csv': 'Import',
+            'import_suppliers': 'Import',
+            'import_locations': 'Import',
+            'backup_data': 'Backup',
+            'restore_data': 'Backup',
+            'view_chart_cost_distribution': 'Dashboard',
+            'view_chart_value_development': 'Dashboard',
+            'view_chart_asset_status': 'Dashboard',
+            'view_chart_delivery_status': 'Dashboard',
+            'view_chart_location_map': 'Dashboard',
+            'view_chart_categories': 'Dashboard',
+            'view_chart_manufacturers': 'Dashboard'
+        }
+
+        self.permission_categories = {}
+        for perm in perms:
+            self.permission_categories[perm.id] = permission_category_map.get(perm.name, 'Sonstiges')
+
+    def grouped_permissions(self):
+        groups = {}
+        for subfield in self.permissions:
+            perm_id = subfield.data
+            category = self.permission_categories.get(perm_id, 'Sonstiges')
+            groups.setdefault(category, []).append(subfield)
+
+        ordered_groups = []
+        for category in self.category_order:
+            if category in groups:
+                ordered_groups.append((category, sorted(groups.pop(category), key=lambda field: field.label.text.lower())))
+
+        for category in sorted(groups.keys()):
+            ordered_groups.append((category, sorted(groups[category], key=lambda field: field.label.text.lower())))
+
+        return ordered_groups
 
 
 class InventoryCheckForm(FlaskForm):
     """Formular für die Erfassung eines Assets während der Inventur"""
     status = SelectField('Status', choices=[
-        ('found', 'Gefunden'),
+        ('present', 'Gefunden'),
         ('missing', 'Nicht gefunden'),
         ('damaged', 'Beschädigt')
     ], validators=[DataRequired()])

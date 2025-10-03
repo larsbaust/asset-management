@@ -267,7 +267,7 @@ function showMapFallback() {
   min-width: 320px;
   max-width: 400px;
   flex-shrink: 0;
-  box-shadow: 0 8px 32px rgba(103, 80, 164, 0.15);
+  box-shadow: none;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid rgba(255, 255, 255, 0.3);
   position: relative;
@@ -275,8 +275,6 @@ function showMapFallback() {
 }
 
 .md3-location-card:hover {
-  box-shadow: 0 16px 48px rgba(103, 80, 164, 0.25);
-  transform: translateY(-8px) scale(1.02);
   border-color: #6750A4;
   background: rgba(255, 255, 255, 0.98);
 }
@@ -554,7 +552,7 @@ function showMapFallback() {
   backdrop-filter: blur(20px);
   border-radius: 24px;
   padding: 0;
-  box-shadow: 0 12px 40px rgba(103, 80, 164, 0.15), 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -569,8 +567,6 @@ function showMapFallback() {
 }
 
 .md3-location-card:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 20px 60px rgba(103, 80, 164, 0.25), 0 8px 24px rgba(0, 0, 0, 0.15);
   border-color: rgba(103, 80, 164, 0.3);
 }
 
@@ -592,14 +588,12 @@ function showMapFallback() {
   object-fit: cover;
   transition: all 0.4s ease;
   border-radius: 16px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(103, 80, 164, 0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   position: relative;
   z-index: 3;
 }
 
-.md3-location-card:hover .md3-card-image {
-  transform: scale(1.05);
-}
+/* Hover-Effekt für Bilder entfernt */
 
 .md3-card-image-placeholder {
   width: 100%;
@@ -611,7 +605,7 @@ function showMapFallback() {
   color: #6750A4;
   font-size: 48px;
   border-radius: 16px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(103, 80, 164, 0.2);
+  box-shadow: none;
   position: relative;
   z-index: 3;
 }
@@ -1188,6 +1182,10 @@ function showMapFallback() {
   padding: 24px;
 }
 
+#floorplan-planner-modal {
+  z-index: 1100;
+}
+
 .md3-location-modal.show {
   display: flex;
   animation: fadeIn 0.3s ease;
@@ -1393,19 +1391,32 @@ function showMapFallback() {
   display: block;
 }
 
-.md3-form-help {
+.md3-form-field .md3-form-help {
+  margin-top: 6px;
   font-size: 12px;
   color: var(--md-sys-color-on-surface-variant);
-  margin-top: 4px;
 }
 
-.md3-form-actions {
+.md3-floorplan-trigger {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md3-floorplan-trigger .md3-action-btn {
+  width: 100%;
+  height: 52px;
+  padding: 0 24px;
+  justify-content: center;
   gap: 12px;
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 10px 20px rgba(103, 80, 164, 0.16);
+}
+
+.md3-floorplan-trigger .md3-action-btn .material-symbols-outlined {
+  font-size: 22px;
 }
 
 /* MD3 Action Button Styling - Icon-Only Compact */
@@ -1435,6 +1446,379 @@ function showMapFallback() {
   display: none;
 }
 
+.md3-floorplan-actions .md3-action-btn,
+.md3-floorplan-footer-actions .md3-action-btn {
+  width: auto;
+  min-width: 140px;
+  height: 44px;
+  padding: 0 18px;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.md3-floorplan-actions .md3-action-btn .material-symbols-outlined,
+.md3-floorplan-footer-actions .md3-action-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.md3-floorplan-actions,
+.md3-floorplan-footer-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.md3-floorplan-toolbar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.md3-floorplan-modal {
+  max-width: 1420px !important;
+  width: 96% !important;
+}
+
+.md3-floorplan-modal .md3-modal-body {
+  padding: 24px 32px 0 32px !important;
+  max-height: 82vh;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(103, 80, 164, 0.32) rgba(103, 80, 164, 0.1);
+}
+
+.md3-floorplan-modal .md3-modal-body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.md3-floorplan-modal .md3-modal-body::-webkit-scrollbar-track {
+  background: rgba(103, 80, 164, 0.1);
+  border-radius: 999px;
+}
+
+.md3-floorplan-modal .md3-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(103, 80, 164, 0.32);
+  border-radius: 999px;
+}
+
+.md3-floorplan-modal .md3-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(103, 80, 164, 0.46);
+}
+
+.md3-floorplan-body {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 28px;
+  padding-bottom: 32px;
+  box-sizing: border-box;
+}
+
+.md3-floorplan-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-height: calc(82vh - 160px);
+  overflow-y: auto;
+  padding-right: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(103, 80, 164, 0.3) transparent;
+}
+
+.md3-floorplan-sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.md3-floorplan-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(103, 80, 164, 0.3);
+  border-radius: 999px;
+}
+
+.md3-floorplan-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(103, 80, 164, 0.44);
+}
+
+.md3-floorplan-canvas-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+.md3-floorplan-section {
+  background: rgba(103, 80, 164, 0.06);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: inset 0 0 0 1px rgba(103, 80, 164, 0.08);
+}
+
+.md3-floorplan-section h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 14px;
+  color: var(--md-sys-color-on-surface);
+}
+
+.md3-floorplan-asset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.md3-floorplan-asset-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.md3-floorplan-asset-list::-webkit-scrollbar-thumb {
+  background: rgba(103, 80, 164, 0.24);
+  border-radius: 999px;
+}
+
+.md3-floorplan-placeholder {
+  width: 100%;
+  min-height: 460px;
+  border: 2px dashed rgba(103, 80, 164, 0.26);
+  border-radius: 24px;
+  padding: 48px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--md-sys-color-on-surface-variant);
+  background: rgba(103, 80, 164, 0.04);
+}
+
+.md3-floorplan-placeholder .material-symbols-outlined {
+  font-size: 44px;
+  color: var(--md-sys-color-primary);
+}
+
+.md3-floorplan-canvas {
+  width: 100%;
+  max-width: 1024px;
+  border-radius: 24px;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.14);
+  background: white;
+}
+
+.md3-floorplan-modal .md3-modal-body > *:last-child {
+  margin-bottom: 0;
+}
+
+.md3-floorplan-toolbar .md3-action-btn,
+.md3-floorplan-scale .md3-action-btn,
+.md3-floorplan-actions .md3-action-btn,
+.md3-floorplan-footer-actions .md3-action-btn {
+  width: auto;
+  min-width: 160px;
+  height: 48px;
+  padding: 0 20px;
+  gap: 10px;
+  border-radius: 18px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 8px 18px rgba(103, 80, 164, 0.14);
+}
+
+.md3-floorplan-toolbar .md3-action-btn .material-symbols-outlined,
+.md3-floorplan-scale .md3-action-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.md3-floorplan-selectors .md3-form-input {
+  width: 100%;
+}
+
+.md3-floorplan-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md3-floorplan-scale-info {
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-floorplan-asset-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(103, 80, 164, 0.06);
+  border-radius: 16px;
+}
+
+.md3-floorplan-empty {
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+  padding: 8px 0;
+}
+
+.md3-floorplan-search-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid rgba(103, 80, 164, 0.2);
+  border-radius: 12px;
+  background: white;
+}
+
+.md3-floorplan-search-group .material-symbols-outlined {
+  color: var(--md-sys-color-primary);
+  font-size: 20px;
+}
+
+.md3-floorplan-search-group input {
+  border: none;
+  outline: none;
+  flex: 1;
+  padding: 10px 0;
+  font-size: 14px;
+}
+
+.md3-floorplan-asset-results {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md3-floorplan-asset-result {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: white;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.md3-floorplan-asset-result:hover {
+  border-color: rgba(103, 80, 164, 0.4);
+  box-shadow: 0 6px 18px rgba(103, 80, 164, 0.12);
+}
+
+.md3-floorplan-asset-result.is-selected {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 6px 20px rgba(103, 80, 164, 0.24);
+}
+
+.md3-floorplan-asset-result.is-placed {
+  opacity: 0.75;
+}
+
+.md3-floorplan-asset-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.md3-floorplan-asset-name {
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+}
+
+.md3-floorplan-asset-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-floorplan-asset-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(103, 80, 164, 0.12);
+  color: var(--md-sys-color-primary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.md3-floorplan-asset-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+
+.md3-floorplan-asset-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(103, 80, 164, 0.08);
+}
+
+.md3-floorplan-asset-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.md3-floorplan-asset-actions .md3-action-btn {
+  min-width: 126px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.md3-floorplan-asset-actions .md3-secondary-btn {
+  background: rgba(103, 80, 164, 0.12);
+  color: #4E3A86;
+  border: 1px solid rgba(103, 80, 164, 0.18);
+}
+
+.md3-floorplan-asset-actions .md3-secondary-btn:hover {
+  background: rgba(103, 80, 164, 0.18);
+  color: var(--md-sys-color-primary);
+}
+
+.md3-floorplan-asset-actions .md3-error-btn {
+  background: rgba(201, 44, 73, 0.16);
+  color: #7E1F36;
+  border: 1px solid rgba(201, 44, 73, 0.28);
+}
+
+.md3-floorplan-asset-actions .md3-error-btn:hover {
+  background: rgba(201, 44, 73, 0.24);
+  color: #5C1425;
+}
+
+.md3-floorplan-modal .md3-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(103, 80, 164, 0.32);
+  border-radius: 999px;
+}
+
+.md3-floorplan-modal .md3-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(103, 80, 164, 0.45);
+}
+
+.md3-floorplan-canvas.is-placing-asset {
+  cursor: crosshair;
+}
 .md3-primary-btn {
   background: var(--md-sys-color-primary);
   color: var(--md-sys-color-on-primary);
@@ -1766,18 +2150,16 @@ function showMapFallback() {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-
 </style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='md3/components/floorplan-planner.js') }}" defer></script>
 {% endblock %}
 
 {% block content %}
 {% include 'md3-nav.html' %}
-
-<!-- Fullscreen Map Background -->
-<div class="md3-map-background">
-  <div id="map"></div>
-</div>
-
 <div class="md3-locations-container">
   <!-- Header removed - actions moved to navbar dropdown -->
 
@@ -2104,6 +2486,94 @@ function showMapFallback() {
   </div>
 </div>
 
+<!-- Floorplan Planner Modal -->
+<div class="md3-location-modal" id="floorplan-planner-modal" style="display: none;">
+  <div class="md3-modal-content md3-floorplan-modal">
+    <div class="md3-modal-header">
+      <div class="md3-floorplan-modal-title">
+        <h2 class="md3-modal-title" id="floorplan-modal-title">Grundriss-Planer</h2>
+        <p class="md3-modal-subtitle" id="floorplan-modal-location"></p>
+      </div>
+      <button class="md3-modal-close" onclick="closeFloorplanPlanner()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="md3-floorplan-toolbar">
+      <div class="md3-floorplan-selectors">
+        <label class="md3-form-label" for="floorplan-select">Grundriss</label>
+        <select id="floorplan-select" class="md3-form-input"></select>
+      </div>
+      <div class="md3-floorplan-selectors">
+        <label class="md3-form-label" for="floorplan-version-select">Version</label>
+        <select id="floorplan-version-select" class="md3-form-input"></select>
+      </div>
+      <div class="md3-floorplan-scale">
+        <div class="md3-floorplan-scale-info" id="floorplan-scale-info">Maßstab nicht gesetzt</div>
+        <button type="button" class="md3-action-btn md3-secondary-btn" id="floorplan-set-scale-btn">
+          <span class="material-symbols-outlined">straighten</span>
+          Maßstab setzen
+        </button>
+      </div>
+      <div class="md3-floorplan-actions">
+        <button type="button" class="md3-action-btn md3-secondary-btn" id="floorplan-upload-btn">
+          <span class="material-symbols-outlined">upload</span>
+          Datei hinzufügen
+        </button>
+        <button type="button" class="md3-action-btn md3-secondary-btn" id="floorplan-new-version-btn">
+          <span class="material-symbols-outlined">history</span>
+          Neue Version
+        </button>
+      </div>
+    </div>
+    <div class="md3-floorplan-body">
+      <div class="md3-floorplan-sidebar" id="floorplan-sidebar">
+        <div class="md3-floorplan-section">
+          <h3>Assets</h3>
+          <div class="md3-floorplan-asset-picker">
+            <label class="md3-form-label" for="floorplan-asset-search">Asset suchen</label>
+            <div class="md3-floorplan-search-group">
+              <span class="material-symbols-outlined">search</span>
+              <input type="text" id="floorplan-asset-search" class="md3-form-input" placeholder="Name, Inventarnummer, Kategorie">
+            </div>
+            <label class="md3-form-label" for="floorplan-asset-filter">Filter</label>
+            <select id="floorplan-asset-filter" class="md3-form-input">
+              <option value="all">Alle Assets</option>
+              <option value="unplaced">Nur nicht platzierte</option>
+              <option value="placed">Bereits platziert</option>
+            </select>
+            <div class="md3-floorplan-asset-results" id="floorplan-asset-results"></div>
+          </div>
+          <div class="md3-floorplan-asset-list" id="floorplan-asset-list"></div>
+        </div>
+        <div class="md3-floorplan-section">
+          <h3>Versionen</h3>
+          <div class="md3-floorplan-version-list" id="floorplan-version-list"></div>
+        </div>
+      </div>
+      <div class="md3-floorplan-canvas-wrapper">
+        <div class="md3-floorplan-placeholder" id="floorplan-placeholder">
+          <span class="material-symbols-outlined">dashboard_customize</span>
+          <p>Hier wird der Grundriss angezeigt. Version auswählen oder Datei hochladen, um zu starten.</p>
+        </div>
+        <canvas id="floorplan-canvas" class="md3-floorplan-canvas" hidden></canvas>
+      </div>
+    </div>
+    <div class="md3-floorplan-footer">
+      <div class="md3-floorplan-status" id="floorplan-status"></div>
+      <div class="md3-floorplan-footer-actions">
+        <button type="button" class="md3-action-btn md3-secondary-btn" onclick="closeFloorplanPlanner()">
+          <span class="material-symbols-outlined">close</span>
+          Schließen
+        </button>
+        <button type="button" class="md3-action-btn md3-primary-btn" id="floorplan-save-btn">
+          <span class="material-symbols-outlined">save</span>
+          Änderungen speichern
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Edit Location Modal -->
 <div class="md3-location-modal" id="edit-location-modal" style="display: none;">
   <div class="md3-modal-content md3-edit-modal">
@@ -2169,6 +2639,14 @@ function showMapFallback() {
           <label class="md3-form-label">Standort-Bild hochladen</label>
           <input type="file" id="edit-image" name="image" class="md3-form-file" accept="image/*">
           <div class="md3-form-help">Nur JPG, PNG, GIF erlaubt</div>
+        </div>
+
+        <div class="md3-form-field md3-floorplan-trigger">
+          <button type="button" id="edit-floorplan-btn" class="md3-action-btn md3-secondary-btn">
+            <span class="material-symbols-outlined">stacks</span>
+            Grundriss-Planer öffnen
+          </button>
+          <div class="md3-form-help">Verwalte Grundriss-Dateien (Bilder & PDFs), Versionen und Asset-Positionsdaten.</div>
         </div>
         
         <!-- Coordinates Fields -->
@@ -2505,6 +2983,18 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Google Maps API available, calling initMap manually');
     initMap();
   }
+
+  const floorplanButton = document.getElementById('edit-floorplan-btn');
+  if (floorplanButton) {
+    floorplanButton.addEventListener('click', function() {
+      if (typeof window.openFloorplanPlannerFromEdit === 'function') {
+        window.openFloorplanPlannerFromEdit();
+      } else {
+        console.error('❌ ERROR: Floorplan-Planner-Script ist nicht geladen.');
+      }
+    });
+  }
+
 });
 
 // Close modal when clicking outside
@@ -2642,7 +3132,18 @@ let currentLocationData = null;
 window.csrfToken = '{{ csrf_token() }}';
 
 // Initialize locations data for JavaScript (for edit modal)
-window.locationsData = {{ locations_dict|tojson|safe }} || [];
+window.locationsData = [];
+const locationsDataElement = document.getElementById('locations-data');
+if (locationsDataElement) {
+  try {
+    window.locationsData = JSON.parse(locationsDataElement.textContent || '[]') || [];
+  } catch (err) {
+    console.error('❌ ERROR: Unable to parse locations-data JSON', err);
+    window.locationsData = [];
+  }
+} else {
+  console.warn('⚠️ WARN: #locations-data script element not found.');
+}
 
 // Debug: Log locationsData to console
 console.log('🔍 DEBUG: locationsData initialized:', window.locationsData);
@@ -3596,15 +4097,17 @@ document.getElementById('new-location-form').addEventListener('submit', function
     method: 'POST',
     body: formData
   })
-  .then(response => {
-    if (response.ok) {
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
       console.log('✅ SUCCESS: New location created');
       closeNewLocationModal();
       // Reload page to show new location
       window.location.reload();
     } else {
       console.error('❌ ERROR: Failed to create location');
-      alert('Fehler beim Erstellen des Standorts. Bitte versuchen Sie es erneut.');
+      console.error('Server error:', data.error);
+      alert(`Fehler beim Erstellen des Standorts: ${data.error}`);
     }
   })
   .catch(error => {

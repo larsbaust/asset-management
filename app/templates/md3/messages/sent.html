@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block head %}
+  {{ super() }}
+  <style>
+    .md3-page { padding: 24px; padding-top: 80px; }
+    .md3-container { max-width: 1200px; margin: 0 auto; }
+    
+    .header { 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      margin-bottom: 24px; 
+    }
+    
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
+      color: var(--md-sys-color-on-surface);
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      text-decoration: none;
+    }
+    
+    .back-button:hover {
+      background: var(--md-sys-color-surface-container-highest);
+    }
+    
+    .title { 
+      font: var(--md-sys-typescale-headline-small-font); 
+      color: var(--md-sys-color-on-surface); 
+      flex: 1;
+    }
+    
+    .actions {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .md3-button {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 24px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      white-space: nowrap;
+      font: var(--md-sys-typescale-label-large-font);
+      transition: all 0.2s ease;
+    }
+    
+    .md3-button-filled {
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+    }
+    
+    .md3-button-filled:hover {
+      background: var(--md-sys-color-primary-hover);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
+    }
+    
+    .messages-table {
+      background: var(--md-sys-color-surface);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--md-sys-elevation-level2);
+    }
+    
+    .table-header {
+      background: var(--md-sys-color-surface-container-high);
+      padding: 16px 24px;
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr auto;
+      gap: 16px;
+      font: var(--md-sys-typescale-title-medium-font);
+      color: var(--md-sys-color-on-surface);
+      font-weight: 500;
+    }
+    
+    .message-row {
+      padding: 16px 24px;
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr auto;
+      gap: 16px;
+      align-items: center;
+      border-bottom: 1px solid var(--md-sys-color-outline-variant);
+      transition: background-color 0.2s ease;
+    }
+    
+    .message-row:last-child {
+      border-bottom: none;
+    }
+    
+    .message-row:hover {
+      background: var(--md-sys-color-surface-container-highest);
+    }
+    
+    .message-recipient {
+      font: var(--md-sys-typescale-body-large-font);
+      color: var(--md-sys-color-on-surface);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .message-subject {
+      font: var(--md-sys-typescale-body-large-font);
+      color: var(--md-sys-color-on-surface);
+    }
+    
+    .message-subject a {
+      color: inherit;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .message-subject a:hover {
+      color: var(--md-sys-color-primary);
+    }
+    
+    .message-date {
+      font: var(--md-sys-typescale-body-medium-font);
+      color: var(--md-sys-color-on-surface-variant);
+    }
+    
+    .message-attachment {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .attachment-icon {
+      color: var(--md-sys-color-primary);
+      font-size: 20px;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 64px 24px;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+    
+    .empty-state .material-symbols-outlined {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    
+    @media (max-width: 768px) {
+      .table-header,
+      .message-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      
+      .message-date,
+      .message-attachment {
+        justify-self: start;
+      }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  {% include 'md3-nav.html' %}
+  <div class="md3-page">
+    <div class="md3-container">
+      <div class="header">
+        <a href="{{ url_for('messages.inbox') }}{% if request.args.get('md3') %}?md3=1{% endif %}" class="back-button">
+          <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+        <div class="title">Gesendete Nachrichten</div>
+        <div class="actions">
+          <a href="{{ url_for('messages.compose') }}{% if request.args.get('md3') %}?md3=1{% endif %}" class="md3-button md3-button-filled">
+            <span class="material-symbols-outlined">edit</span>
+            Neue Nachricht
+          </a>
+        </div>
+      </div>
+
+      <div class="messages-table">
+        <div class="table-header">
+          <div>An</div>
+          <div>Betreff</div>
+          <div>Datum</div>
+          <div>Anhang</div>
+        </div>
+        
+        {% if messages %}
+          {% for msg in messages %}
+            <div class="message-row">
+              <div class="message-recipient">
+                <span class="material-symbols-outlined">person_outline</span>
+                {{ msg.recipient.vorname or msg.recipient.username }}
+              </div>
+              <div class="message-subject">
+                <a href="{{ url_for('messages.view_message', message_id=msg.id) }}{% if request.args.get('md3') %}?md3=1{% endif %}">
+                  {{ msg.subject }}
+                </a>
+              </div>
+              <div class="message-date">
+                {{ msg.timestamp.strftime('%d.%m.%Y %H:%M') }}
+              </div>
+              <div class="message-attachment">
+                {% if msg.attachment_filename %}
+                  <a href="{{ url_for('messages.download_attachment', filename=msg.attachment_filename) }}" class="attachment-icon">
+                    <span class="material-symbols-outlined">attach_file</span>
+                  </a>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <div class="material-symbols-outlined">outbox</div>
+            <h3>Keine gesendeten Nachrichten</h3>
+            <p>Sie haben noch keine Nachrichten gesendet.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

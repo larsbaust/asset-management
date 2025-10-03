@@ -1,9 +1,10 @@
-{% extends 'md3/base.html' %}
+{% extends 'base.html' %}
 
 {% block content %}
 {% include 'md3-nav.html' %}
 <div class="md3-page">
   <style>
+    /* Wizard-spezifische Styles - KEINE Navigation-CSS Overrides */
     .wizard-container { max-width: 1280px; margin: 24px auto; padding: 0 16px; }
     .wizard-steps { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:16px; }
     .wizard-step { display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background: var(--md-sys-color-surface); box-shadow: var(--md-sys-elevation-1); }
@@ -32,24 +33,60 @@
       <div class="wizard-step"><span class="num">4</span><span>Abschluss</span></div>
     </div>
 
+    <!-- Bestellvorlage laden -->
+    <div class="md3-card wizard-card" style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+      <span class="material-symbols-outlined" style="color:var(--md-sys-color-primary);">bookmark</span>
+      <label for="template-select" style="font-weight:500;">Bestellvorlage laden:</label>
+      <select id="template-select" style="height:40px;border-radius:12px;border:1px solid var(--md-sys-color-outline-variant);padding:0 12px;background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);min-width:200px;">
+        <option value="">-- Vorlage wählen -- ({{ templates|length }} gefunden)</option>
+        {% if templates %}
+          {% for template in templates %}
+            <option value="{{ template.id }}">{{ template.name }} ({{ template.items|length }} Artikel)</option>
+          {% endfor %}
+        {% else %}
+          <option value="" disabled>Keine Vorlagen vorhanden</option>
+        {% endif %}
+      </select>
+      <button type="button" onclick="loadTemplate()" class="md3-button md3-button-tonal">
+        <span class="material-symbols-outlined" style="margin-right:4px;">download</span>
+        Laden
+      </button>
+      <button type="button" onclick="openSaveTemplateModal()" class="md3-button md3-button-outlined">
+        <span class="material-symbols-outlined" style="margin-right:4px;">save</span>
+        Als Vorlage speichern
+      </button>
+    </div>
+
     <!-- Filter (optional simple version) -->
     <div class="md3-card wizard-card filter-line" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       {{ form.filter_name(placeholder='Artikelname', style='height:40px;border-radius:12px;border:1px solid var(--md-sys-color-outline-variant);padding:0 10px;background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);') }}
       {{ form.filter_category(style='height:40px;border-radius:12px;border:1px solid var(--md-sys-color-outline-variant);padding:0 10px;background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);') }}
       {{ form.filter_manufacturer(style='height:40px;border-radius:12px;border:1px solid var(--md-sys-color-outline-variant);padding:0 10px;background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);') }}
-      <button type="submit" name="filter" value="1" class="md3-button md3-button-tonal">Filtern</button>
+      {{ form.filter_supplier(style='height:40px;border-radius:12px;border:1px solid var(--md-sys-color-outline-variant);padding:0 10px;background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);') }}
+      <button type="submit" name="filter" value="1" class="md3-button md3-button-tonal">
+        <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;">filter_alt</span>
+        Filtern
+      </button>
+      <a href="{{ url_for('md3_order.wizard_step2') }}" class="md3-button md3-button-outlined" style="height:40px;display:inline-flex;align-items:center;text-decoration:none;">
+        <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;">filter_alt_off</span>
+        Filter zurücksetzen
+      </a>
     </div>
 
     <!-- Assets Tabelle -->
     <div class="md3-card wizard-card">
       <div class="table-wrap">
-      <table class="md3-table" style="width:100%;border-collapse:separate;border-spacing:0 8px;min-width:800px;">
+      <table class="md3-table" style="width:100%;border-collapse:separate;border-spacing:0 8px;min-width:1100px;">
         <thead>
           <tr>
             <th style="text-align:left;padding:8px 12px;">Auswahl</th>
+            <th style="text-align:center;padding:8px 12px;width:70px;">Bild</th>
             <th style="text-align:left;padding:8px 12px;">Artikel</th>
+            <th style="text-align:right;padding:8px 12px;">Wert (€)</th>
             <th style="text-align:left;padding:8px 12px;">Menge</th>
             <th style="text-align:left;padding:8px 12px;">Seriennummer</th>
+            <th style="text-align:left;padding:8px 12px;">Hersteller</th>
+            <th style="text-align:left;padding:8px 12px;">Lieferant</th>
           </tr>
         </thead>
         <tbody>
@@ -61,6 +98,15 @@
               {{ sub.asset_id }}
               {{ sub.select() }}
             </td>
+            <td style="padding:8px;text-align:center;vertical-align:middle;">
+              {% if asset and asset.image_url %}
+                <img src="{{ asset.image_url }}" alt="{{ asset.name }}" style="width:50px;height:50px;object-fit:cover;border-radius:8px;border:1px solid var(--md-sys-color-outline-variant);">
+              {% else %}
+                <div style="width:50px;height:50px;border-radius:8px;background:var(--md-sys-color-surface-variant);display:flex;align-items:center;justify-content:center;border:1px solid var(--md-sys-color-outline-variant);">
+                  <span class="material-symbols-outlined" style="font-size:24px;color:var(--md-sys-color-on-surface-variant);opacity:0.5;">image</span>
+                </div>
+              {% endif %}
+            </td>
             <td style="padding:8px 12px;">
               {% if asset %}
                 <div><strong>{{ asset.name }}</strong></div>
@@ -69,15 +115,72 @@
                 <div><strong>Artikel #{{ sub.asset_id.data }}</strong></div>
               {% endif %}
             </td>
+            <td style="padding:8px 12px;text-align:right;">
+              {% if asset and asset.value %}
+                <strong style="color:var(--md-sys-color-primary);">{{ "%.2f"|format(asset.value) }} €</strong>
+              {% else %}
+                <span style="color:var(--md-sys-color-outline);">-</span>
+              {% endif %}
+            </td>
             <td style="padding:8px 12px;min-width:120px;">{{ sub.quantity(min=1, style='width:100px;height:40px;border-radius:12px;border:1px solid var(--md-sys-color-outline-variant);padding:0 10px;background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);') }}</td>
             <td style="padding:8px 12px;min-width:220px;">{{ sub.serial_number(placeholder='optional', style='width:100%;height:40px;border-radius:12px;border:1px solid var(--md-sys-color-outline-variant);padding:0 10px;background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);') }}</td>
+            <td style="padding:8px 12px;min-width:150px;">
+              {% if asset and asset.manufacturers %}
+                <div style="font-size:13px;color:var(--md-sys-color-on-surface);">
+                  {% for manufacturer in asset.manufacturers %}
+                    <span style="display:inline-block;padding:2px 8px;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);border-radius:8px;font-size:11px;margin:2px;">{{ manufacturer.name }}</span>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <span style="color:var(--md-sys-color-outline);font-size:13px;">-</span>
+              {% endif %}
+            </td>
+            <td style="padding:8px 12px;min-width:150px;">
+              {% if asset and asset.suppliers %}
+                <div style="font-size:13px;color:var(--md-sys-color-on-surface);">
+                  {% for supplier in asset.suppliers %}
+                    <span style="display:inline-block;padding:2px 8px;background:var(--md-sys-color-tertiary-container);color:var(--md-sys-color-on-tertiary-container);border-radius:8px;font-size:11px;margin:2px;">{{ supplier.name }}</span>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <span style="color:var(--md-sys-color-outline);font-size:13px;">-</span>
+              {% endif %}
+            </td>
           </tr>
         {% else %}
-          <tr><td colspan="4" style="padding:12px;">Keine Artikel gefunden.</td></tr>
+          <tr><td colspan="8" style="padding:12px;">Keine Artikel gefunden.</td></tr>
         {% endfor %}
         </tbody>
       </table>
       </div>
+      
+      <!-- Budget & Gesamtsumme -->
+      {% if budget %}
+      <div style="margin-top:16px;padding:16px;background:var(--md-sys-color-tertiary-container);border-radius:12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:center;">
+          <div>
+            <div style="font-size:12px;color:var(--md-sys-color-on-tertiary-container);opacity:0.7;margin-bottom:4px;">Budget</div>
+            <div style="font-size:18px;font-weight:500;color:var(--md-sys-color-on-tertiary-container);">{{ "%.2f"|format(budget)|replace(".", ",") }} €</div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--md-sys-color-on-tertiary-container);opacity:0.7;margin-bottom:4px;">Gesamtsumme</div>
+            <div id="total-value-small" style="font-size:18px;font-weight:500;color:var(--md-sys-color-on-tertiary-container);">0,00 €</div>
+          </div>
+          <div id="remaining-budget-container">
+            <div style="font-size:12px;opacity:0.7;margin-bottom:4px;" id="remaining-label">Restbudget</div>
+            <div id="remaining-value" style="font-size:20px;font-weight:600;">{{ "%.2f"|format(budget)|replace(".", ",") }} €</div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div style="margin-top:16px;padding:16px;background:var(--md-sys-color-primary-container);border-radius:12px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:14px;color:var(--md-sys-color-on-primary-container);opacity:0.8;">Gesamtsumme (ausgewählte Artikel)</div>
+          <div id="total-value" style="font-size:24px;font-weight:600;color:var(--md-sys-color-on-primary-container);">0,00 €</div>
+        </div>
+        <span class="material-symbols-outlined" style="font-size:32px;color:var(--md-sys-color-on-primary-container);opacity:0.6;">euro</span>
+      </div>
+      {% endif %}
     </div>
 
     <div class="md3-toolbar" style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">
@@ -87,4 +190,216 @@
   </form>
   </div>
 </div>
+
+<script>
+// Supplier ID direkt vom Backend (robuster als Session-Zugriff)
+const SUPPLIER_ID = {{ supplier_id if supplier_id else 'null' }};
+
+// Asset-Werte für Gesamtsummen-Berechnung
+const ASSET_VALUES = {
+  {% for asset in assets %}
+  {{ asset.id }}: {{ asset.value if asset.value else 0 }},
+  {% endfor %}
+};
+
+// Budget (falls gesetzt)
+const BUDGET = {{ budget if budget else 'null' }};
+
+// Gesamtsumme berechnen und anzeigen
+function updateTotalValue() {
+  let total = 0;
+  
+  // Alle Zeilen durchgehen
+  document.querySelectorAll('tr.md3-row').forEach(row => {
+    const checkbox = row.querySelector('input[type="checkbox"]');
+    const assetIdInput = row.querySelector('input[name$="-asset_id"]');
+    const quantityInput = row.querySelector('input[type="number"]');
+    
+    if (checkbox && checkbox.checked && assetIdInput && quantityInput) {
+      const assetId = parseInt(assetIdInput.value);
+      const quantity = parseInt(quantityInput.value) || 1;
+      const value = ASSET_VALUES[assetId] || 0;
+      
+      total += value * quantity;
+    }
+  });
+  
+  // Formatierung: 1234.56 → "1.234,56 €"
+  const formatted = total.toLocaleString('de-DE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }) + ' €';
+  
+  // Wenn Budget gesetzt, zeige Budget-Ansicht
+  if (BUDGET !== null) {
+    const totalEl = document.getElementById('total-value-small');
+    if (totalEl) totalEl.textContent = formatted;
+    
+    // Restbudget berechnen
+    const remaining = BUDGET - total;
+    const remainingEl = document.getElementById('remaining-value');
+    const remainingLabel = document.getElementById('remaining-label');
+    const container = document.getElementById('remaining-budget-container');
+    
+    const remainingFormatted = Math.abs(remaining).toLocaleString('de-DE', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }) + ' €';
+    
+    if (remaining >= 0) {
+      // Budget eingehalten - grün
+      remainingEl.textContent = remainingFormatted;
+      remainingEl.style.color = 'var(--md-sys-color-tertiary)';
+      remainingLabel.textContent = 'Restbudget';
+      remainingLabel.style.color = 'var(--md-sys-color-on-tertiary-container)';
+    } else {
+      // Budget überschritten - rot
+      remainingEl.textContent = remainingFormatted;
+      remainingEl.style.color = 'var(--md-sys-color-error)';
+      remainingLabel.textContent = 'Budget überschritten um';
+      remainingLabel.style.color = 'var(--md-sys-color-error)';
+    }
+  } else {
+    // Kein Budget - normale Anzeige
+    const totalEl = document.getElementById('total-value');
+    if (totalEl) totalEl.textContent = formatted;
+  }
+}
+
+// Event-Listener für Checkboxen und Mengen-Änderungen
+document.addEventListener('DOMContentLoaded', function() {
+  // Initial berechnen
+  updateTotalValue();
+  
+  // Bei Checkbox-Änderung
+  document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', updateTotalValue);
+  });
+  
+  // Bei Mengen-Änderung
+  document.querySelectorAll('input[type="number"]').forEach(input => {
+    input.addEventListener('input', updateTotalValue);
+    input.addEventListener('change', updateTotalValue);
+  });
+});
+
+// Vorlage laden und Artikel automatisch auswählen
+function loadTemplate() {
+  const templateId = document.getElementById('template-select').value;
+  if (!templateId) {
+    alert('Bitte zuerst eine Vorlage auswählen.');
+    return;
+  }
+  
+  fetch(`/md3/order/api/order-template/${templateId}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Alle Checkboxen erstmal deaktivieren
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+          if (cb.name && cb.name.includes('select')) cb.checked = false;
+        });
+        
+        // Template-Items durchgehen und entsprechende Assets auswählen
+        data.items.forEach(item => {
+          const assetId = item.asset_id;
+          const quantity = item.quantity;
+          
+          // Finde die Zeile mit diesem Asset
+          document.querySelectorAll('input[name$="-asset_id"]').forEach(input => {
+            if (input.value == assetId) {
+              // Finde Parent-Zeile
+              const row = input.closest('tr');
+              if (row) {
+                // Checkbox aktivieren
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox) checkbox.checked = true;
+                
+                // Menge setzen
+                const quantityInput = row.querySelector('input[type="number"]');
+                if (quantityInput) quantityInput.value = quantity;
+              }
+            }
+          });
+        });
+        
+        // Gesamtsumme neu berechnen
+        updateTotalValue();
+        
+        alert(`Vorlage "${data.name}" wurde geladen. ${data.items.length} Artikel ausgewählt.`);
+      } else {
+        alert('Fehler beim Laden der Vorlage: ' + (data.message || 'Unbekannter Fehler'));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Fehler beim Laden der Vorlage.');
+    });
+}
+
+// Modal zum Speichern einer Vorlage
+function openSaveTemplateModal() {
+  // Prüfe, ob Artikel ausgewählt sind
+  const selectedItems = [];
+  document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    if (cb.checked && cb.name && cb.name.includes('select')) {
+      const row = cb.closest('tr');
+      const assetIdInput = row.querySelector('input[name$="-asset_id"]');
+      const quantityInput = row.querySelector('input[type="number"]');
+      
+      if (assetIdInput && quantityInput) {
+        selectedItems.push({
+          asset_id: assetIdInput.value,
+          quantity: quantityInput.value
+        });
+      }
+    }
+  });
+  
+  if (selectedItems.length === 0) {
+    alert('Bitte zuerst Artikel auswählen, bevor Sie eine Vorlage speichern.');
+    return;
+  }
+  
+  const templateName = prompt(`Vorlage speichern\n\n${selectedItems.length} Artikel ausgewählt.\nBitte einen Namen für die Vorlage eingeben:`);
+  
+  if (!templateName || !templateName.trim()) {
+    return; // Abgebrochen
+  }
+  
+  // Template speichern via API
+  fetch('/md3/order/api/order-template/save', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+    },
+    body: JSON.stringify({
+      name: templateName.trim(),
+      supplier_id: SUPPLIER_ID,
+      items: selectedItems
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert(`Vorlage "${templateName}" wurde erfolgreich gespeichert.`);
+      // Dropdown aktualisieren
+      const select = document.getElementById('template-select');
+      const option = document.createElement('option');
+      option.value = data.template_id;
+      option.textContent = templateName.trim();
+      select.appendChild(option);
+      select.value = data.template_id;
+    } else {
+      alert('Fehler beim Speichern: ' + (data.message || 'Unbekannter Fehler'));
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Fehler beim Speichern der Vorlage.');
+  });
+}
+</script>
+
 {% endblock %}

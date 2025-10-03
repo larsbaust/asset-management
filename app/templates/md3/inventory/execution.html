@@ -1,4 +1,4 @@
-{% extends "md3/base.html" %}
+{% extends "base.html" %}
 
 {% block title %}Inventur Ausführung - {{ session.name }}{% endblock %}
 
@@ -607,7 +607,7 @@ function autoSaveProgress() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-CSRFToken': document.getElementById('csrf-token')?.value || ''
+      'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
     },
     body: JSON.stringify(payload)
   })
@@ -670,9 +670,9 @@ function saveProgress() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-CSRFToken': document.getElementById('csrf-token')?.value || ''
+      'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
     },
-    body: JSON.stringify(assetData)
+    body: JSON.stringify(payload)
   })
   .then(response => response.json())
   .then(data => {
@@ -727,7 +727,7 @@ function completeInventory() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': document.getElementById('csrf-token')?.value || ''
+        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
       },
       body: JSON.stringify(payload)
     })
@@ -739,7 +739,7 @@ function completeInventory() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': document.getElementById('csrf-token')?.value || ''
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
           }
         });
       } else {

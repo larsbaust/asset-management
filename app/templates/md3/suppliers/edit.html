@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block styles %}
+  {{ super() }}
+  <style>
+    .md3-page { padding: 24px; padding-top: 80px; }
+    .md3-container { max-width: 960px; margin: 0 auto; }
+    .md3-card { background: var(--md-sys-color-surface); border-radius: 16px; box-shadow: var(--md-sys-elevation-2); padding: 16px; }
+    .md3-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+    .md3-title { font: var(--md-sys-typescale-headline-small-font); color: var(--md-sys-color-on-surface); }
+
+    .form-grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    .form-row { display:flex; flex-direction:column; gap:6px; }
+    .form-row label { color: var(--md-sys-color-on-surface-variant); font: var(--md-sys-typescale-label-large-font); }
+
+    input[type="text"], input[type="email"], input[type="url"], textarea {
+      height: 40px; border-radius: 12px; border:1px solid var(--md-sys-color-outline-variant);
+      padding: 0 10px; background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface);
+    }
+    textarea { height:auto; min-height: 96px; padding: 10px; }
+
+    .actions { display:flex; gap:12px; margin-top: 12px; }
+    .md3-button { border: none; border-radius: 999px; padding: 10px 16px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; text-decoration:none; white-space: nowrap; }
+    .md3-button .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; font-size: 20px; }
+    .md3-button-filled { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
+    .md3-button-text { background: transparent; color: var(--md-sys-color-primary); }
+
+    .error { color: var(--md-sys-color-error); font-size: 0.9em; }
+    @media (max-width: 760px) { .form-grid { grid-template-columns: 1fr; } }
+  </style>
+{% endblock %}
+
+{% block content %}
+  {% include 'md3-nav.html' %}
+  <div class="md3-page">
+    <div class="md3-container">
+      <div class="md3-header">
+        <div class="md3-title">{{ title or ('Lieferant bearbeiten' if supplier else 'Neuen Lieferanten anlegen') }}</div>
+      </div>
+
+      <div class="md3-card">
+        <form method="post">
+          {{ form.hidden_tag() }}
+          <input type="hidden" name="md3" value="1">
+
+          <div class="form-row">
+            <label>{{ form.name.label }}</label>
+            {{ form.name(placeholder='Lieferantennamen eingeben') }}
+            {% if form.name.errors %}<div class="error">{{ form.name.errors[0] }}</div>{% endif %}
+          </div>
+
+          <div class="form-row">
+            <label>{{ form.address.label }}</label>
+            {{ form.address(rows=3, placeholder='Straße, PLZ, Ort') }}
+            {% if form.address.errors %}<div class="error">{{ form.address.errors[0] }}</div>{% endif %}
+          </div>
+
+          <div class="form-grid">
+            <div class="form-row">
+              <label>{{ form.phone.label }}</label>
+              {{ form.phone(placeholder='Telefonnummer') }}
+              {% if form.phone.errors %}<div class="error">{{ form.phone.errors[0] }}</div>{% endif %}
+            </div>
+            <div class="form-row">
+              <label>{{ form.email.label }}</label>
+              {{ form.email(placeholder='E-Mail-Adresse') }}
+              {% if form.email.errors %}<div class="error">{{ form.email.errors[0] }}</div>{% endif %}
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-row">
+              <label>{{ form.website.label }}</label>
+              {{ form.website(placeholder='https://www.example.com') }}
+              {% if form.website.errors %}<div class="error">{{ form.website.errors[0] }}</div>{% endif %}
+            </div>
+            <div class="form-row">
+              <label>{{ form.contact_name.label }}</label>
+              {{ form.contact_name(placeholder='Name des Ansprechpartners') }}
+              {% if form.contact_name.errors %}<div class="error">{{ form.contact_name.errors[0] }}</div>{% endif %}
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-row">
+              <label>{{ form.customer_number.label }}</label>
+              {{ form.customer_number(placeholder='Ihre Kundennummer beim Lieferanten') }}
+              {% if form.customer_number.errors %}<div class="error">{{ form.customer_number.errors[0] }}</div>{% endif %}
+            </div>
+            <div class="form-row">
+              <label>{{ form.creditor_number.label }}</label>
+              {{ form.creditor_number(placeholder='Kreditorennummer in Ihrer Buchhaltung') }}
+              {% if form.creditor_number.errors %}<div class="error">{{ form.creditor_number.errors[0] }}</div>{% endif %}
+            </div>
+          </div>
+
+          <div class="actions">
+            {{ form.submit(class='md3-button md3-button-filled') }}
+            <a href="{{ url_for('suppliers.supplier_list', md3=1) }}" class="md3-button md3-button-text"><span class="material-symbols-outlined">close</span>Abbrechen</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}

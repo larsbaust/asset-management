@@ -1,0 +1,700 @@
+{% extends "base.html" %}
+
+{% block title %}Kostenverwaltung - {{ asset.name }}{% endblock %}
+
+{% block content %}
+<!-- Include MD3 Navigation -->
+{% include 'md3-nav.html' %}
+
+<!-- MD3 Kostenverwaltung -->
+<div class="md3-page-container">
+  <!-- Header mit Asset-Info -->
+  <div class="md3-page-header">
+    <div class="md3-header-content">
+      <div class="md3-breadcrumb">
+        <a href="{{ url_for('main.assets') }}?md3=1" class="md3-breadcrumb-link">
+          <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+        <span class="md3-breadcrumb-separator">/</span>
+        <span class="md3-breadcrumb-current">Kostenverwaltung</span>
+      </div>
+      
+      <h1 class="md3-headline-large">Kosten: {{ asset.name }}</h1>
+      
+      <div class="md3-asset-meta">
+        <span class="md3-asset-id">ID: {{ asset.id }}</span>
+        {% if asset.article_number %}
+        <span class="md3-asset-article">Art.-Nr.: {{ asset.article_number }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Kostenübersicht Cards -->
+  <div class="md3-costs-overview">
+    <div class="md3-cost-card md3-cost-card-primary">
+      <div class="md3-cost-card-content">
+        <div class="md3-cost-icon">
+          <span class="material-symbols-outlined">account_balance_wallet</span>
+        </div>
+        <div class="md3-cost-info">
+          <div class="md3-cost-label">Gesamtkosten</div>
+          <div class="md3-cost-value">{{ asset.get_total_costs()|round(2) }} €</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="md3-cost-card md3-cost-card-secondary">
+      <div class="md3-cost-card-content">
+        <div class="md3-cost-icon">
+          <span class="material-symbols-outlined">calendar_month</span>
+        </div>
+        <div class="md3-cost-info">
+          <div class="md3-cost-label">Monatliche Kosten (Ø)</div>
+          <div class="md3-cost-value">{{ asset.get_monthly_costs()|round(2) }} €</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kostenverteilung -->
+  <div class="md3-section">
+    {% set card_content %}
+      <div class="md3-costs-distribution">
+        {% set costs_by_type = asset.get_costs_by_type() %}
+        {% if costs_by_type %}
+          <div class="md3-table-container">
+            <table class="md3-table md3-table-striped">
+              <thead>
+                <tr>
+                  <th>Kostenart</th>
+                  <th>Betrag</th>
+                  <th>Anteil</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for type, amount in costs_by_type.items() %}
+                <tr>
+                  <td>
+                    <div class="md3-cost-type">
+                      <span class="md3-cost-type-icon material-symbols-outlined">
+                        {% if type == 'Anschaffung' %}shopping_cart
+                        {% elif type == 'Wartung' %}build
+                        {% elif type == 'Reparatur' %}handyman
+                        {% else %}payments{% endif %}
+                      </span>
+                      {{ type }}
+                    </div>
+                  </td>
+                  <td>
+                    <span class="md3-amount">{{ amount|round(2) }} €</span>
+                  </td>
+                  <td>
+                    <div class="md3-percentage-bar">
+                      <span class="md3-percentage-text">{{ ((amount / asset.get_total_costs()) * 100)|round(1) }}%</span>
+                      <div class="md3-progress-indicator">
+                        <div class="md3-progress-bar" data-width="{{ ((amount / asset.get_total_costs()) * 100)|round(1) }}"></div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="md3-empty-state">
+            <div class="md3-empty-icon">
+              <span class="material-symbols-outlined">receipt_long</span>
+            </div>
+            <h3 class="md3-empty-title">Noch keine Kosten erfasst</h3>
+            <p class="md3-empty-description">Fügen Sie den ersten Kosteneintrag hinzu, um die Kostenverteilung zu sehen.</p>
+          </div>
+        {% endif %}
+      </div>
+    {% endset %}
+    
+    {% set title = 'Kostenverteilung' %}
+    {% set elevation = 1 %}
+    {% include 'md3/components/card.html' %}
+  </div>
+
+  <!-- Kosteneintrag hinzufügen -->
+  <div class="md3-section">
+    {% set card_content %}
+      <form method="POST" class="md3-cost-form" action="{{ url_for('main.cost_entry', asset_id=asset.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="md3-form-row">
+          <div class="md3-form-field">
+            <label class="md3-form-label">Kostenart</label>
+            <select name="cost_type" class="md3-form-select" required>
+              <option value="">Wählen Sie eine Kostenart</option>
+              <option value="Anschaffung">Anschaffung</option>
+              <option value="Wartung">Wartung</option>
+              <option value="Reparatur">Reparatur</option>
+              <option value="Lizenz">Lizenz</option>
+              <option value="Versicherung">Versicherung</option>
+              <option value="Sonstiges">Sonstiges</option>
+            </select>
+          </div>
+          
+          <div class="md3-form-field">
+            <label class="md3-form-label">Datum</label>
+            <input type="date" name="date" class="md3-form-input" value="{{ today }}" required>
+          </div>
+        </div>
+        
+        <div class="md3-form-row">
+          <div class="md3-form-field">
+            <label class="md3-form-label">Betrag (€)</label>
+            <input type="number" name="amount" class="md3-form-input" step="0.01" min="0" placeholder="0,00" required>
+          </div>
+        </div>
+        
+        <div class="md3-form-field">
+          <label class="md3-form-label">Beschreibung</label>
+          <textarea name="description" class="md3-form-textarea" rows="3" placeholder="Beschreibung des Kosteneintrags..."></textarea>
+        </div>
+        
+        <div class="md3-form-actions">
+          <button type="submit" name="action" value="add" class="md3-button md3-button-filled">
+            <span class="material-symbols-outlined">add</span>
+            Kosteneintrag hinzufügen
+          </button>
+        </div>
+      </form>
+    {% endset %}
+    
+    {% set title = 'Neuer Kosteneintrag' %}
+    {% set elevation = 1 %}
+    {% include 'md3/components/card.html' %}
+  </div>
+
+  <!-- Kosteneinträge Liste -->
+  {% if asset.cost_entries %}
+  <div class="md3-section">
+    {% set card_content %}
+      <div class="md3-cost-entries-list">
+        {% for entry in asset.cost_entries %}
+        <div class="md3-cost-entry">
+          <div class="md3-cost-entry-header">
+            <div class="md3-cost-entry-type">
+              <span class="md3-cost-type-badge md3-cost-type-{{ entry.cost_type|lower|replace(' ', '-') }}">
+                {{ entry.cost_type }}
+              </span>
+            </div>
+            <div class="md3-cost-entry-amount">{{ entry.amount|round(2) }} €</div>
+            <div class="md3-cost-entry-actions">
+              <button class="md3-icon-button delete-cost-btn" data-entry-id="{{ entry.id }}" title="Löschen">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </div>
+          </div>
+          
+          <div class="md3-cost-entry-content">
+            <div class="md3-cost-entry-date">
+              <span class="material-symbols-outlined">calendar_today</span>
+              {{ entry.date.strftime('%d.%m.%Y') if entry.date else 'Kein Datum' }}
+            </div>
+            {% if entry.description %}
+            <div class="md3-cost-entry-description">{{ entry.description }}</div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% endset %}
+    
+    {% set title = 'Kosteneinträge (' + asset.cost_entries|length|string + ')' %}
+    {% set elevation = 1 %}
+    {% include 'md3/components/card.html' %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-modal" class="md3-modal-overlay" style="display: none;">
+  <div class="md3-modal">
+    <div class="md3-modal-header">
+      <h2 class="md3-modal-title">Kosteneintrag löschen</h2>
+    </div>
+    <div class="md3-modal-content">
+      <p>Möchten Sie diesen Kosteneintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</p>
+    </div>
+    <div class="md3-modal-actions">
+      <button type="button" class="md3-button md3-button-text" onclick="closeDeleteModal()">Abbrechen</button>
+      <button type="button" class="md3-button md3-button-filled md3-button-error" onclick="confirmDelete()">Löschen</button>
+    </div>
+  </div>
+</div>
+
+<style>
+/* MD3 Kostenverwaltung Styles */
+.md3-page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.md3-page-header {
+  margin-bottom: 32px;
+}
+
+.md3-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-breadcrumb-link {
+  display: flex;
+  align-items: center;
+  color: var(--md-sys-color-primary);
+  text-decoration: none;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.md3-breadcrumb-link:hover {
+  background-color: var(--md-sys-color-primary-container);
+}
+
+.md3-asset-meta {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Kostenübersicht Cards */
+.md3-costs-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.md3-cost-card {
+  background: var(--md-sys-color-surface-container);
+  border-radius: 16px;
+  padding: 24px;
+  transition: box-shadow 0.2s ease;
+}
+
+.md3-cost-card-primary {
+  background: linear-gradient(135deg, var(--md-sys-color-primary-container) 0%, var(--md-sys-color-primary-container) 100%);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.md3-cost-card-secondary {
+  background: linear-gradient(135deg, var(--md-sys-color-secondary-container) 0%, var(--md-sys-color-secondary-container) 100%);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.md3-cost-card-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.md3-cost-icon {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.md3-cost-icon .material-symbols-outlined {
+  font-size: 32px;
+}
+
+.md3-cost-label {
+  font-size: 14px;
+  opacity: 0.8;
+  margin-bottom: 4px;
+}
+
+.md3-cost-value {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Kostenverteilung */
+.md3-costs-distribution {
+  padding: 0;
+}
+
+.md3-table-container {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.md3-cost-type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.md3-cost-type-icon {
+  font-size: 20px;
+  color: var(--md-sys-color-primary);
+}
+
+.md3-amount {
+  font-weight: 600;
+  color: var(--md-sys-color-primary);
+}
+
+.md3-percentage-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.md3-percentage-text {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-progress-indicator {
+  width: 100px;
+  height: 4px;
+  background: var(--md-sys-color-outline-variant);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.md3-progress-bar {
+  height: 100%;
+  background: var(--md-sys-color-primary);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Empty State */
+.md3-empty-state {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.md3-empty-icon {
+  margin-bottom: 16px;
+}
+
+.md3-empty-icon .material-symbols-outlined {
+  font-size: 64px;
+  color: var(--md-sys-color-outline);
+}
+
+.md3-empty-title {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  margin-bottom: 8px;
+}
+
+.md3-empty-description {
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0;
+}
+
+/* Formular */
+.md3-cost-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.md3-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.md3-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md3-form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+}
+
+.md3-form-input,
+.md3-form-select,
+.md3-form-textarea {
+  padding: 16px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: 8px;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-size: 16px;
+  transition: border-color 0.2s ease;
+}
+
+.md3-form-input:focus,
+.md3-form-select:focus,
+.md3-form-textarea:focus {
+  outline: none;
+  border-color: var(--md-sys-color-primary);
+  border-width: 2px;
+}
+
+.md3-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 16px;
+}
+
+/* Kosteneinträge Liste */
+.md3-cost-entries-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.md3-cost-entry {
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--md-sys-color-surface);
+  transition: box-shadow 0.2s ease;
+}
+
+.md3-cost-entry:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.md3-cost-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.md3-cost-type-badge {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.md3-cost-entry-amount {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--md-sys-color-primary);
+}
+
+.md3-cost-entry-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md3-cost-entry-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-cost-entry-description {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 14px;
+}
+
+.md3-section {
+  margin-bottom: 32px;
+}
+
+/* Modal Styles */
+.md3-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.md3-modal {
+  background: var(--md-sys-color-surface);
+  border-radius: 28px;
+  box-shadow: 0 24px 38px 3px rgba(0, 0, 0, 0.14);
+  max-width: 400px;
+  width: 90%;
+  overflow: hidden;
+}
+
+.md3-modal-header {
+  padding: 24px 24px 0 24px;
+}
+
+.md3-modal-title {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  margin: 0;
+}
+
+.md3-modal-content {
+  padding: 16px 24px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-modal-actions {
+  padding: 0 24px 24px 24px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .md3-form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .md3-costs-overview {
+    grid-template-columns: 1fr;
+  }
+  
+  .md3-cost-entry-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+</style>
+
+<script>
+let deleteEntryId = null;
+
+// CSRF Token
+function getCSRFToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
+function deleteCostEntry(entryId) {
+  deleteEntryId = entryId;
+  document.getElementById('delete-modal').style.display = 'flex';
+}
+
+function closeDeleteModal() {
+  document.getElementById('delete-modal').style.display = 'none';
+  deleteEntryId = null;
+}
+
+function confirmDelete() {
+  if (deleteEntryId) {
+    // Create form and submit
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("main.cost_entry", asset_id=asset.id) }}';
+    
+    const actionInput = document.createElement('input');
+    actionInput.type = 'hidden';
+    actionInput.name = 'action';
+    actionInput.value = 'delete';
+    
+    const entryIdInput = document.createElement('input');
+    entryIdInput.type = 'hidden';
+    entryIdInput.name = 'entry_id';
+    entryIdInput.value = deleteEntryId;
+    
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrf_token';
+    csrfInput.value = getCSRFToken();
+    
+    form.appendChild(actionInput);
+    form.appendChild(entryIdInput);
+    form.appendChild(csrfInput);
+    document.body.appendChild(form);
+    form.submit();
+  }
+}
+
+// Initialize progress bars
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.md3-progress-bar').forEach(bar => {
+    const width = bar.getAttribute('data-width');
+    if (width) {
+      bar.style.width = width + '%';
+    }
+  });
+  
+  // Initialize delete buttons
+  document.querySelectorAll('.delete-cost-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const entryId = this.dataset.entryId;
+      deleteCostEntry(parseInt(entryId));
+    });
+  });
+});
+
+// Flash Messages
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      showToast('{{ message|e }}', '{{ category|e }}');
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+function showToast(message, type) {
+  // Create toast element
+  const toast = document.createElement('div');
+  toast.className = `md3-toast md3-toast-${type}`;
+  toast.textContent = message;
+  
+  // Style toast
+  Object.assign(toast.style, {
+    position: 'fixed',
+    bottom: '24px',
+    right: '24px',
+    padding: '16px 24px',
+    borderRadius: '8px',
+    color: 'white',
+    fontWeight: '500',
+    zIndex: '10000',
+    animation: 'slideUp 0.3s ease',
+    maxWidth: '400px'
+  });
+  
+  if (type === 'success') {
+    toast.style.background = 'var(--md-sys-color-primary)';
+  } else if (type === 'error') {
+    toast.style.background = 'var(--md-sys-color-error)';
+  }
+  
+  document.body.appendChild(toast);
+  
+  // Remove after 3 seconds  
+  setTimeout(() => {
+    toast.style.animation = 'fadeOut 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+</script>
+
+{% endblock %}

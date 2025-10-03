@@ -163,11 +163,7 @@
   overflow: hidden;
 }
 
-.md3-session-card:hover {
-  box-shadow: 0 4px 8px 3px rgba(0, 0, 0, 0.15),
-              0 1px 3px rgba(0, 0, 0, 0.30);
-  transform: translateY(-2px);
-}
+/* Hover-Effekt für Session-Cards entfernt für bessere UX */
 
 .md3-session-card-header {
   padding: 20px 20px 16px 20px;
@@ -446,7 +442,7 @@
     
     <div class="md3-sessions-grid">
       {% for session in sessions %}
-      <div class="md3-session-card" onclick="continueExecution({{ session.id }})" style="cursor: pointer;">
+      <div class="md3-session-card session-card-item" data-session-id="{{ session.id }}" style="cursor: pointer;">
         <!-- Card Header -->
         <div class="md3-session-card-header">
           <div class="md3-session-info">
@@ -465,8 +461,8 @@
             {% endif %}
             
             {% if session.status in ['planned', 'in_progress', 'active'] %}
-            <button class="md3-icon-button md3-icon-button-error" 
-                    onclick="cancelSession({{ session.id }})"
+            <button class="md3-icon-button md3-icon-button-error cancel-session-btn" 
+                    data-session-id="{{ session.id }}"
                     title="Inventur abbrechen">
               <span class="material-symbols-outlined">close</span>
             </button>
@@ -556,6 +552,7 @@
     
     <div class="md3-modal-content">
       <form id="newInventoryForm" method="POST" action="{{ url_for('md3_inventory.planning_new') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
         
         <div class="md3-form-field">
           <label class="md3-form-label">Name der Inventur</label>
@@ -798,6 +795,23 @@ document.addEventListener('keydown', function(event) {
 function initializeMD3Components() {
   // Initialize any MD3 specific components here
   console.log('MD3 Inventory Planning initialized');
+  
+  // Event Listeners for Session Cards
+  document.querySelectorAll('.session-card-item').forEach(card => {
+    card.addEventListener('click', function() {
+      const sessionId = this.dataset.sessionId;
+      continueExecution(parseInt(sessionId));
+    });
+  });
+  
+  // Event Listeners for Cancel Session buttons
+  document.querySelectorAll('.cancel-session-btn').forEach(button => {
+    button.addEventListener('click', function(event) {
+      event.stopPropagation();
+      const sessionId = this.dataset.sessionId;
+      cancelSession(parseInt(sessionId));
+    });
+  });
 }
 </script>
 

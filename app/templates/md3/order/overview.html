@@ -1,29 +1,117 @@
-{% extends 'md3/base.html' %}
+{% extends 'base.html' %}
 {% block styles %}
   {{ super() }}
   <style>
-    .md3-page { padding: 24px; }
-    .md3-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+    .md3-page { padding: 24px; padding-top: 80px; }
+    .md3-container { max-width: 1440px; margin: 0 auto; padding: 0; }
+    .md3-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; gap:12px; }
     .md3-title { font: var(--md-sys-typescale-headline-small-font); color: var(--md-sys-color-on-surface); }
-    .md3-filters { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-    .md3-card { background: var(--md-sys-color-surface); border-radius: 16px; box-shadow: var(--md-sys-elevation-level2); padding: 12px 16px; }
-    .md3-chip { border-radius: 8px; padding: 6px 10px; background: var(--md-sys-color-surface-variant); color: var(--md-sys-color-on-surface-variant); }
-    .md3-table { width:100%; border-collapse:separate; border-spacing:0 8px; }
-    .md3-row { background: var(--md-sys-color-surface); box-shadow: var(--md-sys-elevation-level1); border-radius: 12px; }
-    .md3-row td { padding: 12px 16px; }
-    .status-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle; }
-    .status-delivered { background:#1e8e3e; }
-    .status-intransit { background:#0b57d0; }
-    .status-problem { background:#b3261e; }
-    .status-unknown { background:#6f797a; }
-    .md3-actions { display:flex; gap:8px; }
-    .md3-button { border: none; border-radius: 20px; padding: 8px 14px; cursor:pointer; }
+    .md3-subtitle { color: var(--md-sys-color-on-surface-variant); }
+
+    .md3-card { 
+      background: var(--md-sys-color-surface); 
+      border-radius: 16px; 
+      box-shadow: var(--md-sys-elevation-2, var(--md-sys-elevation-level2)); 
+      padding: 12px 16px; 
+    }
+    .md3-chip { border-radius: 999px; padding: 6px 10px; background: var(--md-sys-color-surface-variant); color: var(--md-sys-color-on-surface-variant); }
+
+    /* Sticky filter bar under the navbar */
+    .filter-bar { position: sticky; top: 80px; z-index: 5; display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom: 24px; }
+    .filters-left { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .filters-right { margin-left:auto; }
+
+    /* Data Table */
+    .table-container { overflow:auto; border-radius: 12px; box-shadow: var(--md-sys-elevation-level5); background: var(--md-sys-color-surface); margin-top: 16px; }
+    .md3-data-table { width: 100%; border-collapse: collapse; table-layout: fixed; background: var(--md-sys-color-surface); }
+    .md3-data-table thead th { 
+      position: sticky; top: 0; z-index: 2; 
+      background: var(--md-sys-color-surface-variant); 
+      color: var(--md-sys-color-on-surface-variant);
+      font: var(--md-sys-typescale-label-large-font);
+      text-align: left; padding: 16px; 
+      border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    }
+    .md3-data-table thead th:first-child { border-top-left-radius: 12px; }
+    .md3-data-table thead th:last-child { border-top-right-radius: 12px; }
+    .md3-data-table tbody td { padding: 16px; vertical-align: middle; border-bottom: 1px solid var(--md-sys-color-outline-variant); }
+    .md3-data-table tbody tr { border-bottom: 1px solid var(--md-sys-color-outline-variant); }
+    .md3-data-table tbody tr:hover { background: var(--md-sys-color-surface-variant); }
+    .col-id { width: 90px; white-space: nowrap; }
+    .col-count { width: 120px; text-align:center; }
+    .col-actions { min-width: 720px; width: 720px; white-space: nowrap; overflow-x: auto; }
+    .col-actions .md3-actions { display: inline-flex !important; gap: 16px; align-items: center; white-space: nowrap; overflow-x: auto; row-gap: 0; width: max-content; flex-wrap: nowrap !important; }
+    .col-actions .md3-actions > * { white-space: nowrap; display: inline-flex !important; flex: 0 0 auto !important; }
+    .col-actions .md3-actions a { display:inline-flex !important; }
+    .col-actions .md3-actions form.inline-form { display:inline-flex !important; margin:0 !important; width:auto !important; }
+    .col-actions .md3-actions .md3-button { display:inline-flex !important; flex:0 0 auto !important; width:auto !important; }
+
+    /* Column min-widths to prevent cramped text */
+    .md3-data-table th:nth-child(2),
+    .md3-data-table td:nth-child(2) { min-width: 340px; width: 340px; } /* Lieferant */
+    .md3-data-table th.col-location,
+    .md3-data-table td.col-location { min-width: 300px; width: 300px; }
+    .md3-data-table th.col-tracking,
+    .md3-data-table td.col-tracking { min-width: 240px; width: 240px; }
+    .md3-data-table th.col-tracking,
+    .md3-data-table td.col-tracking { text-align: center; }
+    .md3-data-table th:nth-child(5),
+    .md3-data-table td:nth-child(5) { min-width: 200px; width: 200px; text-align: center; } /* Status */
+    .md3-data-table th.col-count { text-align: center; }
+
+    /* Sortable header */
+    .th-sortable { cursor: pointer; user-select: none; }
+    .th-sortable .sort-indicator { margin-left: 6px; opacity: 0.6; }
+    .th-sortable.sorted-asc .sort-indicator::after { content: '▲'; }
+    .th-sortable.sorted-desc .sort-indicator::after { content: '▼'; }
+
+    /* Responsive columns */
+    @media (max-width: 900px) {
+      .md3-data-table .col-tracking { display: none; }
+    }
+    @media (max-width: 760px) {
+      .md3-data-table .col-location { display: none; }
+    }
+    @media (max-width: 640px) {
+      .md3-data-table .col-actions .label { display: none; }
+      .col-actions { min-width: 140px; }
+    }
+
+    /* Table footer (pagination) */
+    .table-footer { display:flex; align-items:center; justify-content: flex-end; gap: 12px; padding: 10px 12px; color: var(--md-sys-color-on-surface-variant); }
+    .table-footer select { height: 36px; }
+
+    /* Status chip styles */
+    .status-chip { 
+      display:inline-flex; align-items:center; gap:6px; 
+      border-radius: 999px; padding: 4px 10px; font-size: 12px; 
+    }
+    .status-chip.status-delivered { background: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container); }
+    .status-chip.status-intransit { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
+    .status-chip.status-problem { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
+    .status-chip.status-unknown { background: var(--md-sys-color-surface-variant); color: var(--md-sys-color-on-surface-variant); }
+
+    /* Buttons */
+    .md3-actions { display:inline-flex; gap:16px; flex-wrap:nowrap; white-space:nowrap; align-items:center; width: max-content; }
+    .md3-actions > * { flex: 0 0 auto; }
+    .md3-actions a, .md3-actions form { display:inline-flex; align-items:center; }
+    .md3-actions button { display:inline-flex; align-items:center; min-width: max-content; }
+    .md3-button { border: none; border-radius: 999px; padding: 8px 14px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; text-decoration:none; white-space: nowrap; min-width: max-content; }
+    .md3-button .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; font-size: 20px; }
     .md3-button-filled { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
     .md3-button-tonal { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
     .md3-button-text { background: transparent; color: var(--md-sys-color-primary); }
-    .md3-subtitle { color: var(--md-sys-color-on-surface-variant); }
-    .md3-toolbar { display:flex; gap:8px; }
+    .md3-button-text.danger { color: var(--md-sys-color-error); }
+    .md3-button .label { white-space: nowrap; }
+    .inline-form { display:inline-flex; margin:0; white-space: nowrap; }
+
+    /* Inputs */
     select, input[type="text"] { height:40px; border-radius:12px; border:1px solid var(--md-sys-color-outline-variant); padding:0 10px; background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); }
+
+    /* Segmented control for Active/Archiv */
+    .segmented { display:inline-flex; background: var(--md-sys-color-surface-variant); border-radius: 999px; padding: 2px; }
+    .segment { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; color: var(--md-sys-color-on-surface-variant); text-decoration:none; }
+    .segment.active { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
   </style>
 {% endblock %}
 
@@ -31,6 +119,7 @@
 <!-- MD3 Navigation Bar -->
 {% include 'md3-nav.html' %}
 <div class="md3-page">
+  <div class="md3-container">
   <div class="md3-header">
     <div>
       <div class="md3-title">Bestellübersicht (MD3)</div>
@@ -39,55 +128,85 @@
       {% endif %}
     </div>
     <div class="md3-toolbar">
-      <a class="md3-button md3-button-tonal" href="{{ url_for('md3_order.wizard_start') }}">Neue Bestellung</a>
-      <a class="md3-button md3-button-text" href="{{ url_for('md3_order.import_csv') }}">CSV Import</a>
+      <a class="md3-button md3-button-tonal" href="{{ url_for('md3_order.wizard_start') }}"><span class="material-symbols-outlined">add_shopping_cart</span>Neue Bestellung</a>
+      <a class="md3-button md3-button-text" href="{{ url_for('md3_order.import_csv') }}"><span class="material-symbols-outlined">upload_file</span>CSV Import</a>
+      <span class="md3-chip">{{ orders|length }} Bestellungen</span>
     </div>
   </div>
 
-  <form method="get" class="md3-card md3-filters">
-    <select name="status">
-      <option value="">Status (alle)</option>
-      <option value="offen" {% if selected_status == 'offen' %}selected{% endif %}>offen</option>
-      <option value="bestellt" {% if selected_status == 'bestellt' %}selected{% endif %}>bestellt</option>
-      <option value="erledigt" {% if selected_status == 'erledigt' %}selected{% endif %}>erledigt</option>
-    </select>
-    <select name="supplier_id">
-      <option value="">Lieferant (alle)</option>
-      {% for supplier in suppliers %}
-        <option value="{{ supplier.id }}" {% if selected_supplier_id == supplier.id %}selected{% endif %}>{{ supplier.name }}</option>
-      {% endfor %}
-    </select>
-    <select name="location">
-      <option value="">Standort (alle)</option>
-      {% for loc in locations %}
-        <option value="{{ loc }}" {% if selected_location == loc %}selected{% endif %}>{{ loc }}</option>
-      {% endfor %}
-    </select>
-    <input type="text" name="tracking_number" placeholder="Trackingnummer (enthält)" value="{{ selected_tracking_number or '' }}">
-    <button type="submit" class="md3-button md3-button-filled">Filtern</button>
-    <div style="flex:1"></div>
-    <a class="md3-button {% if not show_archived %}md3-button-filled{% else %}md3-button-text{% endif %}" href="{{ url_for('md3_order.overview', status=selected_status, supplier_id=selected_supplier_id, archived=0) }}">Aktive</a>
-    <a class="md3-button {% if show_archived %}md3-button-filled{% else %}md3-button-text{% endif %}" href="{{ url_for('md3_order.overview', status=selected_status, supplier_id=selected_supplier_id, archived=1) }}">Archiv</a>
+  <form method="get" class="md3-card filter-bar">
+    <div class="filters-left">
+      <select name="status">
+        <option value="">Status (alle)</option>
+        <option value="offen" {% if selected_status == 'offen' %}selected{% endif %}>offen</option>
+        <option value="bestellt" {% if selected_status == 'bestellt' %}selected{% endif %}>bestellt</option>
+        <option value="erledigt" {% if selected_status == 'erledigt' %}selected{% endif %}>erledigt</option>
+      </select>
+      <select name="supplier_id">
+        <option value="">Lieferant (alle)</option>
+        {% for supplier in suppliers %}
+          <option value="{{ supplier.id }}" {% if selected_supplier_id == supplier.id %}selected{% endif %}>{{ supplier.name }}</option>
+        {% endfor %}
+      </select>
+      <select name="location">
+        <option value="">Standort (alle)</option>
+        {% for loc in locations %}
+          <option value="{{ loc }}" {% if selected_location == loc %}selected{% endif %}>{{ loc }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" name="tracking_number" placeholder="Trackingnummer (enthält)" value="{{ selected_tracking_number or '' }}">
+      <button type="submit" class="md3-button md3-button-filled"><span class="material-symbols-outlined">filter_list</span>Filtern</button>
+    </div>
+    <div class="filters-right">
+      <div class="segmented">
+        <a class="segment {% if not show_archived %}active{% endif %}" href="{{ url_for('md3_order.overview', status=selected_status, supplier_id=selected_supplier_id, location=selected_location, tracking_number=selected_tracking_number, archived=0) }}">
+          <span class="material-symbols-outlined">inventory_2</span>Aktive
+        </a>
+        <a class="segment {% if show_archived %}active{% endif %}" href="{{ url_for('md3_order.overview', status=selected_status, supplier_id=selected_supplier_id, location=selected_location, tracking_number=selected_tracking_number, archived=1) }}">
+          <span class="material-symbols-outlined">inventory</span>Archiv
+        </a>
+      </div>
+    </div>
   </form>
 
-  <table class="md3-table">
-    <thead style="display:none"></thead>
-    <tbody>
+  <div class="table-container md3-card">
+    <table id="orders-table" class="md3-data-table">
+      <colgroup>
+        <col style="width: 90px;">   <!-- # -->
+        <col style="width: 340px;">  <!-- Lieferant -->
+        <col style="width: 300px;">  <!-- Standort -->
+        <col style="width: 240px;">  <!-- Tracking -->
+        <col style="width: 200px;">  <!-- Status -->
+        <col style="width: 120px;">  <!-- Pos. -->
+        <col style="width: 720px;">  <!-- Aktionen -->
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="col-id th-sortable" data-key="id"><span class="label">#</span><span class="sort-indicator"></span></th>
+          <th class="th-sortable" data-key="supplier"><span class="label">Lieferant</span><span class="sort-indicator"></span></th>
+          <th class="col-location th-sortable" data-key="location"><span class="label">Standort</span><span class="sort-indicator"></span></th>
+          <th class="col-tracking th-sortable" data-key="tracking"><span class="label">Tracking</span><span class="sort-indicator"></span></th>
+          <th class="th-sortable" data-key="status"><span class="label">Status</span><span class="sort-indicator"></span></th>
+          <th class="col-count th-sortable" data-key="count"><span class="label">Pos.</span><span class="sort-indicator"></span></th>
+          <th class="col-actions">Aktionen</th>
+        </tr>
+      </thead>
+      <tbody>
     {% for order in orders %}
-      <tr class="md3-row">
-        <td style="width:64px;">#{{ order.id }}</td>
-        <td style="min-width:220px;">
+      <tr>
+        <td class="col-id">#{{ order.id }}</td>
+        <td>
           <div><strong>{{ order.supplier.name if order.supplier else '—' }}</strong></div>
           <div class="md3-subtitle">{{ order.order_date.strftime('%d.%m.%Y %H:%M') if order.order_date else '' }}</div>
         </td>
-        <td style="min-width:160px;">
+        <td class="col-location">
           {% if order.location_obj %}
             {{ order.location_obj.name }}
           {% else %}
             {{ order.location or '—' }}
           {% endif %}
         </td>
-        <td style="min-width:220px;">
+        <td class="col-tracking">
           {% if order.tracking_number %}
             {% set tn = order.tracking_number.strip() %}
             {% if tn.startswith('1Z') %}
@@ -101,31 +220,159 @@
             {% endif %}
           {% else %}—{% endif %}
         </td>
-        <td style="min-width:150px;">
-          <span class="status-dot {{ order_status_classes[order.id] }}"></span>
-          <span class="md3-chip">{{ order.status }}</span>
+        <td>
+          {% set st = order_status_classes[order.id] %}
+          <span class="status-chip {{ st }}">
+            <span class="material-symbols-outlined">
+              {% if st == 'status-delivered' %}check_circle{% elif st == 'status-intransit' %}local_shipping{% elif st == 'status-problem' %}error{% else %}help{% endif %}
+            </span>
+            {{ order.status }}
+          </span>
         </td>
-        <td style="width:90px; text-align:center;">{{ order.items|length }}</td>
-        <td style="min-width:220px;">
+        <td class="col-count">{{ order.items|length }}</td>
+        <td class="col-actions">
           <div class="md3-actions">
-            <a class="md3-button md3-button-text" href="{{ url_for('order.order_detail', order_id=order.id) }}">Details</a>
-            <a class="md3-button md3-button-tonal" href="{{ url_for('order.order_export_dialog', order_id=order.id) }}">Export</a>
+            <a class="md3-button md3-button-text" href="{{ url_for('order.order_detail', order_id=order.id) }}"><span class="material-symbols-outlined">receipt_long</span><span class="label">Details</span></a>
+            <a class="md3-button md3-button-tonal" href="{{ url_for('order.order_export_dialog', order_id=order.id) }}"><span class="material-symbols-outlined">ios_share</span><span class="label">Export</span></a>
             {% if not show_archived %}
-            <form method="post" action="{{ url_for('order.archive_order', order_id=order.id) }}">
-              <button class="md3-button md3-button-text" type="submit">Archivieren</button>
+            <form class="inline-form" method="post" action="{{ url_for('order.archive_order', order_id=order.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="md3-button md3-button-text danger" type="submit"><span class="material-symbols-outlined">archive</span><span class="label">Archivieren</span></button>
             </form>
             {% else %}
-            <form method="post" action="{{ url_for('order.restore_order', order_id=order.id) }}">
-              <button class="md3-button md3-button-text" type="submit">Wiederherstellen</button>
+            <form class="inline-form" method="post" action="{{ url_for('order.restore_order', order_id=order.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="md3-button md3-button-text" type="submit"><span class="material-symbols-outlined">unarchive</span><span class="label">Wiederherstellen</span></button>
             </form>
             {% endif %}
           </div>
         </td>
       </tr>
     {% else %}
-      <tr class="md3-row"><td style="padding:16px">Keine Bestellungen vorhanden.</td></tr>
+      <tr><td colspan="7" style="padding:16px">Keine Bestellungen vorhanden.</td></tr>
     {% endfor %}
-    </tbody>
-  </table>
+      </tbody>
+    </table>
+    <div class="table-footer">
+      <span>Zeilen pro Seite:</span>
+      <select id="rows-per-page">
+        <option value="10">10</option>
+        <option value="25">25</option>
+        <option value="50">50</option>
+        <option value="0">Alle</option>
+      </select>
+      <span id="pagination-info"></span>
+      <button type="button" id="prev-page" class="md3-button md3-button-text"><span class="material-symbols-outlined">chevron_left</span></button>
+      <button type="button" id="next-page" class="md3-button md3-button-text"><span class="material-symbols-outlined">chevron_right</span></button>
+    </div>
+  </div>
+  <script>
+    (function() {
+      const table = document.getElementById('orders-table');
+      if (!table) return;
+      const tbody = table.querySelector('tbody');
+      const headers = Array.from(table.querySelectorAll('thead th.th-sortable'));
+      const rowsPerPageSelect = document.getElementById('rows-per-page');
+      const info = document.getElementById('pagination-info');
+      const btnPrev = document.getElementById('prev-page');
+      const btnNext = document.getElementById('next-page');
+
+      let allRows = Array.from(tbody.querySelectorAll('tr'));
+      let currentSort = { key: 'id', dir: 'desc' };
+      let currentPage = 1;
+      let rowsPerPage = parseInt(rowsPerPageSelect.value, 10);
+
+      function getValue(row, key) {
+        switch (key) {
+          case 'id':
+            return parseInt(row.querySelector('.col-id').textContent.replace('#','').trim()) || 0;
+          case 'supplier':
+            return (row.children[1].querySelector('strong')?.textContent || '').trim().toLowerCase();
+          case 'location':
+            return (row.querySelector('.col-location')?.textContent || '').trim().toLowerCase();
+          case 'tracking':
+            return (row.querySelector('.col-tracking')?.textContent || '').trim().toLowerCase();
+          case 'status':
+            return (row.children[4].innerText || '').trim().toLowerCase();
+          case 'count':
+            return parseInt(row.querySelector('.col-count').textContent.trim()) || 0;
+          default:
+            return '';
+        }
+      }
+
+      function sortRows(key) {
+        const dirMul = currentSort.dir === 'asc' ? 1 : -1;
+        allRows.sort((a,b) => {
+          const va = getValue(a, key);
+          const vb = getValue(b, key);
+          if (typeof va === 'number' && typeof vb === 'number') {
+            return (va - vb) * dirMul;
+          }
+          return va.localeCompare(vb) * dirMul;
+        });
+      }
+
+      function render() {
+        tbody.innerHTML = '';
+        let start = 0, end = allRows.length;
+        if (rowsPerPage && rowsPerPage > 0) {
+          const totalPages = Math.max(1, Math.ceil(allRows.length / rowsPerPage));
+          if (currentPage > totalPages) currentPage = totalPages;
+          start = (currentPage - 1) * rowsPerPage;
+          end = Math.min(start + rowsPerPage, allRows.length);
+          info.textContent = `${start + 1}–${end} von ${allRows.length}`;
+          btnPrev.disabled = currentPage <= 1;
+          btnNext.disabled = currentPage >= totalPages;
+        } else {
+          info.textContent = `${allRows.length} Einträge`;
+          btnPrev.disabled = true; btnNext.disabled = true;
+        }
+        for (let i = start; i < end; i++) tbody.appendChild(allRows[i]);
+      }
+
+      function updateHeaderIndicators(activeKey) {
+        headers.forEach(h => h.classList.remove('sorted-asc','sorted-desc'));
+        const active = headers.find(h => h.dataset.key === activeKey);
+        if (active) active.classList.add(currentSort.dir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+      }
+
+      headers.forEach(h => {
+        h.addEventListener('click', () => {
+          const key = h.dataset.key;
+          if (currentSort.key === key) {
+            currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            currentSort.key = key;
+            currentSort.dir = key === 'id' || key === 'count' ? 'desc' : 'asc';
+          }
+          updateHeaderIndicators(key);
+          sortRows(currentSort.key);
+          currentPage = 1;
+          render();
+        });
+      });
+
+      rowsPerPageSelect.addEventListener('change', () => {
+        rowsPerPage = parseInt(rowsPerPageSelect.value, 10);
+        currentPage = 1;
+        render();
+      });
+
+      btnPrev.addEventListener('click', () => { if (currentPage > 1) { currentPage--; render(); } });
+      btnNext.addEventListener('click', () => {
+        if (rowsPerPage && rowsPerPage > 0) {
+          const totalPages = Math.max(1, Math.ceil(allRows.length / rowsPerPage));
+          if (currentPage < totalPages) { currentPage++; render(); }
+        }
+      });
+
+      // Initial render
+      updateHeaderIndicators(currentSort.key);
+      sortRows(currentSort.key);
+      render();
+    })();
+  </script>
+  </div>
 </div>
 {% endblock %}

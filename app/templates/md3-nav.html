@@ -30,8 +30,8 @@
   /* Scrolled-Zustand der Navigationsleiste */
   .md-nav-container.scrolled {
     height: 56px; /* Kompaktere Höhe beim Scrollen */
-    width: calc(100% - 110px); /* Deutlich schmaler im gescrollten Zustand */
-    max-width: 900px; /* Maximale Breite begrenzen */
+    width: calc(100% - 50px); /* Weniger Platzreduktion für mehr Icons */
+    max-width: 1500px; /* Noch größere Breite für alle Icons */
     margin: 0 auto; /* Zentrieren */
     left: 0; 
     right: 0;
@@ -45,10 +45,11 @@
     display: flex;
     align-items: center;
     height: var(--md-sys-spacing-unit-7x); /* 56px */
-    padding: 0;
-    max-width: 900px; /* Erhöhte Breite für vollständige Icon-Sichtbarkeit */
+    padding: 0 12px; /* Mehr Padding für breiteren Look */
+    max-width: 1500px; /* Deutlich breiter für alle Icons */
     margin: 0 auto;
     justify-content: center;
+    width: 100%;
   }
 
   .md-nav-title {
@@ -63,12 +64,12 @@
   .md-nav-sections {
     display: flex;
     overflow-x: auto;
-    flex-grow: 0;
-    justify-content: center;
-    margin: 0 auto;
+    flex-grow: 1; /* Nimmt verfügbaren Platz ein */
+    justify-content: flex-start;
+    margin: 0;
     scrollbar-width: none;
-    width: 100%;
-    max-width: 640px;
+    align-items: center;
+    gap: 0; /* Kein zusätzlicher Abstand zwischen Items */
   }
 
   .md-nav-sections::-webkit-scrollbar {
@@ -79,7 +80,8 @@
   .md-nav-tab {
     color: #585E71; /* Farbe aus dem Screenshot für inaktive Tabs */
     height: 56px;
-    width: 95px; /* Optimale Breite für bessere Platznutzung */
+    width: 120px; /* Weitere Erhöhung für bessere Sichtbarkeit */
+    min-width: 120px; /* Mindestbreite garantieren */
     padding: var(--md-sys-spacing-unit-1x) var(--md-sys-spacing-unit-0-5x);
     display: flex;
     flex-direction: column;
@@ -89,12 +91,18 @@
     position: relative;
     transition: all var(--md-sys-motion-duration-short4); /* 200ms */
     font-family: 'Roboto', sans-serif; /* Explizite Schriftart */
-    font-size: 12px; /* Exakte Schriftgröße aus Screenshot */
+    font-size: 11px; /* Etwas kleinere Schrift für mehr Platz */
     font-weight: 500;
     letter-spacing: 0.1px;
     text-transform: none;
-    line-height: 16px;
+    line-height: 14px; /* Angepasste Zeilenhöhe */
     cursor: pointer;
+    box-sizing: border-box;
+    flex-shrink: 0; /* Verhindert Schrumpfen der Tabs */
+    margin: 0;
+    border: none;
+    background: none;
+    outline: none;
   }
   
   /* Style für den Tab-Text-Label */
@@ -155,12 +163,51 @@
     border: none;
     background: none;
     outline: none;
+    position: relative;
+  }
+
+  /* Sicherstellen, dass Dropdown-Container dieselben Dimensionen haben */
+  .md-nav-dropdown.md-nav-tab {
+    height: 56px;
+    width: 95px;
+    min-width: 95px;
+    max-width: 95px;
+    padding: var(--md-sys-spacing-unit-1x) var(--md-sys-spacing-unit-0-5x);
+    box-sizing: border-box;
+    margin: 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    outline: none;
   }
   
   /* Hover-Effekt für alle Navigation-Tab-Trigger */
   .md-nav-tab-trigger:hover {
     color: #1E1B16; /* Aktive Textfarbe beim Hover */
     text-decoration: none;
+  }
+
+  /* Aktiver Zustand für Navigation-Tab-Trigger (wenn Dropdown geöffnet) */
+  .md-nav-dropdown.is-active .md-nav-tab-trigger {
+    color: #1E1B16; /* Aktive Textfarbe */
+    height: 56px;
+    width: 95px;
+    min-width: 95px;
+    max-width: 95px;
+    padding: var(--md-sys-spacing-unit-1x) var(--md-sys-spacing-unit-0-5x);
+    box-sizing: border-box;
+    margin: 0;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
   }
   
   /* Verbesserte Badge-Formatierung für Benachrichtigungen */
@@ -334,7 +381,8 @@
     right: 0px;
     background-color: #B3261E; /* MD3 Error Farbe (md.sys.color.error) */
     color: white;
-    font-family: var(--md-sys-typescale-label-small-font-family-name);
+    font-family: var(--md-ref-typeface-plain);
+    font-weight: var(--md-ref-typeface-weight-medium);
     font-size: 11px; /* Kleinere Schrift für Badge */
     font-weight: 500;
     height: 16px; /* 16dp gemäß MD3 Spec */
@@ -407,9 +455,10 @@
   }
   
   /* Spezifischere Selektoren für bessere CSS-Spezifität */
-  /* Dropdown für Navigations-Tabs (Inventur, Bestellung) */
+  /* Dropdown für Navigations-Tabs (Inventur, Bestellung, Ausleihen) */
   #inventory-dropdown .md-dropdown-content,
-  #orders-dropdown .md-dropdown-content {
+  #orders-dropdown .md-dropdown-content,
+  #loans-dropdown .md-dropdown-content {
     top: 56px; /* Direkt unter dem Tab */
     left: 0;
     width: 280px;
@@ -629,6 +678,18 @@
           <span class="md-nav-tab-label">Alle Assets</span>
         </a>
 
+        <!-- Kategorien -->
+        <a href="{{ url_for('md3_categories.categories') }}" class="md-nav-tab">
+          <span class="material-symbols-outlined">category</span>
+          <span class="md-nav-tab-label">Kategorien</span>
+        </a>
+
+        <!-- Hersteller -->
+        <a href="{{ url_for('md3_manufacturers.manufacturers') }}" class="md-nav-tab">
+          <span class="material-symbols-outlined">precision_manufacturing</span>
+          <span class="md-nav-tab-label">Hersteller</span>
+        </a>
+
         <!-- Standorte mit Dropdown und direkter Navigation -->
         <div class="md-nav-dropdown md-nav-tab" id="locations-dropdown">
           <a href="{{ url_for('md3_locations') }}" class="md-nav-tab-trigger" id="locations-dropdown-toggle">
@@ -653,6 +714,10 @@
             <a href="#" onclick="toggleView()" class="md-dropdown-item">
               <span class="material-symbols-outlined">grid_view</span>
               Ansicht wechseln
+            </a>
+            <a href="{{ url_for('main.location_tenders') }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">description</span>
+              Standortausschreibung
             </a>
           </div>
         </div>
@@ -689,7 +754,7 @@
           </div>
           <div class="md-dropdown-content" id="orders-dropdown-content">
             <div class="md-dropdown-section">Bestellung</div>
-            <a href="{{ url_for('md3_order.wizard_start') }}" class="md-dropdown-item">
+            <a href="{{ url_for('md3_order.wizard_step1') }}" class="md-dropdown-item">
               <span class="material-symbols-outlined">add_shopping_cart</span>
               Neue Bestellung
             </a>
@@ -709,8 +774,32 @@
           </div>
         </div>
         
+        <!-- Ausleihen mit Dropdown -->
+        <div class="md-nav-dropdown md-nav-tab" id="loans-dropdown">
+          <div class="md-nav-tab-trigger" id="loans-dropdown-toggle">
+            <span class="material-symbols-outlined">assignment_return</span>
+            <span class="md-nav-tab-label">Ausleihen</span>
+          </div>
+          <div class="md-dropdown-content" id="loans-dropdown-content">
+            <div class="md-dropdown-section">Ausleihen</div>
+            <a href="{{ url_for('main.md3_loans_overview') }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">list</span>
+              Aktive Ausleihen
+            </a>
+            <a href="{{ url_for('main.md3_multi_loan') }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">inventory</span>
+              Sammelausleihe
+            </a>
+            <div class="md-dropdown-divider"></div>
+            <a href="{{ url_for('main.md3_loans_history') }}" class="md-dropdown-item">
+              <span class="material-symbols-outlined">history</span>
+              Ausleihhistorie
+            </a>
+          </div>
+        </div>
+        
         <!-- Lieferanten -->
-        <a href="#" class="md-nav-tab">
+        <a href="{{ url_for('suppliers.supplier_list', md3=1) }}" class="md-nav-tab">
           <span class="material-symbols-outlined">local_shipping</span>
           <span class="md-nav-tab-label">Lieferanten</span>
         </a>
@@ -738,12 +827,11 @@
           <span class="md-badge large">8</span>
           <div class="md-dropdown-content">
             <div class="md-dropdown-section">Nachrichten</div>
-            <a href="#" class="md-dropdown-item">
+            <a href="{{ url_for('messages.inbox', md3=1) }}" class="md-dropdown-item">
               <span class="material-symbols-outlined">mail</span>
               Nachrichten
             </a>
-            <div class="md-dropdown-divider"></div>
-            <a href="#" class="md-dropdown-item">
+            <a href="#" onclick="openMD3Chat(); return false;" class="md-dropdown-item">
               <span class="material-symbols-outlined">chat</span>
               Livechat öffnen
             </a>
@@ -759,49 +847,53 @@
         </div>
         
         <!-- Admin Settings (if allowed) -->
-        {% if has_permission(current_user, 'manage_users') or has_permission(current_user, 'manage_roles') or has_permission(current_user, 'backup_data') or has_permission(current_user, 'view_changelog') or has_permission(current_user, 'view_asset_log') %}
+        {% if current_user.is_authenticated and (current_user.role and current_user.role.name == 'Admin' or has_permission(current_user, 'manage_users') or has_permission(current_user, 'manage_roles') or has_permission(current_user, 'backup_data') or has_permission(current_user, 'view_changelog') or has_permission(current_user, 'view_asset_log')) %}
           <div class="md-nav-dropdown md-action-item" id="admin-dropdown">
             <md-icon-button id="admin-dropdown-toggle" aria-label="Admin Panel" style="--md-icon-button-icon-color: var(--md-sys-color-on-primary);">
               <span class="material-symbols-outlined">admin_panel_settings</span>
             </md-icon-button>
             <div class="md-dropdown-content">
               <div class="md-dropdown-section">Administration</div>
-              {% if has_permission(current_user, 'manage_users') %}
-                <a href="{{ url_for('admin.user_management') }}" class="md-dropdown-item">
+              {% if current_user.role and current_user.role.name == 'Admin' or has_permission(current_user, 'manage_users') %}
+                <a href="{{ url_for('admin.user_management', md3=1) }}" class="md-dropdown-item">
                   <span class="material-symbols-outlined">group</span>
                   Benutzer verwalten
                 </a>
               {% endif %}
               
-              {% if has_permission(current_user, 'manage_roles') %}
-                <a href="{{ url_for('admin.role_management') }}" class="md-dropdown-item">
+              {% if current_user.role and current_user.role.name == 'Admin' or has_permission(current_user, 'manage_roles') %}
+                <a href="{{ url_for('admin.role_management', md3=1) }}" class="md-dropdown-item">
                   <span class="material-symbols-outlined">manage_accounts</span>
                   Rollen & Rechte
                 </a>
+                <a href="{{ url_for('admin.permissions_matrix', md3=1) }}" class="md-dropdown-item">
+                  <span class="material-symbols-outlined">grid_view</span>
+                  Rechte-Matrix
+                </a>
               {% endif %}
               
-              {% if has_permission(current_user, 'backup_data') %}
-                <a href="{{ url_for('admin.backup_restore') }}" class="md-dropdown-item">
+              {% if current_user.role and current_user.role.name == 'Admin' or has_permission(current_user, 'backup_data') %}
+                <a href="{{ url_for('admin.backup_restore', md3=1) }}" class="md-dropdown-item">
                   <span class="material-symbols-outlined">cloud_download</span>
                   Backup & Wiederherstellung
                 </a>
               {% endif %}
               
-              {% if has_permission(current_user, 'view_changelog') %}
-                <a href="{{ url_for('admin.changelog') }}" class="md-dropdown-item">
+              {% if current_user.role and current_user.role.name == 'Admin' or has_permission(current_user, 'view_changelog') %}
+                <a href="{{ url_for('admin.changelog', md3=1) }}" class="md-dropdown-item">
                   <span class="material-symbols-outlined">history</span>
                   Änderungshistorie
                 </a>
               {% endif %}
               
-              {% if has_permission(current_user, 'view_asset_log') %}
-                <a href="{{ url_for('admin.asset_log') }}" class="md-dropdown-item">
+              {% if current_user.role and current_user.role.name == 'Admin' or has_permission(current_user, 'view_asset_log') %}
+                <a href="{{ url_for('admin.asset_log', md3=1) }}" class="md-dropdown-item">
                   <span class="material-symbols-outlined">receipt_long</span>
                   Asset Protokoll
                 </a>
               {% endif %}
               
-              {% if has_permission(current_user, 'import_csv') %}
+              {% if current_user.role and current_user.role.name == 'Admin' or has_permission(current_user, 'import_csv') %}
                 <a href="#" class="md-dropdown-item">
                   <span class="material-symbols-outlined">file_upload</span>
                   CSV Import
@@ -817,7 +909,7 @@
             <span class="material-symbols-outlined">person</span>
           </md-icon-button>
           <div class="md-dropdown-content">
-            <a href="#" class="md-dropdown-item">
+            <a href="{{ url_for('profile.profile', md3=1) }}" class="md-dropdown-item">
               <span class="material-symbols-outlined">account_circle</span>
               Mein Profil
             </a>
@@ -826,14 +918,14 @@
               Einstellungen
             </a>
             <div class="md-dropdown-divider"></div>
-            <a href="{{ url_for('auth.logout') }}" class="md-dropdown-item">
+            <a href="{{ url_for('auth.logout', md3=1) }}" class="md-dropdown-item">
               <span class="material-symbols-outlined">logout</span>
               Abmelden
             </a>
           </div>
         </div>
       {% else %}
-        <md-filled-button href="{{ url_for('auth.login') }}">
+        <md-filled-button href="{{ url_for('auth.login', md3=1) }}">
           <span class="material-symbols-outlined" slot="icon">login</span>
           Anmelden
         </md-filled-button>
@@ -943,7 +1035,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!dropdown) return;
     
     // Toggle-Element im Dropdown finden
-    const toggle = dropdown.querySelector('.md-nav-tab-trigger, #admin-dropdown-toggle, #user-dropdown-toggle, #inventory-dropdown-toggle, #orders-dropdown-toggle, #messages-dropdown-toggle');
+    const toggle = dropdown.querySelector('.md-nav-tab-trigger, #admin-dropdown-toggle, #user-dropdown-toggle, #inventory-dropdown-toggle, #orders-dropdown-toggle, #loans-dropdown-toggle, #messages-dropdown-toggle');
     if (!toggle) return;
     
     // Aktiviere Dropdown-Status
@@ -975,7 +1067,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Event-Listener für alle Dropdown-Elemente (Admin, User, Inventur, Bestellung) mit Hybrid-Aktivierung
   dropdowns.forEach(dropdown => {
     // Toggle-Element im Dropdown finden
-    const toggle = dropdown.querySelector('.md-nav-tab-trigger, #admin-dropdown-toggle, #user-dropdown-toggle, #inventory-dropdown-toggle, #orders-dropdown-toggle, #messages-dropdown-toggle');
+    const toggle = dropdown.querySelector('.md-nav-tab-trigger, #admin-dropdown-toggle, #user-dropdown-toggle, #inventory-dropdown-toggle, #orders-dropdown-toggle, #loans-dropdown-toggle, #messages-dropdown-toggle');
     
     // 1. Hover-Verhalten (mouseenter)
     dropdown.addEventListener('mouseenter', function() {

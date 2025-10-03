@@ -1,0 +1,545 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+  .md3-admin-container {
+    max-width: 800px;
+    margin: 4rem auto 2rem auto;
+    padding: 0 1rem;
+  }
+
+  .md3-form-card {
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: 28px;
+    box-shadow: var(--md-sys-elevation-1);
+    overflow: hidden;
+  }
+
+  .md3-form-header {
+    background: linear-gradient(135deg, var(--md-sys-color-primary) 0%, var(--md-sys-color-primary-container) 100%);
+    color: var(--md-sys-color-on-primary);
+    padding: 2rem;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .md3-form-title {
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin: 0;
+  }
+
+  .md3-form-body {
+    padding: 2rem;
+  }
+
+  .md3-field-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .md3-field-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .md3-field {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .md3-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface-variant);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .md3-input, .md3-select {
+    background: var(--md-sys-color-surface-container-highest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 12px;
+    padding: 1rem;
+    font-size: 1rem;
+    color: var(--md-sys-color-on-surface);
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .md3-input:focus, .md3-select:focus {
+    outline: none;
+    border-color: var(--md-sys-color-primary);
+    box-shadow: 0 0 0 2px var(--md-sys-color-primary-container);
+  }
+
+  .md3-input.error, .md3-select.error {
+    border-color: var(--md-sys-color-error);
+    box-shadow: 0 0 0 2px var(--md-sys-color-error-container);
+  }
+
+  .md3-checkbox-group {
+    background: var(--md-sys-color-surface-container-highest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 12px;
+    padding: 1rem;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .md3-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .md3-checkbox-item:hover {
+    background: var(--md-sys-color-surface-container-low);
+  }
+
+  .md3-checkbox-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .md3-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--md-sys-color-outline);
+    border-radius: 4px;
+    background: var(--md-sys-color-surface);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+  }
+
+  .md3-checkbox:checked {
+    background: var(--md-sys-color-primary);
+    border-color: var(--md-sys-color-primary);
+  }
+
+  .md3-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--md-sys-color-on-primary);
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  .md3-checkbox-label {
+    font-size: 0.875rem;
+    color: var(--md-sys-color-on-surface);
+    cursor: pointer;
+    flex: 1;
+  }
+
+  .md3-form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .md3-btn {
+    padding: 0 1.5rem;
+    height: 48px;
+    border: none;
+    border-radius: 24px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .md3-btn-primary {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+  }
+
+  .md3-btn-primary:hover {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    box-shadow: var(--md-sys-elevation-2);
+  }
+
+  .md3-btn-secondary {
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+  }
+
+  .md3-btn-secondary:hover {
+    background: var(--md-sys-color-secondary);
+    color: var(--md-sys-color-on-secondary);
+    box-shadow: var(--md-sys-elevation-2);
+  }
+
+  .md3-error-message {
+    font-size: 0.75rem;
+    color: var(--md-sys-color-error);
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .md3-help-text {
+    font-size: 0.75rem;
+    color: var(--md-sys-color-on-surface-variant);
+    margin-top: 0.25rem;
+  }
+
+  @media (max-width: 768px) {
+    .md3-admin-container {
+      padding: 0 0.5rem;
+      margin: 2rem auto 1rem auto;
+    }
+
+    .md3-form-body {
+      padding: 1.5rem;
+    }
+
+    .md3-form-header {
+      padding: 1.5rem;
+    }
+
+    .md3-form-title {
+      font-size: 1.25rem;
+    }
+
+    .md3-form-actions {
+      flex-direction: column-reverse;
+    }
+
+    .md3-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- MD3 Navigation -->
+{% include 'md3-nav.html' %}
+
+<div class="md3-admin-container">
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="md3-flash-messages">
+        {% for category, message in messages %}
+          <div class="md3-flash-message md3-flash-{{ category }}">
+            <span class="material-symbols-outlined md3-flash-icon">
+              {% if category == 'error' %}error{% elif category == 'warning' %}warning{% elif category == 'success' %}check_circle{% else %}info{% endif %}
+            </span>
+            <span class="md3-flash-text">{{ message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Add User Form Card -->
+  <div class="md3-form-card">
+    <!-- Form Header -->
+    <div class="md3-form-header">
+      <span class="material-symbols-outlined">person_add</span>
+      <h1 class="md3-form-title">Neuen Benutzer hinzufügen</h1>
+    </div>
+
+    <!-- Form Body -->
+    <div class="md3-form-body">
+      <form method="POST" class="md3-form" id="add-user-form">
+        {{ form.hidden_tag() }}
+
+        <!-- Username Field -->
+        <div class="md3-field-group">
+          <div class="md3-field">
+            <label for="username" class="md3-label">
+              <span class="material-symbols-outlined">person</span>
+              Benutzername
+            </label>
+            {{ form.username(class="md3-input", id="username", placeholder="Benutzername eingeben") }}
+            {% if form.username.errors %}
+              <div class="md3-error-message">
+                <span class="material-symbols-outlined">error</span>
+                {{ form.username.errors[0] }}
+              </div>
+            {% endif %}
+            <div class="md3-help-text">Der Benutzername muss eindeutig sein</div>
+          </div>
+        </div>
+
+        <!-- Email Field -->
+        <div class="md3-field-group">
+          <div class="md3-field">
+            <label for="email" class="md3-label">
+              <span class="material-symbols-outlined">mail</span>
+              E-Mail-Adresse
+            </label>
+            {{ form.email(class="md3-input", id="email", placeholder="email@beispiel.de") }}
+            {% if form.email.errors %}
+              <div class="md3-error-message">
+                <span class="material-symbols-outlined">error</span>
+                {{ form.email.errors[0] }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Password Field -->
+        <div class="md3-field-group">
+          <div class="md3-field">
+            <label for="password" class="md3-label">
+              <span class="material-symbols-outlined">lock</span>
+              Passwort
+            </label>
+            {{ form.password(class="md3-input", id="password", placeholder="Sicheres Passwort eingeben") }}
+            {% if form.password.errors %}
+              <div class="md3-error-message">
+                <span class="material-symbols-outlined">error</span>
+                {{ form.password.errors[0] }}
+              </div>
+            {% endif %}
+            <div class="md3-help-text">Mindestens 8 Zeichen, Groß- und Kleinbuchstaben, Zahlen</div>
+          </div>
+        </div>
+
+        <!-- Confirm Password Field -->
+        <div class="md3-field-group">
+          <div class="md3-field">
+            <label for="confirm_password" class="md3-label">
+              <span class="material-symbols-outlined">lock_reset</span>
+              Passwort bestätigen
+            </label>
+            {{ form.confirm_password(class="md3-input", id="confirm_password", placeholder="Passwort wiederholen") }}
+            {% if form.confirm_password.errors %}
+              <div class="md3-error-message">
+                <span class="material-symbols-outlined">error</span>
+                {{ form.confirm_password.errors[0] }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Vorname Field -->
+        <div class="md3-field-group">
+          <div class="md3-field">
+            <label for="vorname" class="md3-label">
+              <span class="material-symbols-outlined">badge</span>
+              Vorname
+            </label>
+            {{ form.vorname(class="md3-input", id="vorname", placeholder="Vorname") }}
+            {% if form.vorname.errors %}
+              <div class="md3-error-message">
+                <span class="material-symbols-outlined">error</span>
+                {{ form.vorname.errors[0] }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Nachname Field -->
+        <div class="md3-field-group">
+          <div class="md3-field">
+            <label for="nachname" class="md3-label">
+              <span class="material-symbols-outlined">badge</span>
+              Nachname
+            </label>
+            {{ form.nachname(class="md3-input", id="nachname", placeholder="Nachname") }}
+            {% if form.nachname.errors %}
+              <div class="md3-error-message">
+                <span class="material-symbols-outlined">error</span>
+                {{ form.nachname.errors[0] }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Role Field -->
+        <div class="md3-field-group">
+          <div class="md3-field">
+            <label for="role" class="md3-label">
+              <span class="material-symbols-outlined">manage_accounts</span>
+              Rolle
+            </label>
+            {{ form.role(class="md3-input", id="role") }}
+            {% if form.role.errors %}
+              <div class="md3-error-message">
+                <span class="material-symbols-outlined">error</span>
+                {{ form.role.errors[0] }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Email Field -->
+        <div class="md3-field-group">
+          <div class="md3-field">
+            <label for="email" class="md3-label">
+              <span class="material-symbols-outlined">email</span>
+              E-Mail
+            </label>
+            {{ form.email(class="md3-input", id="email", placeholder="E-Mail-Adresse") }}
+            {% if form.email.errors %}
+              <div class="md3-error-message">
+                <span class="material-symbols-outlined">error</span>
+                {{ form.email.errors[0] }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Profile Image Field -->
+        <div class="md3-field-group">
+          <div class="md3-field">
+            <label for="profile_image" class="md3-label">
+              <span class="material-symbols-outlined">account_circle</span>
+              Profilbild
+            </label>
+            {{ form.profile_image(class="md3-input", id="profile_image") }}
+            {% if form.profile_image.errors %}
+              <div class="md3-error-message">
+                <span class="material-symbols-outlined">error</span>
+                {{ form.profile_image.errors[0] }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Street Field -->
+        <div class="md3-field-group">
+          <div class="md3-field">
+            <label for="street" class="md3-label">
+              <span class="material-symbols-outlined">location_on</span>
+              Straße
+            </label>
+            {{ form.street(class="md3-input", id="street", placeholder="Straße") }}
+            {% if form.street.errors %}
+              <div class="md3-error-message">
+                <span class="material-symbols-outlined">error</span>
+                {{ form.street.errors[0] }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Postal Code Field -->
+        <div class="md3-field-group">
+          <div class="md3-field">
+            <label for="postal_code" class="md3-label">
+              <span class="material-symbols-outlined">pin_drop</span>
+              PLZ
+            </label>
+            {{ form.postal_code(class="md3-input", id="postal_code", placeholder="PLZ") }}
+            {% if form.postal_code.errors %}
+              <div class="md3-error-message">
+                <span class="material-symbols-outlined">error</span>
+                {{ form.postal_code.errors[0] }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- City Field -->
+        <div class="md3-field-group">
+          <div class="md3-field">
+            <label for="city" class="md3-label">
+              <span class="material-symbols-outlined">location_city</span>
+              Stadt
+            </label>
+            {{ form.city(class="md3-input", id="city", placeholder="Stadt") }}
+            {% if form.city.errors %}
+              <div class="md3-error-message">
+                <span class="material-symbols-outlined">error</span>
+                {{ form.city.errors[0] }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Phone Field -->
+        <div class="md3-field-group">
+          <div class="md3-field">
+            <label for="phone" class="md3-label">
+              <span class="material-symbols-outlined">phone</span>
+              Telefon
+            </label>
+            {{ form.phone(class="md3-input", id="phone", placeholder="Telefon") }}
+            {% if form.phone.errors %}
+              <div class="md3-error-message">
+                <span class="material-symbols-outlined">error</span>
+                {{ form.phone.errors[0] }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="md3-form-actions">
+          <a href="{{ url_for('admin.user_management', md3=1) }}" class="md3-btn md3-btn-secondary">
+            <span class="material-symbols-outlined">arrow_back</span>
+            Abbrechen
+          </a>
+          <button type="submit" class="md3-btn md3-btn-primary">
+            <span class="material-symbols-outlined">person_add</span>
+            Benutzer erstellen
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Form validation
+document.getElementById('add-user-form').addEventListener('submit', function(e) {
+  const password = document.getElementById('password').value;
+  const confirmPassword = document.getElementById('confirm_password').value;
+  
+  if (password !== confirmPassword) {
+    e.preventDefault();
+    alert('Passwörter stimmen nicht überein!');
+    return false;
+  }
+  
+  if (password.length < 8) {
+    e.preventDefault();
+    alert('Passwort muss mindestens 8 Zeichen lang sein!');
+    return false;
+  }
+});
+
+// Real-time password confirmation validation
+document.getElementById('confirm_password').addEventListener('input', function() {
+  const password = document.getElementById('password').value;
+  const confirmPassword = this.value;
+  
+  if (password !== confirmPassword && confirmPassword.length > 0) {
+    this.classList.add('error');
+  } else {
+    this.classList.remove('error');
+  }
+});
+</script>
+{% endblock %}

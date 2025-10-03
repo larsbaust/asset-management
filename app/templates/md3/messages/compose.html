@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+
+{% block head %}
+  {{ super() }}
+  <style>
+    .md3-page { padding: 24px; padding-top: 80px; }
+    .md3-container { max-width: 800px; margin: 0 auto; }
+    
+    .header { 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      margin-bottom: 24px; 
+    }
+    
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
+      color: var(--md-sys-color-on-surface);
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      text-decoration: none;
+    }
+    
+    .back-button:hover {
+      background: var(--md-sys-color-surface-container-highest);
+    }
+    
+    .title { 
+      font: var(--md-sys-typescale-headline-small-font); 
+      color: var(--md-sys-color-on-surface); 
+    }
+    
+    .compose-form {
+      background: var(--md-sys-color-surface);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--md-sys-elevation-level2);
+    }
+    
+    .form-field {
+      margin-bottom: 24px;
+    }
+    
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font: var(--md-sys-typescale-body-medium-font);
+      color: var(--md-sys-color-on-surface);
+      font-weight: 500;
+    }
+    
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--md-sys-color-outline);
+      border-radius: 12px;
+      background: var(--md-sys-color-surface-container-highest);
+      color: var(--md-sys-color-on-surface);
+      font: var(--md-sys-typescale-body-large-font);
+      box-sizing: border-box;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--md-sys-color-primary);
+      box-shadow: 0 0 0 1px var(--md-sys-color-primary);
+    }
+    
+    .form-textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    
+    .file-input-container {
+      position: relative;
+      display: inline-block;
+      cursor: pointer;
+      width: 100%;
+    }
+    
+    .file-input {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    
+    .file-input-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border: 2px dashed var(--md-sys-color-outline);
+      border-radius: 12px;
+      background: var(--md-sys-color-surface-container);
+      color: var(--md-sys-color-on-surface-variant);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .file-input-label:hover {
+      border-color: var(--md-sys-color-primary);
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+    }
+    
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 32px;
+    }
+    
+    .md3-button {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 24px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      white-space: nowrap;
+      font: var(--md-sys-typescale-label-large-font);
+      transition: all 0.2s ease;
+    }
+    
+    .md3-button-filled {
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+    }
+    
+    .md3-button-filled:hover {
+      background: var(--md-sys-color-primary-hover);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
+    }
+    
+    .md3-button-text {
+      background: transparent;
+      color: var(--md-sys-color-primary);
+    }
+    
+    .md3-button-text:hover {
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+    }
+    
+    /* Flash messages */
+    .flash-messages {
+      margin-bottom: 16px;
+    }
+    
+    .flash-message {
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .flash-success {
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+    }
+    
+    .flash-error {
+      background: var(--md-sys-color-error-container);
+      color: var(--md-sys-color-on-error-container);
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  {% include 'md3-nav.html' %}
+  <div class="md3-page">
+    <div class="md3-container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-messages">
+            {% for category, message in messages %}
+              <div class="flash-message flash-{{ category }}">
+                <span class="material-symbols-outlined">
+                  {% if category == 'error' %}error{% else %}check_circle{% endif %}
+                </span>
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      
+      <div class="header">
+        <a href="{{ url_for('messages.inbox') }}{% if request.args.get('md3') %}?md3=1{% endif %}" class="back-button">
+          <span class="material-symbols-outlined">arrow_back</span>
+        </a>
+        <div class="title">Neue Nachricht</div>
+      </div>
+
+      <div class="compose-form">
+        <form method="post" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-field">
+            <label class="form-label">Empfänger</label>
+            <select name="recipient_id" class="form-select" required>
+              <option value="">-- Empfänger wählen --</option>
+              {% for user in users %}
+                <option value="{{ user.id }}">{{ user.vorname or user.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="form-field">
+            <label class="form-label">Betreff</label>
+            <input type="text" name="subject" class="form-input" required>
+          </div>
+          
+          <div class="form-field">
+            <label class="form-label">Nachricht</label>
+            <textarea name="body" class="form-textarea" required placeholder="Schreiben Sie hier Ihre Nachricht..."></textarea>
+          </div>
+          
+          <div class="form-field">
+            <label class="form-label">Anhang (optional)</label>
+            <div class="file-input-container">
+              <input type="file" name="attachment" class="file-input">
+              <div class="file-input-label">
+                <span class="material-symbols-outlined">attach_file</span>
+                <span>Datei auswählen oder hier ablegen</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <a href="{{ url_for('messages.inbox') }}{% if request.args.get('md3') %}?md3=1{% endif %}" class="md3-button md3-button-text">
+              Abbrechen
+            </a>
+            <button type="submit" class="md3-button md3-button-filled">
+              <span class="material-symbols-outlined">send</span>
+              Nachricht senden
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}

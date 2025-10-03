@@ -1,11 +1,27 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify, send_file
 from flask_login import login_required, current_user
-from .models import User, db, AssetLog
-from .forms import RegisterForm, RoleForm, EditUserForm
-
-# Decorator für Admin-Zugriff
+from .models import db, User, Asset, AssetLog, Order, Supplier, Location, Manufacturer, Assignment, InventorySession, InventoryItem, InventoryTeam, Role, Permission
+from .forms import EditUserForm, RoleForm, RegisterForm
+from datetime import datetime
+import os
+import sqlite3
+import shutil
+from sqlalchemy import text
+from flask_wtf import FlaskForm
+from wtforms import StringField, BooleanField, SubmitField
+from wtforms.validators import DataRequired
 from functools import wraps
 
+class ResetForm(FlaskForm):
+    confirmation_input = StringField('Bestätigung', validators=[DataRequired()])
+    reset_suppliers = BooleanField('Alle Lieferanten löschen', default=True)
+    reset_locations = BooleanField('Alle Standorte löschen')
+    reset_manufacturers = BooleanField('Alle Hersteller löschen', default=True)
+    reset_assignments = BooleanField('Alle Zuweisungen löschen')
+    reset_categories = BooleanField('Alle Kategorien löschen', default=True)
+    submit = SubmitField('Reset ausführen')
+
+# Decorator für Admin-Zugriff
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -21,25 +37,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Granularer Rechte-Decorator
-
-def permission_required(permission_name):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if not current_user.is_authenticated:
-                flash('Zugriff verweigert: Nicht eingeloggt!', 'danger')
-                return redirect(url_for('main.index'))
-            if not getattr(current_user, 'role', None):
-                flash('Zugriff verweigert: Keine Rolle zugewiesen! Wende dich an den Administrator.', 'danger')
-                return redirect(url_for('main.index'))
-            if not any(p.name == permission_name for p in current_user.role.permissions):
-                flash(f'Zugriff verweigert: Fehlendes Recht ({permission_name})', 'danger')
-                return redirect(url_for('main.index'))
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
-
 admin = Blueprint('admin', __name__, url_prefix='/admin')
 
 @admin.route('/permissions_matrix')
@@ -49,6 +46,9 @@ def permissions_matrix():
     from .models import Role, Permission
     roles = Role.query.order_by(Role.name).all()
     permissions = Permission.query.order_by(Permission.name).all()
+    md3 = request.values.get('md3', type=int)
+    if md3:
+        return render_template('md3/admin/permissions_matrix.html', roles=roles, permissions=permissions)
     return render_template('admin/permissions_matrix.html', roles=roles, permissions=permissions)
 
 
@@ -79,6 +79,9 @@ def permission_required(permission_name):
             if not current_user.is_authenticated or not current_user.role:
                 flash('Nicht eingeloggt oder keine Rolle!', 'danger')
                 return redirect(url_for('main.index'))
+            # Admin-Rolle hat automatisch ALLE Permissions
+            if current_user.role.name == 'Admin':
+                return f(*args, **kwargs)
             if not any(p.name == permission_name for p in current_user.role.permissions):
                 flash(f'Keine Berechtigung für: {permission_name}', 'danger')
                 return redirect(url_for('main.index'))
@@ -91,7 +94,10 @@ def permission_required(permission_name):
 @login_required
 @admin_required
 def asset_log():
+    md3 = request.values.get('md3', type=int)
     logs = AssetLog.query.order_by(AssetLog.timestamp.desc()).limit(200).all()
+    if md3:
+        return render_template('md3/admin/asset_log.html', logs=logs)
     return render_template('admin/asset_log.html', logs=logs)
 
 # Beispiel: Route für CSV-Import, geschützt durch das Recht 'import_csv'
@@ -158,11 +164,13 @@ def backup():
 @login_required
 @permission_required('restore_data')
 def restore():
+    md3 = request.values.get('md3', type=int)
     if request.method == 'POST':
         file = request.files.get('backup_zip')
         if not file or not file.filename.endswith('.zip'):
             flash('Bitte eine gültige ZIP-Datei auswählen.', 'danger')
-            return redirect(url_for('admin.restore'))
+            redirect_params = {'md3': 1} if md3 else {}
+            return redirect(url_for('admin.restore', **redirect_params))
         db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'instance', 'app.db')
         uploads_path = os.path.join(os.path.dirname(__file__), 'uploads')
         static_path = os.path.join(os.path.dirname(__file__), 'static')
@@ -211,13 +219,19 @@ def restore():
                     with zipf.open(member) as src, open(target, 'wb') as dst:
                         shutil.copyfileobj(src, dst)
         flash('Backup erfolgreich wiederhergestellt! Bitte Anwendung neu starten.', 'success')
-        return redirect(url_for('admin.backup_restore'))
+        redirect_params = {'md3': 1} if md3 else {}
+        return redirect(url_for('admin.backup_restore', **redirect_params))
+    if md3:
+        return render_template('md3/admin/backup_restore.html')
     return render_template('admin/backup_restore.html')
 
 @admin.route('/backup_restore')
 @login_required
 @admin_required
 def backup_restore():
+    md3 = request.values.get('md3', type=int)
+    if md3:
+        return render_template('md3/admin/backup_restore.html')
     return render_template('admin/backup_restore.html')
 
 
@@ -253,8 +267,11 @@ def reset_assets_database():
             'asset_log',           # Asset-Logs
             'inventory_item',      # Inventur-Positionen
             'loan',                # Leihverhältnisse
+            'multi_loan_asset',    # Multi-Leihverhältnisse Assets
+            'multi_loan',          # Multi-Leihverhältnisse
             'document',            # Dokumente (mit asset_id)
             'cost_entry',          # Kosteneinträge
+            'asset_assignments',   # Asset-Zuordnungen (Zuordnungstabelle)
             'asset_suppliers',     # Asset-Lieferanten (Zuordnungstabelle)
             'asset_manufacturers', # Asset-Hersteller (Zuordnungstabelle)
             'asset',               # Assets selbst
@@ -294,8 +311,11 @@ def reset_orders_database():
     try:
         # Tabellen, die gelöscht werden müssen (in Reihenfolge der Abhängigkeiten)
         tables = [
-            'order_item',     # Bestellpositionen
-            '"order"',       # Bestellungen selbst - mit Anführungszeichen, da SQL-Reserviertes Wort
+            'order_template_item', # Bestellvorlagen-Positionen
+            'order_template',      # Bestellvorlagen
+            'order_comment',       # Bestellkommentare
+            'order_item',          # Bestellpositionen
+            '"order"',            # Bestellungen selbst - mit Anführungszeichen, da SQL-Reserviertes Wort
         ]
         
         # Gelöschte Einträge zählen
@@ -327,8 +347,9 @@ def reset_inventory_database():
         # Tabellen, die gelöscht werden müssen (in Reihenfolge der Abhängigkeiten)
         # Hinweis: inventory_item wird bereits bei den Assets behandelt
         tables = [
-            'inventory_team',    # Inventur-Teams
-            'inventory_session', # Inventur-Sessions/Vorgänge
+            'inventory_team',     # Inventur-Teams
+            'inventory_session',  # Inventur-Sessions/Vorgänge (neue Tabelle)
+            'inventory_planning', # Inventur-Planungen (alte Tabelle - falls noch vorhanden)
         ]
         
         # Gelöschte Einträge zählen
@@ -357,29 +378,33 @@ def reset_inventory_database():
 def reset_suppliers_database():
     """Direkte SQL-Ausführung zum Löschen aller Lieferanten"""
     try:
-        # Tabellen, die gelöscht werden müssen
-        # Hinweis: asset_suppliers wird bereits bei den Assets behandelt
-        tables = ['supplier']
+        # Tabellen, die gelöscht werden müssen (in Reihenfolge der Abhängigkeiten)
+        # Erst referenzierende Tabellen, dann supplier selbst
+        tables_to_delete = [
+            'asset_suppliers',    # Many-to-Many Tabelle Asset <-> Supplier
+            'order_template',     # Bestellvorlagen mit supplier_id
+            '"order"',           # Bestellungen mit supplier_id (quoted: reserved keyword)
+            'supplier'           # Supplier-Tabelle selbst
+        ]
         
-        # Gelöschte Einträge zählen
         deleted = {}
+        for table in tables_to_delete:
+            # Zählen Sie die Zeilen vor dem Löschen
+            count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table}"))
+            count = count_result.fetchone()[0]
+            
+            if count > 0:
+                db.session.execute(text(f"DELETE FROM {table}"))
+                deleted[table] = count
         
-        # Daten löschen
-        for table in tables:
-            try:
-                result = db.session.execute(text(f"DELETE FROM {table}"))
-                deleted[table] = result.rowcount
-            except Exception as e:
-                db.session.rollback()
-                raise e
+        # Auto-Increment zurücksetzen (ohne Anführungszeichen für sqlite_sequence)
+        sequence_names = ['asset_suppliers', 'order_template', 'order', 'supplier']
+        for table_name in sequence_names:
+            db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table_name}'"))
         
-        # Auto-Increment-IDs zurücksetzen
-        for table in tables:
-            db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table}'"))
-        
-        # Änderungen speichern
         db.session.commit()
         return True, deleted
+        
     except Exception as e:
         db.session.rollback()
         return False, {}
@@ -447,27 +472,84 @@ def reset_assignments_database():
     """Direkte SQL-Ausführung zum Löschen aller Zuordnungen"""
     try:
         # Tabellen, die gelöscht werden müssen
-        tables = ['assignment']
+        tables_to_delete = [
+            'assignment'
+        ]
         
-        # Gelöschte Einträge zählen
         deleted = {}
+        for table in tables_to_delete:
+            count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table}"))
+            count = count_result.fetchone()[0]
+            
+            if count > 0:
+                db.session.execute(text(f"DELETE FROM {table}"))
+                deleted[table] = count
         
-        # Daten löschen
-        for table in tables:
-            try:
-                result = db.session.execute(text(f"DELETE FROM {table}"))
-                deleted[table] = result.rowcount
-            except Exception as e:
-                db.session.rollback()
-                raise e
-        
-        # Auto-Increment-IDs zurücksetzen
-        for table in tables:
+        # Auto-Increment zurücksetzen
+        for table in tables_to_delete:
             db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table}'"))
         
-        # Änderungen speichern
         db.session.commit()
         return True, deleted
+        
+    except Exception as e:
+        db.session.rollback()
+        return False, {}
+
+def reset_categories_database():
+    """Direkte SQL-Ausführung zum Löschen aller Kategorien"""
+    try:
+        # Tabellen, die gelöscht werden müssen
+        tables_to_delete = [
+            'category'
+        ]
+        
+        deleted = {}
+        for table in tables_to_delete:
+            # Zählen Sie die Zeilen vor dem Löschen
+            count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table}"))
+            count = count_result.fetchone()[0]
+            
+            if count > 0:
+                db.session.execute(text(f"DELETE FROM {table}"))
+                deleted[table] = count
+        
+        # Auto-Increment zurücksetzen
+        for table in tables_to_delete:
+            db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table}'"))
+        
+        db.session.commit()
+        return True, deleted
+        
+    except Exception as e:
+        db.session.rollback()
+        return False, {}
+
+def reset_cost_entries_database():
+    """Direkte SQL-Ausführung zum Löschen aller Kosteneinträge"""
+    try:
+        # Tabellen, die gelöscht werden müssen
+        tables_to_delete = [
+            'cost_entry'
+        ]
+        
+        deleted = {}
+        for table in tables_to_delete:
+            # Zählen Sie die Zeilen vor dem Löschen
+            count_result = db.session.execute(text(f"SELECT COUNT(*) FROM {table}"))
+            count = count_result.fetchone()[0]
+            
+            if count > 0:
+                db.session.execute(text(f"DELETE FROM {table}"))
+                deleted[table] = count
+        
+        # Auto-Increment zurücksetzen
+        for table in tables_to_delete:
+            db.session.execute(text(f"DELETE FROM sqlite_sequence WHERE name='{table}'"))
+        
+        db.session.commit()
+        return True, deleted
+        
     except Exception as e:
         db.session.rollback()
         return False, {}
@@ -476,23 +558,35 @@ def reset_assignments_database():
 @login_required
 @admin_required
 def reset_overview():
-    return render_template('admin/reset_data.html')
+    md3 = request.values.get('md3', type=int)
+    form = ResetForm()
+    if md3:
+        return render_template('md3/admin/reset_data.html', form=form)
+    return render_template('admin/reset_data.html', form=form)
 
 @admin.route('/reset/execute', methods=['POST'])
 @login_required
 @admin_required
 def execute_reset():
-    # Sicherheitsabfrage - überprüfen Sie, ob der Benutzer ein spezielles Feld ausgefüllt hat
-    confirmation = request.form.get('confirmation_text', '')
-    if confirmation != 'RESET':
-        flash('Der Reset wurde abgebrochen. Bitte geben Sie "RESET" ein, um zu bestätigen.', 'danger')
-        return redirect(url_for('admin.reset_overview'))
-        
-    # Optionale Reset-Optionen
-    reset_suppliers = 'reset_suppliers' in request.form
-    reset_locations = 'reset_locations' in request.form
-    reset_manufacturers = 'reset_manufacturers' in request.form
-    reset_assignments = 'reset_assignments' in request.form
+    md3 = request.values.get('md3', type=int)
+    form = ResetForm()
+    
+    if form.validate_on_submit():
+        # Sicherheitsabfrage - überprüfen Sie, ob der Benutzer ein spezielles Feld ausgefüllt hat
+        confirmation = form.confirmation_input.data
+        if confirmation.upper() != 'RESET BESTÄTIGEN':
+            flash('Der Reset wurde abgebrochen. Bitte geben Sie "RESET BESTÄTIGEN" ein, um zu bestätigen.', 'danger')
+            return redirect(url_for('admin.reset_overview', md3=1 if md3 else None))
+            
+        # Optionale Reset-Optionen
+        reset_suppliers = form.reset_suppliers.data
+        reset_locations = form.reset_locations.data
+        reset_manufacturers = form.reset_manufacturers.data
+        reset_assignments = form.reset_assignments.data
+        reset_categories = form.reset_categories.data
+    else:
+        flash('Formular-Validierung fehlgeschlagen. Bitte versuchen Sie es erneut.', 'danger')
+        return redirect(url_for('admin.reset_overview', md3=1 if md3 else None))
     
     # Backup erstellen
     backup_path = backup_database_for_reset()
@@ -508,7 +602,8 @@ def execute_reset():
         'suppliers': { 'success': True, 'deleted': {}, 'skipped': not reset_suppliers },
         'locations': { 'success': True, 'deleted': {}, 'skipped': not reset_locations },
         'manufacturers': { 'success': True, 'deleted': {}, 'skipped': not reset_manufacturers },
-        'assignments': { 'success': True, 'deleted': {}, 'skipped': not reset_assignments }
+        'assignments': { 'success': True, 'deleted': {}, 'skipped': not reset_assignments },
+        'categories': { 'success': True, 'deleted': {}, 'skipped': not reset_categories }
     }
     
     # Assets zurücksetzen
@@ -575,8 +670,31 @@ def execute_reset():
             results['assignments']['success'] = False
             results['assignments']['error'] = str(e)
     
+    # Optional: Kategorien zurücksetzen
+    if reset_categories:
+        try:
+            success, deleted = reset_categories_database()
+            results['categories']['success'] = success
+            results['categories']['deleted'] = deleted
+        except Exception as e:
+            results['categories']['success'] = False
+            results['categories']['error'] = str(e)
+    
+    # Kosteneinträge immer zurücksetzen (für Dashboard Charts)
+    results['cost_entries'] = { 'success': False, 'deleted': {} }
+    try:
+        success, deleted = reset_cost_entries_database()
+        results['cost_entries']['success'] = success
+        results['cost_entries']['deleted'] = deleted
+    except Exception as e:
+        results['cost_entries']['success'] = False
+        results['cost_entries']['error'] = str(e)
+    
     # Erfolg überprüfen - für optionale Tabellen nur prüfen wenn sie zurückgesetzt werden sollten
-    success = results['assets']['success'] and results['orders']['success'] and results['inventory']['success']
+    success = (results['assets']['success'] and 
+               results['orders']['success'] and 
+               results['inventory']['success'] and 
+               results['cost_entries']['success'])
     if reset_suppliers:
         success = success and results['suppliers']['success']
     if reset_locations:
@@ -585,12 +703,16 @@ def execute_reset():
         success = success and results['manufacturers']['success']
     if reset_assignments:
         success = success and results['assignments']['success']
+    if reset_categories:
+        success = success and results['categories']['success']
         
     if success:
         flash(f'Alle Daten wurden erfolgreich zurückgesetzt! Backup wurde erstellt: {results["backup"]}', 'success')
     else:
         flash('Es sind Fehler beim Zurücksetzen aufgetreten. Details finden Sie in den Ergebnissen.', 'warning')
     
+    if md3:
+        return render_template('md3/admin/reset_results.html', results=results)
     return render_template('admin/reset_results.html', results=results)
 
 @admin.route('/changelog', methods=['GET', 'POST'])
@@ -599,6 +721,7 @@ def execute_reset():
 def changelog():
     import os
     from app.utils import generate_ai_changelog
+    md3 = request.values.get('md3', type=int)
     changelog_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'CHANGELOG.md')
     changelog_text = ''
     ai_summary = None
@@ -619,7 +742,10 @@ def changelog():
         with open(changelog_path, 'w', encoding='utf-8') as f:
             f.write(request.form['ai_text'] + '\n\n' + changelog_text)
         flash('KI-Changelog wurde gespeichert.', 'success')
-        return redirect(url_for('admin.changelog'))
+        redirect_params = {'md3': 1} if md3 else {}
+        return redirect(url_for('admin.changelog', **redirect_params))
+    if md3:
+        return render_template('md3/admin/changelog.html', changelog_text=changelog_text, ai_summary=ai_summary)
     return render_template('admin/changelog.html', changelog_text=changelog_text, ai_summary=ai_summary)
 
 @admin.route('/changelog/generate', methods=['POST'])
@@ -627,9 +753,11 @@ def changelog():
 @admin_required
 def generate_changelog_route():
     from app.utils import generate_changelog
+    md3 = request.values.get('md3', type=int)
     msg = generate_changelog()
     flash(msg, 'success' if 'erfolgreich' in msg else 'danger')
-    return redirect(url_for('admin.changelog'))
+    redirect_params = {'md3': 1} if md3 else {}
+    return redirect(url_for('admin.changelog', **redirect_params))
 
 # --- Rollen & Rechte Verwaltung ---
 from .models import Role, Permission
@@ -658,13 +786,17 @@ def ensure_default_permissions():
 @admin_required
 def role_management():
     ensure_default_permissions()
+    md3 = request.values.get('md3', type=int)
     roles = Role.query.order_by(Role.id).all()
+    if md3:
+        return render_template('md3/admin/role_management.html', roles=roles)
     return render_template('admin/role_management.html', roles=roles)
 
 @admin.route('/roles/add', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def add_role():
+    md3 = request.values.get('md3', type=int)
     ensure_default_permissions()
     form = RoleForm()
     if form.validate_on_submit():
@@ -673,7 +805,9 @@ def add_role():
         db.session.add(role)
         db.session.commit()
         flash('Rolle erfolgreich angelegt.', 'success')
-        return redirect(url_for('admin.role_management'))
+        return redirect(url_for('admin.role_management', md3=1 if md3 else None))
+    if md3:
+        return render_template('md3/admin/edit_role.html', form=form, role=None)
     return render_template('admin/edit_role.html', form=form, role=None)
 
 @admin.route('/roles/edit/<int:role_id>', methods=['GET', 'POST'])
@@ -692,6 +826,9 @@ def edit_role(role_id):
         db.session.commit()
         flash('Rolle aktualisiert.', 'success')
         return redirect(url_for('admin.role_management'))
+    md3 = request.values.get('md3', type=int)
+    if md3:
+        return render_template('md3/admin/edit_role.html', form=form, role=role)
     return render_template('admin/edit_role.html', form=form, role=role)
 
 @admin.route('/roles/delete/<int:role_id>')
@@ -712,23 +849,30 @@ def delete_role(role_id):
 @login_required
 @admin_required
 def user_management():
+    md3 = request.values.get('md3', type=int)
     users = User.query.order_by(User.id).all()
+    if md3:
+        return render_template('md3/admin/user_management.html', users=users)
     return render_template('admin/user_management.html', users=users)
 
 @admin.route('/users/add', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def add_user():
+    md3 = request.values.get('md3', type=int)
     import os
     from werkzeug.utils import secure_filename
+    from werkzeug.datastructures import FileStorage
     form = RegisterForm()
     if form.validate_on_submit():
         if User.query.filter_by(username=form.username.data).first():
             flash('Benutzername bereits vergeben.', 'danger')
-            return render_template('admin/add_user.html', form=form)
+            template = 'md3/admin/add_user.html' if md3 else 'admin/add_user.html'
+            return render_template(template, form=form)
         if User.query.filter_by(email=form.email.data).first():
             flash('E-Mail-Adresse bereits vergeben.', 'danger')
-            return render_template('admin/add_user.html', form=form)
+            template = 'md3/admin/add_user.html' if md3 else 'admin/add_user.html'
+            return render_template(template, form=form)
         from .models import Role
         user = User(
             username=form.username.data,
@@ -743,7 +887,7 @@ def add_user():
         )
         user.set_password(form.password.data)
         # Profilbild speichern
-        if form.profile_image.data:
+        if form.profile_image.data and isinstance(form.profile_image.data, FileStorage) and form.profile_image.data.filename:
             filename = secure_filename(form.profile_image.data.filename)
             img_path = os.path.join('static/profile_images', filename)
             os.makedirs(os.path.dirname(img_path), exist_ok=True)
@@ -752,7 +896,9 @@ def add_user():
         db.session.add(user)
         db.session.commit()
         flash('Benutzer erfolgreich angelegt.', 'success')
-        return redirect(url_for('admin.user_management'))
+        return redirect(url_for('admin.user_management', md3=1 if md3 else None))
+    if md3:
+        return render_template('md3/admin/add_user.html', form=form)
     return render_template('admin/add_user.html', form=form)
 
 import secrets
@@ -763,6 +909,7 @@ from flask_mail import Message
 @admin_required
 def edit_user(user_id):
     from werkzeug.utils import secure_filename
+    from werkzeug.datastructures import FileStorage
     user = User.query.get_or_404(user_id)
     form = EditUserForm(obj=user)
     if request.method == 'GET':
@@ -782,7 +929,7 @@ def edit_user(user_id):
         if form.password.data:
             user.set_password(form.password.data)
         # Profilbild speichern
-        if form.profile_image.data:
+        if form.profile_image.data and isinstance(form.profile_image.data, FileStorage) and form.profile_image.data.filename:
             filename = secure_filename(form.profile_image.data.filename)
             img_path = os.path.join('static/profile_images', filename)
             os.makedirs(os.path.dirname(img_path), exist_ok=True)
@@ -792,6 +939,9 @@ def edit_user(user_id):
         flash('Benutzerdaten aktualisiert.', 'success')
         return redirect(url_for('admin.user_management'))
     form.password.data = ''
+    md3 = request.values.get('md3', type=int)
+    if md3:
+        return render_template('md3/admin/edit_user.html', form=form, user=user)
     return render_template('admin/edit_user.html', form=form, user=user)
 
 @admin.route('/users/delete/<int:user_id>')

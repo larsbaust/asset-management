@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+  .permissions-table-container {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  .permissions-table th:first-child {
+    width: 200px;
+    min-width: 200px;
+  }
+
+  .permissions-table th:not(:first-child) {
+    text-align: center;
+    min-width: 80px;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    height: 120px;
+    vertical-align: bottom;
+    position: relative;
+  }
+
+  .permission-cell {
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .permission-granted {
+    color: var(--md-sys-color-primary);
+    font-size: 1.5rem;
+  }
+
+  .permission-denied {
+    color: var(--md-sys-color-error);
+    font-size: 1.5rem;
+    opacity: 0.6;
+  }
+
+  .role-cell {
+    font-weight: 500;
+    background: var(--md-sys-color-surface-container-lowest);
+  }
+
+  .role-name {
+    font-size: 1rem;
+    color: var(--md-sys-color-on-surface);
+    margin-bottom: var(--md-sys-spacing-1);
+  }
+
+  .role-desc {
+    font-size: 0.875rem;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .legend {
+    display: flex;
+    gap: var(--md-sys-spacing-5);
+    margin-bottom: var(--md-sys-spacing-3);
+    padding: var(--md-sys-spacing-3);
+    background: var(--md-sys-color-surface-container-highest);
+    border-radius: var(--md-sys-shape-corner-medium);
+    align-items: center;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--md-sys-spacing-2);
+    font-size: 0.875rem;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  @media (max-width: 768px) {
+    .permissions-table th:not(:first-child) {
+      writing-mode: horizontal-tb;
+      text-orientation: initial;
+      height: auto;
+      min-width: 60px;
+      font-size: 0.75rem;
+    }
+
+    .legend {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--md-sys-spacing-2);
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- MD3 Navigation -->
+{% include 'md3-nav.html' %}
+
+<div class="md3-page">
+  <div class="md3-container" style="max-width: 1400px;">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="md3-flash-messages">
+          {% for category, message in messages %}
+            <div class="md3-flash-message md3-flash-{{ category }}">
+              <span class="material-symbols-outlined md3-flash-icon">
+                {% if category == 'error' %}error{% elif category == 'warning' %}warning{% elif category == 'success' %}check_circle{% else %}info{% endif %}
+              </span>
+              <span class="md3-flash-text">{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Page Header -->
+    <div class="md3-page-header">
+      <div class="md3-page-header-content">
+        <div class="md3-page-title-container">
+          <span class="material-symbols-outlined md3-page-icon">grid_view</span>
+          <h1 class="md3-headline-large">Rechte-Matrix</h1>
+        </div>
+        <p class="md3-body-medium" style="color: var(--md-sys-color-on-surface-variant);">Übersicht aller Rollen und deren zugewiesenen Berechtigungen</p>
+      </div>
+    </div>
+
+    <!-- Permissions Matrix -->
+    <div class="md3-card">
+      <!-- Legend -->
+      <div class="legend">
+        <div class="legend-item">
+          <span class="material-symbols-outlined permission-granted">check_circle</span>
+          Berechtigung vorhanden
+        </div>
+        <div class="legend-item">
+          <span class="material-symbols-outlined permission-denied">cancel</span>
+          Keine Berechtigung
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="permissions-table-container">
+        <table class="md3-table permissions-table">
+          <thead>
+            <tr>
+              <th>Rolle</th>
+              {% for perm in permissions %}
+                <th title="{{ perm.description or perm.name }}">{{ perm.name }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for role in roles %}
+              <tr>
+                <td class="role-cell">
+                  <div class="role-name">{{ role.name }}</div>
+                  {% if role.description %}
+                    <div class="role-desc">{{ role.description }}</div>
+                  {% endif %}
+                </td>
+                {% for perm in permissions %}
+                  <td class="permission-cell">
+                    {% if perm in role.permissions %}
+                      <span class="material-symbols-outlined permission-granted" title="Hat Berechtigung: {{ perm.name }}">check_circle</span>
+                    {% else %}
+                      <span class="material-symbols-outlined permission-denied" title="Keine Berechtigung: {{ perm.name }}">cancel</span>
+                    {% endif %}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Actions -->
+      <div class="md3-form-actions">
+        <a href="{{ url_for('admin.role_management', md3=1) }}" class="md3-button md3-button-outlined">
+          <span class="material-symbols-outlined">arrow_back</span>
+          Zurück zur Rollenverwaltung
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

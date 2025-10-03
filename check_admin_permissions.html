@@ -1,0 +1,10 @@
+<!-- Füge diesen Code temporär in die Navigation ein um zu debuggen -->
+<script>
+console.log('Admin-Icon sichtbar?', document.getElementById('admin-dropdown') !== null);
+console.log('Admin-Dropdown Element:', document.getElementById('admin-dropdown'));
+</script>
+
+<!-- ODER: Vereinfachte Admin-Icon Bedingung zum Testen -->
+<!-- Ersetze Zeile 850 in md3-nav.html mit: -->
+{% if current_user.is_authenticated %}
+  <!-- Dies zeigt das Admin-Icon immer an (nur zum Testen!) -->

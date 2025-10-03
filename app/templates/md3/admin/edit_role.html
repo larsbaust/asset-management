@@ -1,0 +1,354 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+  .permissions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--md-sys-spacing-4);
+    margin-top: var(--md-sys-spacing-3);
+  }
+
+  .permission-category-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--md-sys-spacing-3);
+    padding: var(--md-sys-spacing-4);
+    border-radius: var(--md-sys-shape-corner-large);
+    background: var(--md-sys-color-surface);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    box-shadow: var(--md-sys-elevation-level1);
+  }
+
+  .permission-category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--md-sys-spacing-2);
+  }
+
+  .permission-category-title {
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    display: flex;
+    align-items: center;
+    gap: var(--md-sys-spacing-2);
+  }
+
+  .permission-category-count {
+    font-size: 0.85rem;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .permission-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--md-sys-spacing-3);
+  }
+
+  .permission-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--md-sys-spacing-2);
+    padding: var(--md-sys-spacing-3);
+    border-radius: var(--md-sys-shape-corner-medium);
+    background: var(--md-sys-color-surface-container-lowest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .permission-item:hover {
+    background: var(--md-sys-color-surface-container-low);
+    border-color: var(--md-sys-color-primary);
+  }
+
+  .permission-item.selected {
+    background: var(--md-sys-color-primary-container);
+    border-color: var(--md-sys-color-primary);
+  }
+
+  .permission-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--md-sys-color-outline);
+    border-radius: 4px;
+    background: var(--md-sys-color-surface);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .permission-checkbox:checked {
+    background: var(--md-sys-color-primary);
+    border-color: var(--md-sys-color-primary);
+  }
+
+  .permission-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--md-sys-color-on-primary);
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  .permission-details {
+    flex: 1;
+  }
+
+  .permission-name {
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    margin-bottom: 0.25rem;
+    cursor: pointer;
+  }
+
+  .permission-description {
+    font-size: 0.875rem;
+    color: var(--md-sys-color-on-surface-variant);
+    line-height: 1.4;
+  }
+
+  .permissions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--md-sys-spacing-3);
+  }
+
+  .select-all-btn {
+    padding: var(--md-sys-spacing-2) var(--md-sys-spacing-3);
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: var(--md-sys-shape-corner-full);
+    background: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .select-all-btn:hover {
+    background: var(--md-sys-color-surface-container-high);
+  }
+
+  @media (max-width: 768px) {
+    .permissions-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- MD3 Navigation -->
+{% include 'md3-nav.html' %}
+
+<div class="md3-page">
+  <div class="md3-container">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="md3-flash-messages">
+          {% for category, message in messages %}
+            <div class="md3-flash-message md3-flash-{{ category }}">
+              <span class="material-symbols-outlined md3-flash-icon">
+                {% if category == 'error' %}error{% elif category == 'warning' %}warning{% elif category == 'success' %}check_circle{% else %}info{% endif %}
+              </span>
+              <span class="md3-flash-text">{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Page Header -->
+    <div class="md3-page-header">
+      <div class="md3-page-header-content">
+        <div class="md3-page-title-container">
+          <span class="material-symbols-outlined md3-page-icon">manage_accounts</span>
+          <h1 class="md3-headline-large">{{ 'Rolle bearbeiten' if role else 'Neue Rolle anlegen' }}</h1>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Role Form -->
+    <div class="md3-card">
+      <form method="POST" id="edit-role-form">
+        {{ form.hidden_tag() }}
+
+        <!-- Role Name Field -->
+        <div class="md3-form-group">
+          <label for="name" class="md3-form-label">
+            <span class="material-symbols-outlined">label</span>
+            Rollenname
+          </label>
+          {{ form.name(class="md3-form-input", id="name", placeholder="Name der Rolle") }}
+          {% if form.name.errors %}
+            <div class="md3-form-error">
+              <span class="material-symbols-outlined">error</span>
+              {{ form.name.errors[0] }}
+            </div>
+          {% endif %}
+          <div class="md3-form-helper">Ein eindeutiger Name für diese Rolle</div>
+        </div>
+
+        <!-- Role Description Field -->
+        <div class="md3-form-group">
+          <label for="description" class="md3-form-label">
+            <span class="material-symbols-outlined">description</span>
+            Beschreibung
+          </label>
+          {{ form.description(class="md3-form-textarea", id="description", placeholder="Beschreibung der Rolle und ihrer Aufgaben") }}
+          {% if form.description.errors %}
+            <div class="md3-form-error">
+              <span class="material-symbols-outlined">error</span>
+              {{ form.description.errors[0] }}
+            </div>
+          {% endif %}
+          <div class="md3-form-helper">Eine kurze Erklärung, wofür diese Rolle gedacht ist</div>
+        </div>
+
+        <!-- Permissions Section -->
+        <div class="md3-form-group">
+          <label class="md3-form-label">
+            <span class="material-symbols-outlined">security</span>
+            Berechtigungen
+          </label>
+          <div class="md3-card" style="background: var(--md-sys-color-surface-container-highest);">
+            <div class="permissions-header">
+              <span class="md3-form-helper">Wählen Sie die Berechtigungen für diese Rolle</span>
+              <div>
+                <button type="button" class="select-all-btn" id="select-all-btn">Alle auswählen</button>
+                <button type="button" class="select-all-btn" id="deselect-all-btn" style="margin-left: var(--md-sys-spacing-2);">Alle abwählen</button>
+              </div>
+            </div>
+            
+            <div class="permissions-grid">
+              {% for category, fields in form.grouped_permissions() %}
+              <div class="permission-category-card" data-category="{{ category }}">
+                <div class="permission-category-header">
+                  <span class="permission-category-title">
+                    <span class="material-symbols-outlined">folder</span>
+                    {{ category }}
+                  </span>
+                  <span class="permission-category-count">{{ fields|length }} Berechtigung{{ '' if fields|length == 1 else 'en' }}</span>
+                </div>
+                <div class="permission-list">
+                  {% for subfield in fields %}
+                    {% set perm_id = subfield.data %}
+                    <div class="permission-item" data-permission="{{ subfield.id }}">
+                      {{ subfield(class="permission-checkbox") }}
+                      <div class="permission-details">
+                        <div class="permission-name">{{ subfield.label.text }}</div>
+                        {% if form.permission_descriptions.get(perm_id) and form.permission_descriptions[perm_id] != subfield.label.text %}
+                          <div class="permission-description">{{ form.permission_descriptions[perm_id] }}</div>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="md3-form-actions">
+          <a href="{{ url_for('admin.role_management', md3=1) }}" class="md3-button md3-button-outlined">
+            <span class="material-symbols-outlined">arrow_back</span>
+            Abbrechen
+          </a>
+          <button type="submit" class="md3-button md3-button-filled">
+            <span class="material-symbols-outlined">save</span>
+            Rolle speichern
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Permission item click handling
+document.addEventListener('DOMContentLoaded', function() {
+  const permissionItems = document.querySelectorAll('.permission-item');
+  
+  permissionItems.forEach(item => {
+    const checkbox = item.querySelector('.permission-checkbox');
+    
+    // Click on item toggles checkbox
+    item.addEventListener('click', function(e) {
+      if (e.target === checkbox) return; // Don't double-toggle if clicking directly on checkbox
+      
+      checkbox.checked = !checkbox.checked;
+      updateItemAppearance(item, checkbox.checked);
+    });
+    
+    // Checkbox change updates appearance
+    checkbox.addEventListener('change', function() {
+      updateItemAppearance(item, this.checked);
+    });
+    
+    // Initial state
+    updateItemAppearance(item, checkbox.checked);
+  });
+  
+  function updateItemAppearance(item, checked) {
+    if (checked) {
+      item.classList.add('selected');
+    } else {
+      item.classList.remove('selected');
+    }
+  }
+  
+  // Select all button
+  document.getElementById('select-all-btn').addEventListener('click', function() {
+    const checkboxes = document.querySelectorAll('.permissions-grid .permission-checkbox');
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = true;
+      const item = checkbox.closest('.permission-item');
+      updateItemAppearance(item, true);
+    });
+  });
+  
+  // Deselect all button
+  document.getElementById('deselect-all-btn').addEventListener('click', function() {
+    const checkboxes = document.querySelectorAll('.permissions-grid .permission-checkbox');
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = false;
+      const item = checkbox.closest('.permission-item');
+      updateItemAppearance(item, false);
+    });
+  });
+});
+
+// Form validation
+document.getElementById('edit-role-form').addEventListener('submit', function(e) {
+  const roleName = document.getElementById('name').value.trim();
+  
+  if (!roleName) {
+    e.preventDefault();
+    alert('Bitte geben Sie einen Rollennamen ein!');
+    return false;
+  }
+  
+  // Check if at least one permission is selected
+  const checkedPermissions = document.querySelectorAll('.permissions-grid .permission-checkbox:checked');
+  if (checkedPermissions.length === 0) {
+    const confirm = window.confirm('Keine Berechtigungen ausgewählt. Möchten Sie wirklich eine Rolle ohne Berechtigungen erstellen?');
+    if (!confirm) {
+      e.preventDefault();
+      return false;
+    }
+  }
+});
+</script>
+{% endblock %}

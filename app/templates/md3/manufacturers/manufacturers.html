@@ -1,0 +1,620 @@
+{% extends "base.html" %}
+
+{% block title %}Hersteller - Asset Management{% endblock %}
+
+{% block head %}
+<style>
+  .md3-manufacturers-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  .md3-manufacturers-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+  }
+
+  .md3-manufacturers-title {
+    font-size: 2rem;
+    font-weight: 400;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+  }
+
+  .md3-manufacturers-stats {
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 1rem;
+  }
+
+  .md3-manufacturers-actions {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .md3-manufacturers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 24px;
+  }
+
+  .md3-manufacturer-card {
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--md-sys-color-outline-variant);
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .md3-manufacturer-card:hover {
+    background: var(--md-sys-color-surface-container);
+    box-shadow: var(--md-sys-elevation-1);
+  }
+
+  .md3-manufacturer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .md3-manufacturer-title {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+  }
+
+  .md3-manufacturer-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .md3-manufacturer-description {
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: 16px;
+    min-height: 40px;
+  }
+
+  .md3-manufacturer-details {
+    margin-bottom: 16px;
+  }
+
+  .md3-manufacturer-detail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.875rem;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .md3-manufacturer-detail .material-symbols-outlined {
+    font-size: 18px;
+    color: var(--md-sys-color-primary);
+  }
+
+  .md3-manufacturer-detail a {
+    color: var(--md-sys-color-primary);
+    text-decoration: none;
+  }
+
+  .md3-manufacturer-detail a:hover {
+    text-decoration: underline;
+  }
+
+  .md3-manufacturer-stats {
+    display: flex;
+    gap: 24px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .md3-manufacturer-stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 0.875rem;
+  }
+
+  .md3-manufacturer-stat .material-symbols-outlined {
+    font-size: 18px;
+    color: var(--md-sys-color-primary);
+  }
+
+  .md3-empty-state {
+    text-align: center;
+    padding: 64px 24px;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .md3-empty-icon {
+    font-size: 64px;
+    color: var(--md-sys-color-outline);
+    margin-bottom: 24px;
+  }
+
+  .md3-empty-title {
+    font-size: 1.5rem;
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+
+  .md3-empty-subtitle {
+    font-size: 1rem;
+    margin-bottom: 32px;
+  }
+
+  /* Modal Styles */
+  .md3-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.32);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .md3-modal-overlay.active {
+    display: flex;
+  }
+
+  .md3-modal {
+    background: var(--md-sys-color-surface-container-high);
+    border-radius: 28px;
+    max-width: 600px;
+    width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: var(--md-sys-elevation-3);
+  }
+
+  .md3-modal-header {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .md3-modal-title {
+    font-size: 1.375rem;
+    font-weight: 400;
+    margin: 0;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .md3-modal-body {
+    padding: 24px;
+  }
+
+  .md3-modal-footer {
+    padding: 16px 24px 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .md3-text-field {
+    width: 100%;
+    margin-bottom: 24px;
+  }
+
+  .md3-text-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .md3-text-field input,
+  .md3-text-field textarea {
+    width: 100%;
+    padding: 16px;
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: 8px;
+    background: var(--md-sys-color-surface);
+    color: var(--md-sys-color-on-surface);
+    font-family: inherit;
+    font-size: 1rem;
+    box-sizing: border-box;
+  }
+
+  .md3-text-field textarea {
+    min-height: 80px;
+    resize: vertical;
+  }
+
+  .md3-text-field input:focus,
+  .md3-text-field textarea:focus {
+    outline: none;
+    border-color: var(--md-sys-color-primary);
+    box-shadow: 0 0 0 2px rgba(103, 80, 164, 0.12);
+  }
+
+  @media (max-width: 768px) {
+    .md3-manufacturers-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .md3-manufacturers-header {
+      flex-direction: column;
+      gap: 16px;
+      align-items: stretch;
+    }
+    
+    .md3-manufacturers-actions {
+      justify-content: center;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+<div class="md3-page">
+  <div class="md3-manufacturers-container">
+    
+    <!-- Header -->
+    <div class="md3-manufacturers-header">
+      <div>
+        <h1 class="md3-manufacturers-title">Hersteller</h1>
+        <p class="md3-manufacturers-stats">{{ total_manufacturers }} Hersteller insgesamt</p>
+      </div>
+      
+      <div class="md3-manufacturers-actions">
+        <button class="md3-button md3-button-filled" onclick="openAddModal()">
+          <span class="material-symbols-outlined">add</span>
+          Hersteller hinzufügen
+        </button>
+      </div>
+    </div>
+
+    <!-- Manufacturers Grid -->
+    {% if manufacturers %}
+    <div class="md3-manufacturers-grid">
+      {% for manufacturer in manufacturers %}
+      <div class="md3-manufacturer-card">
+        <div class="md3-manufacturer-header">
+          <h2 class="md3-manufacturer-title">{{ manufacturer.name }}</h2>
+          <div class="md3-manufacturer-actions">
+            <button class="md3-icon-button edit-btn" 
+                    data-id="{{ manufacturer.id }}" 
+                    data-name="{{ manufacturer.name|e }}" 
+                    data-description="{{ (manufacturer.description or '')|e }}"
+                    data-website="{{ (manufacturer.website or '')|e }}"
+                    data-contact="{{ (manufacturer.contact_info or '')|e }}"
+                    title="Bearbeiten">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button class="md3-icon-button delete-btn" 
+                    data-id="{{ manufacturer.id }}" 
+                    data-name="{{ manufacturer.name|e }}"
+                    title="Löschen">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </div>
+        </div>
+        
+        {% if manufacturer.description %}
+        <div class="md3-manufacturer-description">{{ manufacturer.description }}</div>
+        {% else %}
+        <div class="md3-manufacturer-description" style="color: var(--md-sys-color-outline);">Keine Beschreibung</div>
+        {% endif %}
+        
+        <div class="md3-manufacturer-details">
+          {% if manufacturer.website %}
+          <div class="md3-manufacturer-detail">
+            <span class="material-symbols-outlined">language</span>
+            <a href="{{ manufacturer.website if manufacturer.website.startswith('http') else 'http://' + manufacturer.website }}" target="_blank">{{ manufacturer.website }}</a>
+          </div>
+          {% endif %}
+          
+          {% if manufacturer.contact_info %}
+          <div class="md3-manufacturer-detail">
+            <span class="material-symbols-outlined">contact_mail</span>
+            <span>{{ manufacturer.contact_info }}</span>
+          </div>
+          {% endif %}
+        </div>
+        
+        <div class="md3-manufacturer-stats">
+          <div class="md3-manufacturer-stat">
+            <span class="material-symbols-outlined">inventory_2</span>
+            <span>{{ manufacturer.asset_count }} Assets</span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="md3-empty-state">
+      <span class="material-symbols-outlined md3-empty-icon">precision_manufacturing</span>
+      <h2 class="md3-empty-title">Keine Hersteller vorhanden</h2>
+      <p class="md3-empty-subtitle">Erstellen Sie Ihren ersten Hersteller, um Assets zu verwalten</p>
+      <button class="md3-button md3-button-filled" onclick="openAddModal()">
+        <span class="material-symbols-outlined">add</span>
+        Ersten Hersteller erstellen
+      </button>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- Add Manufacturer Modal -->
+<div class="md3-modal-overlay" id="addModal">
+  <div class="md3-modal">
+    <div class="md3-modal-header">
+      <h2 class="md3-modal-title">Neuen Hersteller erstellen</h2>
+    </div>
+    <div class="md3-modal-body">
+      <form id="addManufacturerForm">
+        <div class="md3-text-field">
+          <label for="addName">Name *</label>
+          <input type="text" id="addName" name="name" required maxlength="100">
+        </div>
+        <div class="md3-text-field">
+          <label for="addDescription">Beschreibung</label>
+          <textarea id="addDescription" name="description" maxlength="500"></textarea>
+        </div>
+        <div class="md3-text-field">
+          <label for="addWebsite">Website</label>
+          <input type="url" id="addWebsite" name="website" maxlength="255" placeholder="https://example.com">
+        </div>
+        <div class="md3-text-field">
+          <label for="addContactInfo">Kontaktinformationen</label>
+          <textarea id="addContactInfo" name="contact_info" maxlength="500" placeholder="E-Mail, Telefon, Adresse, etc."></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="md3-modal-footer">
+      <button class="md3-button md3-button-text" onclick="closeModal('addModal')">Abbrechen</button>
+      <button class="md3-button md3-button-filled" onclick="saveManufacturer()">Erstellen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Manufacturer Modal -->
+<div class="md3-modal-overlay" id="editModal">
+  <div class="md3-modal">
+    <div class="md3-modal-header">
+      <h2 class="md3-modal-title">Hersteller bearbeiten</h2>
+    </div>
+    <div class="md3-modal-body">
+      <form id="editManufacturerForm">
+        <input type="hidden" id="editId" name="id">
+        <div class="md3-text-field">
+          <label for="editName">Name *</label>
+          <input type="text" id="editName" name="name" required maxlength="100">
+        </div>
+        <div class="md3-text-field">
+          <label for="editDescription">Beschreibung</label>
+          <textarea id="editDescription" name="description" maxlength="500"></textarea>
+        </div>
+        <div class="md3-text-field">
+          <label for="editWebsite">Website</label>
+          <input type="url" id="editWebsite" name="website" maxlength="255" placeholder="https://example.com">
+        </div>
+        <div class="md3-text-field">
+          <label for="editContactInfo">Kontaktinformationen</label>
+          <textarea id="editContactInfo" name="contact_info" maxlength="500" placeholder="E-Mail, Telefon, Adresse, etc."></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="md3-modal-footer">
+      <button class="md3-button md3-button-text" onclick="closeModal('editModal')">Abbrechen</button>
+      <button class="md3-button md3-button-filled" onclick="updateManufacturer()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Modal Management
+function openAddModal() {
+  document.getElementById('addModal').classList.add('active');
+  document.getElementById('addName').focus();
+}
+
+function openEditModal(id, name, description, website, contact_info) {
+  document.getElementById('editId').value = id;
+  document.getElementById('editName').value = name;
+  document.getElementById('editDescription').value = description || '';
+  document.getElementById('editWebsite').value = website || '';
+  document.getElementById('editContactInfo').value = contact_info || '';
+  document.getElementById('editModal').classList.add('active');
+  document.getElementById('editName').focus();
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.remove('active');
+  
+  // Reset forms
+  if (modalId === 'addModal') {
+    document.getElementById('addManufacturerForm').reset();
+  } else if (modalId === 'editModal') {
+    document.getElementById('editManufacturerForm').reset();
+  }
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.md3-modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) {
+      closeModal(overlay.id);
+    }
+  });
+});
+
+// CSRF Token
+function getCSRFToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
+// Save new manufacturer
+function saveManufacturer() {
+  const form = document.getElementById('addManufacturerForm');
+  const formData = new FormData(form);
+  formData.set('csrf_token', getCSRFToken());
+  
+  fetch('{{ url_for("md3_manufacturers.add_manufacturer") }}', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showNotification(data.message, 'success');
+      closeModal('addModal');
+      location.reload(); // Refresh to show new manufacturer
+    } else {
+      showNotification(data.message, 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showNotification('Fehler beim Erstellen des Herstellers', 'error');
+  });
+}
+
+// Update existing manufacturer
+function updateManufacturer() {
+  const form = document.getElementById('editManufacturerForm');
+  const formData = new FormData(form);
+  formData.set('csrf_token', getCSRFToken());
+  
+  const manufacturerId = document.getElementById('editId').value;
+  
+  fetch(`{{ url_for("md3_manufacturers.edit_manufacturer", manufacturer_id=0) }}`.replace('0', manufacturerId), {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showNotification(data.message, 'success');
+      closeModal('editModal');
+      location.reload(); // Refresh to show updated manufacturer
+    } else {
+      showNotification(data.message, 'error');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showNotification('Fehler beim Aktualisieren des Herstellers', 'error');
+  });
+}
+
+// Delete manufacturer
+function deleteManufacturer(id, name) {
+  if (confirm(`Möchten Sie den Hersteller "${name}" wirklich löschen?`)) {
+    const formData = new FormData();
+    formData.set('csrf_token', getCSRFToken());
+    
+    fetch(`{{ url_for("md3_manufacturers.delete_manufacturer", manufacturer_id=0) }}`.replace('0', id), {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showNotification(data.message, 'success');
+        location.reload(); // Refresh to remove deleted manufacturer
+      } else {
+        showNotification(data.message, 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      showNotification('Fehler beim Löschen des Herstellers', 'error');
+    });
+  }
+}
+
+// Simple notification system
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 90px;
+    right: 24px;
+    z-index: 1050;
+    padding: 16px 24px;
+    border-radius: 12px;
+    color: white;
+    font-family: 'Roboto', sans-serif;
+    font-size: 14px;
+    max-width: 400px;
+    box-shadow: var(--md-sys-elevation-3);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  `;
+  
+  // Set colors based on type
+  if (type === 'success') {
+    notification.style.background = '#4CAF50';
+  } else if (type === 'error') {
+    notification.style.background = '#F44336';
+  } else {
+    notification.style.background = '#2196F3';
+  }
+  
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  // Animate in
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)';
+  }, 100);
+  
+  // Remove after 4 seconds
+  setTimeout(() => {
+    notification.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 300);
+  }, 4000);
+}
+
+// Event Listeners for Edit and Delete buttons
+document.addEventListener('DOMContentLoaded', function() {
+  // Edit button listeners
+  document.querySelectorAll('.edit-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const id = this.dataset.id;
+      const name = this.dataset.name;
+      const description = this.dataset.description;
+      const website = this.dataset.website;
+      const contact = this.dataset.contact;
+      openEditModal(parseInt(id), name, description, website, contact);
+    });
+  });
+  
+  // Delete button listeners
+  document.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const id = this.dataset.id;
+      const name = this.dataset.name;
+      deleteManufacturer(parseInt(id), name);
+    });
+  });
+});
+
+console.log('MD3 Manufacturers loaded');
+</script>
+
+{% endblock %}

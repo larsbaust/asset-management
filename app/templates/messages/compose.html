@@ -2,6 +2,7 @@
 {% block content %}
 <h2>Neue Nachricht schreiben</h2>
 <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="field">
         <label class="label">Empfänger</label>
         <div class="control">

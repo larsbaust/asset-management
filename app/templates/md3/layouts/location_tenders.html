@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{% include 'md3-nav.html' %}
+
+<style>
+  .md3-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    margin-top: 80px;
+  }
+  
+  .md3-header {
+    margin-bottom: 24px;
+  }
+  
+  .md3-title {
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+  }
+  
+  .md3-subtitle {
+    font-size: 14px;
+    color: var(--md-sys-color-on-surface-variant);
+    margin-top: 8px;
+  }
+  
+  .md3-card {
+    background: var(--md-sys-color-surface);
+    border-radius: 16px;
+    box-shadow: var(--md-sys-elevation-1);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  
+  .tender-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    margin-top: 24px;
+  }
+  
+  .tender-card {
+    background: var(--md-sys-color-surface-container);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid var(--md-sys-color-outline-variant);
+    transition: all 0.2s ease;
+  }
+  
+  .tender-card:hover {
+    box-shadow: var(--md-sys-elevation-2);
+    border-color: var(--md-sys-color-primary);
+  }
+  
+  .tender-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .tender-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .tender-card-title {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+    flex: 1;
+  }
+  
+  .tender-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .tender-info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+  
+  .tender-info-item .material-symbols-outlined {
+    font-size: 18px;
+  }
+</style>
+
+<div class="md3-container">
+  <div class="md3-header">
+    <h1 class="md3-title">Standortausschreibung</h1>
+    <div class="md3-subtitle">Übersicht aller Standorte für Ausschreibungen</div>
+  </div>
+  
+  <div class="md3-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div>
+        <strong style="color: var(--md-sys-color-on-surface);">{{ locations|length }} Standorte</strong>
+      </div>
+    </div>
+    
+    {% if locations %}
+    <div class="tender-grid">
+      {% for location, asset_count in locations %}
+      <div class="tender-card">
+        <div class="tender-card-header">
+          <div class="tender-card-icon">
+            <span class="material-symbols-outlined">location_on</span>
+          </div>
+          <div class="tender-card-title">{{ location.name }}</div>
+        </div>
+        
+        <div class="tender-card-info">
+          <div class="tender-info-item">
+            <span class="material-symbols-outlined">inventory_2</span>
+            <span>{{ asset_count }} Assets</span>
+          </div>
+          
+          {% if location.address %}
+          <div class="tender-info-item">
+            <span class="material-symbols-outlined">home</span>
+            <span>{{ location.address }}</span>
+          </div>
+          {% endif %}
+          
+          {% if location.city %}
+          <div class="tender-info-item">
+            <span class="material-symbols-outlined">location_city</span>
+            <span>{{ location.city }}{% if location.zip_code %}, {{ location.zip_code }}{% endif %}</span>
+          </div>
+          {% endif %}
+          
+          {% if location.size_sqm %}
+          <div class="tender-info-item">
+            <span class="material-symbols-outlined">square_foot</span>
+            <span>{{ location.size_sqm }} m²</span>
+          </div>
+          {% endif %}
+          
+          {% if location.seats %}
+          <div class="tender-info-item">
+            <span class="material-symbols-outlined">event_seat</span>
+            <span>{{ location.seats }} Sitzplätze</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 40px; color: var(--md-sys-color-on-surface-variant);">
+      <span class="material-symbols-outlined" style="font-size: 64px; opacity: 0.3;">location_off</span>
+      <div style="margin-top: 16px;">Keine Standorte vorhanden</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -4,8 +4,12 @@
     <nav class="breadcrumb" aria-label="breadcrumbs">
         <ul>
             <li><a href="{{ url_for('main.dashboard') }}">Dashboard</a></li>
-            <li><a href="{{ url_for('suppliers.supplier_list') }}">Lieferanten</a></li>
-            <li><a href="{{ url_for('suppliers.supplier_detail', supplier_id=supplier.id) }}">{{ supplier.name }}</a></li>
+            <li>
+                <a href="{{ url_for('suppliers.supplier_list', md3=1) if request.args.get('md3') == '1' else url_for('suppliers.supplier_list') }}">Lieferanten</a>
+            </li>
+            <li>
+                <a href="{{ url_for('suppliers.supplier_detail', supplier_id=supplier.id, md3=1) if request.args.get('md3') == '1' else url_for('suppliers.supplier_detail', supplier_id=supplier.id) }}">{{ supplier.name }}</a>
+            </li>
             <li class="is-active"><a href="#" aria-current="page">Assets zuordnen</a></li>
         </ul>
     </nav>
@@ -16,6 +20,9 @@
 
     <div class="box">
         <form method="post" action="{{ url_for('suppliers.supplier_assign_assets', supplier_id=supplier.id) }}">
+            {% if request.args.get('md3') == '1' %}
+            <input type="hidden" name="md3" value="1">
+            {% endif %}
             <div class="field">
                 <div class="control">
                     <input type="text" id="assetSearchInput" class="input" placeholder="Nach Assets suchen...">
@@ -84,7 +91,7 @@
                     </button>
                 </div>
                 <div class="control">
-                    <a href="{{ url_for('suppliers.supplier_detail', supplier_id=supplier.id) }}" class="button is-light">
+                    <a href="{{ url_for('suppliers.supplier_detail', supplier_id=supplier.id, md3=1) if request.args.get('md3') == '1' else url_for('suppliers.supplier_detail', supplier_id=supplier.id) }}" class="button is-light">
                         <span class="icon">
                             <i class="fas fa-times"></i>
                         </span>
