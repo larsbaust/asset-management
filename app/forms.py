@@ -1,11 +1,22 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, SelectField
-from wtforms.validators import DataRequired, Length, EqualTo
+from wtforms.validators import DataRequired, Length, EqualTo, ValidationError
 from wtforms import StringField, SelectField, SelectMultipleField, TextAreaField, FloatField, DateTimeField, BooleanField, SubmitField, FileField, IntegerField
 from wtforms.fields import DateField
 from wtforms.validators import DataRequired, Length, Optional, NumberRange
 from flask_wtf.file import FileAllowed
 from datetime import datetime
+import re
+
+# Custom Validator für Passwort-Stärke
+def validate_password_strength(form, field):
+    password = field.data
+    if len(password) < 8:
+        raise ValidationError('Passwort muss mindestens 8 Zeichen lang sein.')
+    if not re.search(r'\d', password):
+        raise ValidationError('Passwort muss mindestens eine Zahl enthalten.')
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        raise ValidationError('Passwort muss mindestens ein Sonderzeichen enthalten.')
 
 # Vordefinierte Listen
 LOCATIONS = [
@@ -215,23 +226,17 @@ class LoginForm(FlaskForm):
 
 class RegisterForm(FlaskForm):
     username = StringField('Benutzername', validators=[DataRequired(), Length(min=3, max=80)])
-    password = PasswordField('Passwort', validators=[DataRequired(), Length(min=6)])
-    confirm_password = PasswordField('Passwort bestätigen', validators=[DataRequired(), EqualTo('password')])
-    role = SelectField('Rolle', coerce=int, validators=[DataRequired()])
-    vorname = StringField('Vorname', validators=[DataRequired(), Length(max=80)])
-    nachname = StringField('Nachname', validators=[DataRequired(), Length(max=80)])
-    email = StringField('E-Mail', validators=[DataRequired(), Length(max=120)])
+    password = PasswordField('Passwort', validators=[DataRequired(), Length(min=8), validate_password_strength])
+    confirm_password = PasswordField('Passwort bestätigen', validators=[DataRequired(), EqualTo('password', message='Passwörter stimmen nicht überein.')])
+    vorname = StringField('Vorname', validators=[Optional(), Length(max=80)])
+    nachname = StringField('Nachname', validators=[Optional(), Length(max=80)])
+    email = StringField('E-Mail', validators=[Optional(), Length(max=120)])
     profile_image = FileField('Profilbild', validators=[Optional(), FileAllowed(['jpg', 'jpeg', 'png', 'gif'], 'Nur Bilder erlaubt!')])
     street = StringField('Straße', validators=[Optional(), Length(max=120)])
     postal_code = StringField('PLZ', validators=[Optional(), Length(max=20)])
     city = StringField('Stadt', validators=[Optional(), Length(max=80)])
     phone = StringField('Telefon', validators=[Optional(), Length(max=40)])
     submit = SubmitField('Registrieren')
-
-    def __init__(self, *args, **kwargs):
-        super(RegisterForm, self).__init__(*args, **kwargs)
-        from .models import Role
-        self.role.choices = [(r.id, r.name) for r in Role.query.order_by(Role.name).all()]
 
 class EditUserForm(FlaskForm):
     username = StringField('Benutzername', validators=[DataRequired(), Length(min=3, max=80)])

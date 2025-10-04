@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
-from .models import User
+from .models import User, Role
 from . import db
 from flask_mail import Message
 from . import mail
@@ -12,7 +12,7 @@ from werkzeug.security import generate_password_hash
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
-    md3 = request.values.get('md3', type=int, default=1)  # Default zu MD3
+    md3 = request.values.get('md3', type=int, default=1)  # Standard: MD3
     from datetime import datetime, timedelta
     form = LoginForm()
     if form.validate_on_submit():
@@ -56,20 +56,85 @@ def login():
 
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
-    md3 = request.values.get('md3', type=int)
+    md3 = request.values.get('md3', type=int, default=1)  # Standard: MD3
     form = RegisterForm()
+    
+    # Debug: Formular-Fehler anzeigen
+    if request.method == 'POST' and not form.validate_on_submit():
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f'{field}: {error}', 'error')
+    
     if form.validate_on_submit():
+        # hCaptcha-Validierung (falls aktiviert)
+        from flask import current_app
+        if current_app.config.get('HCAPTCHA_SECRET_KEY'):
+            import requests
+            captcha_response = request.form.get('h-captcha-response')
+            if not captcha_response:
+                flash('Bitte bestätige, dass du kein Roboter bist.', 'error')
+                template = 'md3/auth/register.html' if md3 else 'auth/register.html'
+                return render_template(template, form=form)
+            
+            # hCaptcha-Verifikation
+            verify_url = 'https://hcaptcha.com/siteverify'
+            data = {
+                'secret': current_app.config['HCAPTCHA_SECRET_KEY'],
+                'response': captcha_response
+            }
+            response = requests.post(verify_url, data=data)
+            result = response.json()
+            
+            if not result.get('success'):
+                flash('CAPTCHA-Verifikation fehlgeschlagen. Bitte versuche es erneut.', 'error')
+                template = 'md3/auth/register.html' if md3 else 'auth/register.html'
+                return render_template(template, form=form)
+        
         if User.query.filter_by(username=form.username.data).first():
             flash('Benutzername ist bereits vergeben.', 'error')
             template = 'md3/auth/register.html' if md3 else 'auth/register.html'
             return render_template(template, form=form)
+        
+        # Standard-Rolle "User" automatisch zuweisen
+        user_role = Role.query.filter_by(name='User').first()
+        if not user_role:
+            # Falls "User"-Rolle nicht existiert, erstelle sie
+            user_role = Role(name='User', description='Standard-Benutzer')
+            db.session.add(user_role)
+            db.session.commit()
+        
         user = User(
             username=form.username.data,
-            role=form.role.data
+            role_id=user_role.id,  # ForeignKey (Integer)
+            vorname=form.vorname.data if form.vorname.data else None,
+            nachname=form.nachname.data if form.nachname.data else None,
+            email=form.email.data if form.email.data else None
         )
         user.set_password(form.password.data)
         db.session.add(user)
         db.session.commit()
+        
+        # E-Mail-Bestätigung senden (falls E-Mail angegeben)
+        if user.email:
+            from flask_mail import Message
+            msg = Message('Willkommen bei Asset Management',
+                          recipients=[user.email])
+            msg.body = f'''Hallo {user.vorname or user.username},
+
+Vielen Dank für deine Registrierung!
+
+Dein Benutzername: {user.username}
+
+Du kannst dich jetzt anmelden unter: {url_for('auth.login', md3=1, _external=True)}
+
+Viele Grüße
+Dein Asset Management Team'''
+            try:
+                mail.send(msg)
+            except Exception as e:
+                # Falls E-Mail-Versand fehlschlägt, ignorieren (User ist trotzdem erstellt)
+                pass
+        
         login_user(user)
         flash('Registrierung erfolgreich! Du bist jetzt eingeloggt.', 'success')
         return redirect(url_for('main.index', md3=1 if md3 else None))

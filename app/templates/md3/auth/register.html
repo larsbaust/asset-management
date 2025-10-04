@@ -2,6 +2,10 @@
 
 {% block head %}
   {{ super() }}
+  <!-- hCaptcha Script (wird nur geladen, wenn HCAPTCHA_SITE_KEY gesetzt ist) -->
+  {% if config.get('HCAPTCHA_SITE_KEY') %}
+  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+  {% endif %}
   <style>
     body {
       background: linear-gradient(135deg, #f0f8ff 0%, #e8f4ff 50%, #f0f4ff 100%);
@@ -301,20 +305,51 @@
         </div>
         
         <div class="form-field">
-          <label for="password">Passwort</label>
+          <label for="vorname">Vorname</label>
           <div class="input-container">
-            <span class="material-symbols-outlined">lock</span>
-            <input type="password" id="password" name="password" class="form-input" required autocomplete="new-password">
+            <span class="material-symbols-outlined">badge</span>
+            <input type="text" id="vorname" name="vorname" class="form-input" autocomplete="given-name">
           </div>
         </div>
         
         <div class="form-field">
-          <label for="role">Rolle</label>
+          <label for="nachname">Nachname</label>
           <div class="input-container">
             <span class="material-symbols-outlined">badge</span>
-            {{ form.role(class="form-select", id="role") }}
+            <input type="text" id="nachname" name="nachname" class="form-input" autocomplete="family-name">
           </div>
         </div>
+        
+        <div class="form-field">
+          <label for="email">E-Mail</label>
+          <div class="input-container">
+            <span class="material-symbols-outlined">email</span>
+            <input type="email" id="email" name="email" class="form-input" autocomplete="email">
+          </div>
+        </div>
+        
+        <div class="form-field">
+          <label for="password">Passwort <small>(mind. 8 Zeichen, Zahlen & Sonderzeichen)</small></label>
+          <div class="input-container">
+            <span class="material-symbols-outlined">lock</span>
+            <input type="password" id="password" name="password" class="form-input" required autocomplete="new-password" minlength="8">
+          </div>
+        </div>
+        
+        <div class="form-field">
+          <label for="confirm_password">Passwort bestätigen</label>
+          <div class="input-container">
+            <span class="material-symbols-outlined">lock</span>
+            <input type="password" id="confirm_password" name="confirm_password" class="form-input" required autocomplete="new-password">
+          </div>
+        </div>
+        
+        <!-- hCaptcha (optional - aktiviere es in .env mit HCAPTCHA_SITE_KEY und HCAPTCHA_SECRET_KEY) -->
+        {% if config.get('HCAPTCHA_SITE_KEY') %}
+        <div class="form-field" style="display: flex; justify-content: center;">
+          <div class="h-captcha" data-sitekey="{{ config['HCAPTCHA_SITE_KEY'] }}"></div>
+        </div>
+        {% endif %}
         
         <div class="register-actions">
           <button type="submit" class="register-button">
