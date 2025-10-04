@@ -193,14 +193,14 @@ nano .env
 
 ```env
 # Starkes Passwort (generieren Sie eins!)
-SECRET_KEY=mein-langes-sicheres-passwort-123456789
+SECRET_KEY=Vonh3rz3n
 
 # E-Mail (optional für jetzt)
-MAIL_USERNAME=ihre-email@gmail.com
-MAIL_PASSWORD=ihr-app-passwort
+MAIL_USERNAME=lars.baust@gmail.com 
+MAIL_PASSWORD=Vonh3rz3n
 
 # Domain (falls vorhanden)
-DOMAIN=ihre-domain.de
+DOMAIN=techkopf.de
 ```
 
 **Speichern:** Strg+O, Enter, Strg+X
@@ -263,12 +263,12 @@ server {
     server_name _;
 
     location /static/ {
-        alias /home/ihr-benutzername/asset-management/static/;
+        alias /home/larsbaust/asset-management/static/;
         expires 1y;
     }
 
     location /uploads/ {
-        alias /home/ihr-benutzername/asset-management/uploads/;
+        alias /home/larsbaust/asset-management/uploads/;
     }
 
     location / {
@@ -306,10 +306,10 @@ Description=Asset Management Application
 After=network.target
 
 [Service]
-User=ihr-benutzername
-WorkingDirectory=/home/ihr-benutzername/asset-management
-Environment="PATH=/home/ihr-benutzername/asset-management/venv/bin"
-ExecStart=/home/ihr-benutzername/asset-management/venv/bin/gunicorn --bind 127.0.0.1:8000 wsgi:application
+User=larsbaust
+WorkingDirectory=/home/larsbaust/asset-management
+Environment="PATH=/home/larsbaust/asset-management/venv/bin"
+ExecStart=/home/larsbaust/asset-management/venv/bin/gunicorn --bind 127.0.0.1:8000 wsgi:application
 Restart=always
 
 [Install]
