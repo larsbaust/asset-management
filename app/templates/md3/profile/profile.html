@@ -203,12 +203,30 @@
       background: var(--md-sys-color-surface-container-lowest);
       border-radius: 16px;
       border-left: 4px solid var(--md-sys-color-primary);
-      transition: all 0.2s ease;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+      position: relative;
     }
     
     .info-item:hover {
-      background: var(--md-sys-color-surface-container-low);
-      transform: translateX(4px);
+      opacity: 0.9;
+    }
+    
+    .info-item::after {
+      content: 'edit';
+      font-family: 'Material Symbols Outlined';
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--md-sys-color-primary);
+      font-size: 20px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    
+    .info-item:hover::after {
+      opacity: 1;
     }
     
     .info-item-icon {
@@ -304,6 +322,111 @@
     
     .fab-save .material-symbols-outlined {
       font-size: 32px;
+    }
+    
+    /* Chat-Widget ausblenden */
+    #md3-livechat-toggle,
+    #md3-livechat-slidein {
+      display: none !important;
+    }
+    
+    /* Edit Modal */
+    .edit-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .edit-modal.active {
+      display: flex;
+    }
+    
+    .edit-modal-content {
+      background: white;
+      border-radius: 24px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      animation: fadeInUp 0.3s ease;
+    }
+    
+    .edit-modal-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    
+    .edit-modal-icon {
+      color: var(--md-sys-color-primary);
+      font-size: 28px;
+    }
+    
+    .edit-modal-title {
+      font: var(--md-sys-typescale-headline-small-font);
+      color: var(--md-sys-color-on-surface);
+    }
+    
+    .edit-modal-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .edit-input {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 16px;
+      border: 2px solid var(--md-sys-color-outline-variant);
+      border-radius: 12px;
+      outline: none;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+    }
+    
+    .edit-input:focus {
+      border-color: var(--md-sys-color-primary);
+      box-shadow: 0 0 0 4px rgba(103, 80, 164, 0.1);
+    }
+    
+    .edit-modal-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    
+    .edit-btn {
+      flex: 1;
+      padding: 14px;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+      border: none;
+    }
+    
+    .edit-btn-cancel {
+      background: var(--md-sys-color-surface-container);
+      color: var(--md-sys-color-on-surface);
+    }
+    
+    .edit-btn-save {
+      background: linear-gradient(135deg, var(--md-sys-color-primary) 0%, #8A6EBB 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(103, 80, 164, 0.3);
+    }
+    
+    .edit-btn:hover {
+      opacity: 0.9;
     }
     
     @media (max-width: 768px) {
@@ -501,6 +624,23 @@
     </div>
   </div>
 
+  <!-- Edit Modal für Kontaktdaten -->
+  <div id="editModal" class="edit-modal">
+    <div class="edit-modal-content">
+      <div class="edit-modal-header">
+        <span class="material-symbols-outlined edit-modal-icon" id="editModalIcon">edit</span>
+        <h3 class="edit-modal-title" id="editModalTitle">Feld bearbeiten</h3>
+      </div>
+      <div class="edit-modal-form">
+        <input type="text" id="editInput" class="edit-input" placeholder="Wert eingeben">
+        <div class="edit-modal-buttons">
+          <button class="edit-btn edit-btn-cancel" id="editCancel">Abbrechen</button>
+          <button class="edit-btn edit-btn-save" id="editSave">Speichern</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
   <script>
@@ -632,6 +772,90 @@
 
     closeCropper.onclick = closeModal;
     cancelCropper.onclick = closeModal;
+
+    // Edit Modal Funktionalität
+    const editModal = document.getElementById('editModal');
+    const editModalTitle = document.getElementById('editModalTitle');
+    const editModalIcon = document.getElementById('editModalIcon');
+    const editInput = document.getElementById('editInput');
+    const editCancel = document.getElementById('editCancel');
+    const editSave = document.getElementById('editSave');
+    let currentEditField = null;
+    let currentEditElement = null;
+    
+    // Alle info-items klickbar machen
+    document.querySelectorAll('.info-item').forEach(item => {
+      item.addEventListener('click', function() {
+        const label = this.querySelector('.info-item-label').textContent;
+        const value = this.querySelector('.info-item-value');
+        const icon = this.querySelector('.info-item-icon').textContent;
+        const currentValue = value.textContent.trim();
+        
+        // Welches Feld wird bearbeitet?
+        if (label === 'E-Mail') currentEditField = 'email';
+        else if (label === 'Telefon') currentEditField = 'phone';
+        else if (label === 'Straße') currentEditField = 'street';
+        else if (label === 'PLZ & Stadt') currentEditField = 'postal_code_city';
+        else return; // Andere Felder ignorieren
+        
+        currentEditElement = value;
+        editModalTitle.textContent = label + ' bearbeiten';
+        editModalIcon.textContent = icon;
+        editInput.value = currentValue === 'Nicht angegeben' ? '' : currentValue;
+        editModal.classList.add('active');
+        editInput.focus();
+      });
+    });
+    
+    // Modal schließen
+    editCancel.addEventListener('click', () => {
+      editModal.classList.remove('active');
+      currentEditField = null;
+      currentEditElement = null;
+    });
+    
+    // Bei Klick außerhalb schließen
+    editModal.addEventListener('click', (e) => {
+      if (e.target === editModal) {
+        editModal.classList.remove('active');
+        currentEditField = null;
+        currentEditElement = null;
+      }
+    });
+    
+    // Speichern
+    editSave.addEventListener('click', () => {
+      const newValue = editInput.value.trim();
+      if (currentEditElement && currentEditField) {
+        // Wert im UI updaten
+        currentEditElement.textContent = newValue || 'Nicht angegeben';
+        
+        // Wert im Hidden-Form-Field updaten
+        if (currentEditField === 'postal_code_city') {
+          // Spezialfall: PLZ & Stadt aufteilen
+          const parts = newValue.split(' ', 2);
+          const postalCode = parts[0] || '';
+          const city = parts.slice(1).join(' ') || '';
+          document.querySelector('input[name="postal_code"]').value = postalCode;
+          document.querySelector('input[name="city"]').value = city;
+        } else {
+          const hiddenField = document.querySelector(`input[name="${currentEditField}"]`);
+          if (hiddenField) hiddenField.value = newValue;
+        }
+        
+        // Modal schließen
+        editModal.classList.remove('active');
+        currentEditField = null;
+        currentEditElement = null;
+      }
+    });
+    
+    // Enter-Taste zum Speichern
+    editInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        editSave.click();
+      }
+    });
 
     }); // Ende DOMContentLoaded
   </script>
