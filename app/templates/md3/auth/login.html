@@ -1,383 +1,399 @@
-{% extends 'base.html' %}
+{% extends 'md3/auth/auth_base.html' %}
 
 {% block head %}
   {{ super() }}
   <style>
     body {
-      background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 50%, #f0f8ff 100%);
+      background: linear-gradient(135deg, #FAFAFA 0%, #F3E5F5 50%, #FAFAFA 100%);
       margin: 0;
       padding: 0;
+      font-family: 'Roboto', sans-serif;
+      overflow-x: hidden;
+      position: relative;
     }
     
-    .login-container {
+    /* Floating Organic Blobs Background */
+    .blob-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    
+    .blob {
+      position: absolute;
+      border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+      background: linear-gradient(135deg, rgba(126, 87, 194, 0.1) 0%, rgba(149, 117, 205, 0.15) 100%);
+      filter: blur(40px);
+      animation: float 20s infinite ease-in-out;
+    }
+    
+    .blob-1 {
+      width: 300px;
+      height: 300px;
+      top: -100px;
+      left: -100px;
+      animation-delay: 0s;
+    }
+    
+    .blob-2 {
+      width: 400px;
+      height: 400px;
+      bottom: -150px;
+      right: -150px;
+      animation-delay: 7s;
+      background: linear-gradient(135deg, rgba(255, 107, 157, 0.1) 0%, rgba(255, 160, 107, 0.15) 100%);
+    }
+    
+    .blob-3 {
+      width: 250px;
+      height: 250px;
+      top: 50%;
+      left: 10%;
+      animation-delay: 14s;
+      background: linear-gradient(135deg, rgba(149, 117, 205, 0.08) 0%, rgba(179, 157, 219, 0.12) 100%);
+    }
+    
+    @keyframes float {
+      0%, 100% {
+        transform: translate(0, 0) rotate(0deg);
+        border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+      }
+      25% {
+        transform: translate(50px, -50px) rotate(90deg);
+        border-radius: 50% 50% 30% 70% / 50% 60% 40% 50%;
+      }
+      50% {
+        transform: translate(100px, 0) rotate(180deg);
+        border-radius: 30% 70% 50% 50% / 60% 40% 50% 50%;
+      }
+      75% {
+        transform: translate(50px, 50px) rotate(270deg);
+        border-radius: 70% 30% 50% 50% / 50% 50% 40% 60%;
+      }
+    }
+    
+    .auth-container {
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1rem;
-    }
-    
-    .login-card {
-      width: 100%;
-      max-width: 420px;
-      background: var(--md-sys-color-surface);
-      border-radius: 24px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
-      overflow: hidden;
-      margin: 1rem;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    
-    .login-header {
-      background: linear-gradient(135deg, var(--md-sys-color-primary) 0%, var(--md-sys-color-primary-container) 100%);
-      color: var(--md-sys-color-on-primary);
-      padding: 3rem 2rem 2rem;
-      text-align: center;
-      position: relative;
-    }
-    
-    .login-header::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="30" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="70" r="1.5" fill="rgba(255,255,255,0.1)"/><circle cx="70" cy="80" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
-      pointer-events: none;
-    }
-    
-    .login-header h1 {
-      margin: 0;
-      font: var(--md-sys-typescale-headline-medium-font);
-      font-weight: 500;
+      padding: 20px;
       position: relative;
       z-index: 1;
     }
     
-    .welcome-icon {
-      font-size: 3rem !important;
-      margin-bottom: 0.5rem;
-      opacity: 0.9;
-    }
-    
-    .login-body {
-      padding: 2.5rem;
-      background: rgba(255, 255, 255, 0.95);
-    }
-    
-    .form-field {
-      margin-bottom: 2rem;
-      position: relative;
-    }
-    
-    .form-field label {
-      display: block;
-      margin-bottom: 0.75rem;
-      font: var(--md-sys-typescale-body-medium-font);
-      color: var(--md-sys-color-on-surface);
-      font-weight: 500;
-    }
-    
-    .input-container {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-    
-    .input-container .material-symbols-outlined {
-      position: absolute;
-      left: 16px;
-      color: var(--md-sys-color-primary);
-      pointer-events: none;
-      font-size: 1.25rem;
-    }
-    
-    .form-input {
+    .auth-card {
       width: 100%;
-      padding: 1rem 1.25rem 1rem 3.25rem;
-      font: var(--md-sys-typescale-body-large-font);
-      color: var(--md-sys-color-on-surface);
-      background: var(--md-sys-color-surface-container-highest);
-      border: 2px solid var(--md-sys-color-outline-variant);
-      border-radius: 16px;
-      transition: all 0.3s ease;
-      box-sizing: border-box;
+      max-width: 400px;
+      background: #FFFFFF;
+      border-radius: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      padding: 48px 32px;
+      position: relative;
+      animation: fadeInUp 0.5s ease;
     }
     
-    .form-input:focus {
-      outline: none;
-      border-color: var(--md-sys-color-primary);
-      box-shadow: 0 0 0 2px rgba(103, 80, 164, 0.2);
-      transform: translateY(-1px);
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
     
-    .form-input:hover:not(:focus) {
-      border-color: var(--md-sys-color-outline);
-    }
-    
-    .remember-me {
-      display: flex;
-      align-items: center;
-      margin-bottom: 1.5rem;
-      gap: 0.5rem;
-    }
-    
-    .remember-me input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--md-sys-color-primary);
-      margin: 0;
-    }
-    
-    .remember-me label {
-      font: var(--md-sys-typescale-body-medium-font);
-      color: var(--md-sys-color-on-surface-variant);
-      margin: 0;
-      cursor: pointer;
-    }
-    
-    .login-actions {
+    /* Logo Container - vertikal statt horizontal */
+    .auth-logo {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      margin-top: 2rem;
-    }
-    
-    .login-button {
-      width: 100%;
-      padding: 1.25rem;
-      border: none;
-      border-radius: 16px;
-      background: linear-gradient(135deg, var(--md-sys-color-primary) 0%, #8A6EBB 100%);
-      color: var(--md-sys-color-on-primary);
-      font: var(--md-sys-typescale-label-large-font);
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.75rem;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 12px rgba(103, 80, 164, 0.3);
-      position: relative;
-      overflow: hidden;
+      gap: 20px;
+      margin-bottom: 48px;
     }
     
-    .login-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(103, 80, 164, 0.4);
-      background: linear-gradient(135deg, #8A6EBB 0%, var(--md-sys-color-primary) 100%);
-    }
-    
-    .login-button:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 8px rgba(103, 80, 164, 0.3);
-    }
-    
-    .login-button::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      transition: left 0.5s;
-    }
-    
-    .login-button:hover::before {
-      left: 100%;
-    }
-    
-    .forgot-password {
-      text-align: center;
-      margin-top: 1rem;
-    }
-    
-    .forgot-password a {
-      color: var(--md-sys-color-primary);
-      text-decoration: none;
-      font: var(--md-sys-typescale-body-medium-font);
-      transition: color 0.2s;
-    }
-    
-    .forgot-password a:hover {
-      color: var(--md-sys-color-primary-hover);
-      text-decoration: underline;
-    }
-    
-    .hint-text {
-      font: var(--md-sys-typescale-body-small-font);
-      color: var(--md-sys-color-on-surface-variant);
-      margin-top: 0.5rem;
-      padding: 0.5rem 0.75rem;
-      background: var(--md-sys-color-surface-container-highest);
-      border-radius: 8px;
-      display: flex;
-      align-items: flex-start;
-      gap: 0.5rem;
-    }
-    
-    .hint-text .material-symbols-outlined {
-      font-size: 1rem;
-      margin-top: 0.1rem;
-    }
-    
-    /* Flash messages */
-    .flash-messages {
-      margin-bottom: 1.5rem;
-    }
-    
-    .flash-message {
-      padding: 1rem;
-      border-radius: 12px;
-      margin-bottom: 0.75rem;
-      display: flex;
-      align-items: flex-start;
-      gap: 0.75rem;
-      font: var(--md-sys-typescale-body-medium-font);
-    }
-    
-    .flash-message .material-symbols-outlined {
-      flex-shrink: 0;
-    }
-    
-    .flash-error {
-      background: var(--md-sys-color-error-container);
-      color: var(--md-sys-color-on-error-container);
-    }
-    
-    .flash-success {
-      background: var(--md-sys-color-primary-container);
-      color: var(--md-sys-color-on-primary-container);
-    }
-    
-    .flash-info {
-      background: var(--md-sys-color-secondary-container);
-      color: var(--md-sys-color-on-secondary-container);
-    }
-    
-    .close-button {
-      background: none;
-      border: none;
-      color: inherit;
-      cursor: pointer;
-      margin-left: auto;
-      padding: 0.25rem;
+    .logo-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #7E57C2 0%, #9575CD 100%);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background-color 0.2s;
+      color: white;
+      font-size: 32px;
+      font-weight: 600;
+      box-shadow: 0 12px 32px rgba(126, 87, 194, 0.5);
+      animation: morphLogo 8s infinite ease-in-out, pulse 2s infinite ease-in-out;
+      position: relative;
+      z-index: 2;
     }
     
-    .close-button:hover {
-      background: rgba(0, 0, 0, 0.1);
+    @keyframes morphLogo {
+      0%, 100% {
+        border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%;
+      }
+      25% {
+        border-radius: 60% 40% 50% 50% / 50% 60% 40% 50%;
+      }
+      50% {
+        border-radius: 50% 50% 40% 60% / 40% 60% 50% 50%;
+      }
+      75% {
+        border-radius: 40% 60% 50% 50% / 50% 50% 60% 40%;
+      }
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 8px 24px rgba(126, 87, 194, 0.4);
+      }
+      50% {
+        transform: scale(1.05);
+        box-shadow: 0 12px 32px rgba(126, 87, 194, 0.6);
+      }
+    }
+    
+    .logo-icon:hover {
+      animation: morphLogo 2s infinite ease-in-out, pulse 1s infinite ease-in-out;
+    }
+    
+    .logo-text {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1F1F1F;
+      letter-spacing: -0.5px;
+    }
+    
+    /* Form Fields */
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #5F6368;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 15px;
+      border: 1.5px solid #E0E0E0;
+      border-radius: 12px;
+      outline: none;
+      transition: all 0.2s ease;
+      background: #FAFAFA;
+      color: #1F1F1F;
+      box-sizing: border-box;
+    }
+    
+    .form-input:focus {
+      border-color: #7E57C2;
+      background: #FFFFFF;
+      box-shadow: 0 0 0 4px rgba(126, 87, 194, 0.1);
+    }
+    
+    .form-input::placeholder {
+      color: #9E9E9E;
+    }
+    
+    /* Submit Button */
+    .submit-button {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #7E57C2 0%, #9575CD 100%);
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+      margin-top: 24px;
+      box-shadow: 0 4px 12px rgba(126, 87, 194, 0.3);
+    }
+    
+    .submit-button:hover {
+      opacity: 0.9;
+    }
+    
+    .submit-button:active {
+      opacity: 0.8;
+    }
+    
+    .submit-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    /* Links */
+    .auth-links {
+      text-align: center;
+      margin-top: 24px;
+    }
+    
+    .auth-link {
+      color: #7E57C2;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    
+    .auth-link:hover {
+      color: #5E35B1;
+      text-decoration: underline;
+    }
+    
+    .register-section {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid #E0E0E0;
+      text-align: center;
+    }
+    
+    .register-button {
+      width: 100%;
+      padding: 16px;
+      border: 2px solid #7E57C2;
+      border-radius: 999px;
+      background: white;
+      color: #7E57C2;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+      text-decoration: none;
+      display: block;
+      box-sizing: border-box;
+    }
+    
+    .register-button:hover {
+      opacity: 0.9;
+    }
+    
+    /* Flash Messages */
+    .flash-messages {
+      margin-bottom: 24px;
+    }
+    
+    .flash-message {
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    
+    .flash-error {
+      background: #FFEBEE;
+      color: #C62828;
+    }
+    
+    .flash-success {
+      background: #E8F5E9;
+      color: #2E7D32;
     }
     
     @media (max-width: 480px) {
-      .login-card {
-        border-radius: 24px;
-        margin: 0.5rem;
+      .auth-card {
+        padding: 32px 24px;
       }
       
-      .login-header {
-        padding: 1.5rem 1.5rem 1rem;
-      }
-      
-      .login-body {
-        padding: 1.5rem;
+      .auth-logo {
+        margin-bottom: 32px;
       }
     }
   </style>
 {% endblock %}
 
 {% block content %}
-<div class="login-container">
-  <div class="login-card">
-    <div class="login-header">
-      <div class="material-symbols-outlined welcome-icon">waving_hand</div>
-      <h1>Willkommen zurück</h1>
+<!-- Floating Organic Blobs -->
+<div class="blob-container">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+
+<div class="auth-container">
+  <div class="auth-card">
+    <!-- Logo -->
+    <div class="auth-logo">
+      <div class="logo-icon">AM</div>
+      <div class="logo-text">Asset Management</div>
     </div>
     
-    <div class="login-body">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          <div class="flash-messages">
-            {% for category, message in messages %}
-              <div class="flash-message flash-{{ category }}">
-                <span class="material-symbols-outlined">
-                  {% if category == 'error' %}
-                    error
-                  {% elif category == 'success' %}
-                    check_circle
-                  {% else %}
-                    info
-                  {% endif %}
-                </span>
-                <span>{{ message|safe }}</span>
-                <button class="close-button" onclick="this.parentElement.style.display='none'" aria-label="Close">
-                  <span class="material-symbols-outlined" style="font-size: 1.25rem;">close</span>
-                </button>
-              </div>
-            {% endfor %}
-          </div>
-        {% endif %}
-      {% endwith %}
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for category, message in messages %}
+            <div class="flash-message flash-{{ category }}">
+              {{ message|safe }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    
+    <!-- Login Form -->
+    <form method="POST">
+      {{ form.hidden_tag() }}
       
-      <form method="POST">
-        {{ form.hidden_tag() }}
-        
-        <div class="form-field">
-          <label for="username">Benutzername</label>
-          <div class="input-container">
-            <span class="material-symbols-outlined">person</span>
-            <input type="text" id="username" name="username" class="form-input" required autocomplete="username">
-          </div>
-        </div>
-        
-        <div class="form-field">
-          <label for="password">Passwort</label>
-          <div class="input-container">
-            <span class="material-symbols-outlined">lock</span>
-            <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password">
-          </div>
-        </div>
-        
-        <div class="remember-me">
-          <input type="checkbox" id="remember_me" name="remember_me" {% if form.remember_me.data %}checked{% endif %}>
-          <label for="remember_me">Angemeldet bleiben</label>
-        </div>
-        
-        <div class="hint-text">
-          <span class="material-symbols-outlined">info</span>
-          <span>Diese Option nicht auf öffentlichen oder gemeinsam genutzten Geräten verwenden!</span>
-        </div>
-        
-        <div class="login-actions">
-          <button type="submit" class="login-button">
-            <span class="material-symbols-outlined">login</span>
-            Anmelden
-          </button>
-        </div>
-      </form>
-      
-      <div class="forgot-password">
-        <a href="{{ url_for('auth.reset_password') }}{% if request.args.get('md3') %}?md3=1{% endif %}">
-          Passwort vergessen?
-        </a>
+      <div class="form-group">
+        <label class="form-label" for="username">Benutzername</label>
+        <input 
+          type="text" 
+          id="username" 
+          name="username" 
+          class="form-input" 
+          placeholder="Benutzername eingeben"
+          required 
+          autocomplete="username"
+        >
       </div>
       
-      <div class="register-link" style="text-align: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--md-sys-color-outline-variant);">
-        <span style="color: var(--md-sys-color-on-surface-variant); font: var(--md-sys-typescale-body-medium-font);">
-          Noch kein Konto?
-        </span>
-        <a href="{{ url_for('auth.register') }}{% if request.args.get('md3') %}?md3=1{% endif %}" style="color: var(--md-sys-color-primary); text-decoration: none; font: var(--md-sys-typescale-body-medium-font); font-weight: 500; margin-left: 0.5rem; transition: color 0.2s;">
-          Jetzt registrieren
-        </a>
+      <div class="form-group">
+        <label class="form-label" for="password">Passwort</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password" 
+          class="form-input" 
+          placeholder="Passwort eingeben"
+          required 
+          autocomplete="current-password"
+        >
       </div>
+      
+      <button type="submit" class="submit-button">Anmelden</button>
+    </form>
+    
+    <!-- Forgot Password Link -->
+    <div class="auth-links">
+      <a href="{{ url_for('auth.reset_password') }}?md3=1" class="auth-link">
+        Passwort vergessen?
+      </a>
+    </div>
+    
+    <!-- Register Section -->
+    <div class="register-section">
+      <a href="{{ url_for('auth.register') }}?md3=1" class="register-button">
+        Jetzt registrieren
+      </a>
     </div>
   </div>
 </div>

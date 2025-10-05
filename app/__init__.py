@@ -142,12 +142,12 @@ def create_app():
     @app.after_request
     def set_csp(response):
         response.headers['Content-Security-Policy'] = (
-            "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com "
-            "https://maps.googleapis.com https://cdn.socket.io; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com "
+            "https://maps.googleapis.com https://cdn.socket.io https://*.googleapis.com; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com "
             "https://unpkg.com https://maps.googleapis.com; "
-            "img-src 'self' data: https://*.googleapis.com https://*.gstatic.com https://*.ggpht.com; "
-            "connect-src 'self' https://*.googleapis.com; "
+            "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.ggpht.com https://ui-avatars.com; "
+            "connect-src 'self' ws://127.0.0.1:* ws://localhost:* https://*.googleapis.com https://cdn.socket.io https://cdn.jsdelivr.net; "
             "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:;"
         )
         return response
