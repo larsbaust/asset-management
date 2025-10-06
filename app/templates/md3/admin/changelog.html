@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block styles %}
+{% block head %}
   {{ super() }}
   <style>
     .md3-page { padding: 24px; padding-top: 80px; }
@@ -23,7 +23,341 @@
     .form-textarea { width: 100%; padding: 12px 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 12px; background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font: var(--md-sys-typescale-body-large-font); resize: vertical; min-height: 200px; }
     .form-textarea:focus { outline: none; border-color: var(--md-sys-color-primary); }
     
-    .changelog-content { background: var(--md-sys-color-surface-variant); padding: 16px; border-radius: 12px; font-family: 'Courier New', monospace; white-space: pre-wrap; color: var(--md-sys-color-on-surface-variant); }
+    /* Timeline Container */
+    .changelog-entries { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 0;
+      position: relative;
+      padding-left: 40px;
+    }
+    
+    /* Timeline-Linie */
+    .changelog-entries::before {
+      content: '';
+      position: absolute;
+      left: 23px;
+      top: 32px;
+      bottom: 32px;
+      width: 2px;
+      background: linear-gradient(180deg, var(--md-sys-color-primary) 0%, var(--md-sys-color-tertiary) 100%);
+      opacity: 0.3;
+    }
+    
+    /* Changelog Card */
+    .changelog-entry { 
+      background: var(--md-sys-color-surface); 
+      border-radius: 16px; 
+      padding: 20px 24px; 
+      display: flex; 
+      align-items: flex-start; 
+      gap: 20px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      position: relative;
+      margin-bottom: 16px;
+    }
+    
+    .changelog-entry {
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    .changelog-entry:hover {
+      border-color: var(--md-sys-color-outline);
+    }
+    
+    .changelog-entry.expanded {
+      border-color: var(--md-sys-color-primary);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+    
+    /* Icon-Container mit Material Symbols */
+    .entry-icon { 
+      flex-shrink: 0; 
+      width: 56px; 
+      height: 56px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center;
+      border-radius: 16px;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .entry-icon .material-symbols-outlined {
+      font-size: 32px;
+      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+    }
+    
+    /* Farbvarianten für verschiedene Commit-Typen */
+    .icon-primary {
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+    }
+    
+    .icon-primary::after {
+      background: var(--md-sys-color-primary);
+      box-shadow: 0 0 0 3px var(--md-sys-color-primary-container);
+    }
+    
+    .icon-secondary {
+      background: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+    }
+    
+    .icon-secondary::after {
+      background: var(--md-sys-color-secondary);
+      box-shadow: 0 0 0 3px var(--md-sys-color-secondary-container);
+    }
+    
+    .icon-tertiary {
+      background: var(--md-sys-color-tertiary-container);
+      color: var(--md-sys-color-on-tertiary-container);
+    }
+    
+    .icon-tertiary::after {
+      background: var(--md-sys-color-tertiary);
+      box-shadow: 0 0 0 3px var(--md-sys-color-tertiary-container);
+    }
+    
+    .icon-error {
+      background: var(--md-sys-color-error-container);
+      color: var(--md-sys-color-on-error-container);
+    }
+    
+    .icon-error::after {
+      background: var(--md-sys-color-error);
+      box-shadow: 0 0 0 3px var(--md-sys-color-error-container);
+    }
+    
+    .icon-success {
+      background: #D0F0D0;
+      color: #0D5E0D;
+    }
+    
+    .icon-success::after {
+      background: #4CAF50;
+      box-shadow: 0 0 0 3px #D0F0D0;
+    }
+    
+    .icon-warning {
+      background: #FFF4E5;
+      color: #8B5A00;
+    }
+    
+    .icon-warning::after {
+      background: #FF9800;
+      box-shadow: 0 0 0 3px #FFF4E5;
+    }
+    
+    .entry-icon::after {
+      content: '';
+      position: absolute;
+      left: -40px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 3px solid var(--md-sys-color-surface);
+    }
+    
+    /* Content-Bereich */
+    .entry-content { 
+      flex: 1; 
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .entry-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 12px;
+    }
+    
+    .entry-main {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .entry-message { 
+      font: var(--md-sys-typescale-title-medium-font); 
+      color: var(--md-sys-color-on-surface);
+      line-height: 1.5;
+      font-weight: 500;
+    }
+    
+    .entry-expand-icon {
+      color: var(--md-sys-color-on-surface-variant);
+      font-size: 24px;
+      transition: transform 0.3s ease;
+      flex-shrink: 0;
+    }
+    
+    .changelog-entry.expanded .entry-expand-icon {
+      transform: rotate(180deg);
+    }
+    
+    /* Details-Section */
+    .entry-details {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+      padding: 0 0 0 76px;
+    }
+    
+    .changelog-entry.expanded .entry-details {
+      max-height: 800px;
+      padding: 16px 0 0 76px;
+    }
+    
+    .details-content {
+      background: var(--md-sys-color-surface-variant);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    
+    .details-section {
+      margin-bottom: 16px;
+    }
+    
+    .details-section:last-child {
+      margin-bottom: 0;
+    }
+    
+    .details-title {
+      font: var(--md-sys-typescale-label-large-font);
+      color: var(--md-sys-color-primary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+    
+    .details-title .material-symbols-outlined {
+      font-size: 18px;
+    }
+    
+    .details-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .details-list li {
+      padding: 6px 0;
+      padding-left: 24px;
+      position: relative;
+      font: var(--md-sys-typescale-body-medium-font);
+      color: var(--md-sys-color-on-surface-variant);
+      line-height: 1.6;
+    }
+    
+    .details-list li::before {
+      content: 'check';
+      font-family: 'Material Symbols Outlined';
+      position: absolute;
+      left: 0;
+      color: var(--md-sys-color-primary);
+      font-size: 16px;
+      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+    }
+    
+    /* Datum-Badge */
+    .entry-date { 
+      font: var(--md-sys-typescale-label-medium-font); 
+      color: var(--md-sys-color-on-surface-variant);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      width: fit-content;
+    }
+    
+    .entry-date::before {
+      content: 'schedule';
+      font-family: 'Material Symbols Outlined';
+      font-size: 18px;
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+    }
+    
+    .changelog-text { 
+      padding: 16px; 
+      color: var(--md-sys-color-on-surface-variant); 
+      font: var(--md-sys-typescale-body-medium-font);
+      background: var(--md-sys-color-surface-variant);
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+    
+    /* Mobile Optimierung */
+    @media (max-width: 768px) {
+      .changelog-entries {
+        padding-left: 32px;
+      }
+      
+      .changelog-entries::before {
+        left: 15px;
+      }
+      
+      .changelog-entry {
+        padding: 16px;
+        gap: 12px;
+      }
+      
+      .changelog-entry:hover {
+        border-color: var(--md-sys-color-outline);
+      }
+      
+      .entry-icon {
+        width: 48px;
+        height: 48px;
+      }
+      
+      .entry-details {
+        padding: 0 0 0 60px;
+      }
+      
+      .changelog-entry.expanded .entry-details {
+        padding: 12px 0 0 60px;
+      }
+      
+      .details-content {
+        padding: 12px;
+      }
+      
+      .details-section {
+        margin-bottom: 12px;
+      }
+      
+      .entry-icon .material-symbols-outlined {
+        font-size: 28px;
+      }
+      
+      .entry-icon::after {
+        left: -32px;
+        width: 10px;
+        height: 10px;
+      }
+      
+      .entry-message {
+        font-size: 15px;
+      }
+      
+      .entry-date {
+        font-size: 12px;
+      }
+      
+      .entry-date::before {
+        font-size: 16px;
+      }
+    }
   </style>
 {% endblock %}
 
@@ -72,8 +406,118 @@
         </div>
         {% endif %}
 
-        <div class="changelog-content">{{ changelog_text }}</div>
+        <div class="changelog-entries">
+          {% set lines = changelog_text.split('\n') %}
+          {% for line in lines %}
+            {% if line.strip() and line.startswith('-') %}
+              {% set parts = line[1:].strip().split(' ', 1) %}
+              {% if parts|length >= 2 %}
+                {% set date = parts[0] %}
+                {% set message = parts[1] %}
+                
+                {# Emoji zu MD3-Icon-Mapping #}
+                {% set icon_class = 'rocket_launch' %}
+                {% set color_class = 'primary' %}
+                
+                {% if message.startswith('🎉') or message.startswith('✨') or message.startswith('🆕') %}
+                  {% set icon_class = 'celebration' %}
+                  {% set color_class = 'primary' %}
+                  {% set message = message[1:].strip() %}
+                {% elif message.startswith('🔧') or message.startswith('🐛') %}
+                  {% set icon_class = 'build' %}
+                  {% set color_class = 'error' %}
+                  {% set message = message[1:].strip() %}
+                {% elif message.startswith('📱') or message.startswith('🎨') %}
+                  {% set icon_class = 'palette' %}
+                  {% set color_class = 'tertiary' %}
+                  {% set message = message[1:].strip() %}
+                {% elif message.startswith('✅') or message.startswith('⚡') %}
+                  {% set icon_class = 'check_circle' %}
+                  {% set color_class = 'success' %}
+                  {% set message = message[1:].strip() %}
+                {% elif message.startswith('🔒') or message.startswith('🛡️') %}
+                  {% set icon_class = 'shield' %}
+                  {% set color_class = 'warning' %}
+                  {% set message = message[1:].strip() %}
+                {% elif message.startswith('💡') or message.startswith('🚀') %}
+                  {% set icon_class = 'lightbulb' %}
+                  {% set color_class = 'secondary' %}
+                  {% set message = message[1:].strip() %}
+                {% elif message.startswith('📝') or message.startswith('📊') %}
+                  {% set icon_class = 'description' %}
+                  {% set color_class = 'primary' %}
+                  {% set message = message[1:].strip() %}
+                {% elif message.startswith('📦') or message.startswith('🔍') %}
+                  {% set icon_class = 'inventory_2' %}
+                  {% set color_class = 'tertiary' %}
+                  {% set message = message[1:].strip() %}
+                {% elif message.startswith('♻️') or message.startswith('🔄') %}
+                  {% set icon_class = 'sync' %}
+                  {% set color_class = 'secondary' %}
+                  {% set message = message[1:].strip() %}
+                {% endif %}
+                
+                <div class="changelog-entry" onclick="toggleDetails(this)">
+                  <div class="entry-icon icon-{{ color_class }}">
+                    <span class="material-symbols-outlined">{{ icon_class }}</span>
+                  </div>
+                  <div class="entry-content">
+                    <div class="entry-header">
+                      <div class="entry-main">
+                        <div class="entry-message">{{ message }}</div>
+                        <div class="entry-date">{{ date }}</div>
+                      </div>
+                      <span class="material-symbols-outlined entry-expand-icon">expand_more</span>
+                    </div>
+                    <div class="entry-details">
+                      <div class="details-content">
+                        <div class="details-section">
+                          <div class="details-title">
+                            <span class="material-symbols-outlined">category</span>
+                            Kategorie
+                          </div>
+                          <ul class="details-list">
+                            <li>{{ color_class|title }}-Änderung</li>
+                          </ul>
+                        </div>
+                        <div class="details-section">
+                          <div class="details-title">
+                            <span class="material-symbols-outlined">{{ icon_class }}</span>
+                            Icon-Typ
+                          </div>
+                          <ul class="details-list">
+                            <li>Material Symbol: {{ icon_class }}</li>
+                            <li>Füllstil: Gefüllt (FILL 1)</li>
+                          </ul>
+                        </div>
+                        <div class="details-section">
+                          <div class="details-title">
+                            <span class="material-symbols-outlined">info</span>
+                            Details
+                          </div>
+                          <ul class="details-list">
+                            <li>Commit-Datum: {{ date }}</li>
+                            <li>MD3-konforme Darstellung</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
+            {% elif line.strip() and not line.startswith('#') %}
+              <div class="changelog-text">{{ line }}</div>
+            {% endif %}
+          {% endfor %}
+        </div>
       </div>
     </div>
   </div>
+  
+  <script>
+    function toggleDetails(element) {
+      // Toggle expanded class
+      element.classList.toggle('expanded');
+    }
+  </script>
 {% endblock %}
