@@ -1,0 +1,54 @@
+✨ Feature: Expandierbare Changelog-Cards mit MD3-Timeline & Icon-Details
+
+📋 HAUPTFEATURES:
+- Expandierbare Cards mit Click-to-Expand Funktionalität
+- Timeline-Visualisierung mit vertikaler Linie und Commit-Punkten
+- Material Design 3 Icons statt Emojis (celebration, build, palette, etc.)
+- Farbkodierte Kategorien (Primary, Secondary, Tertiary, Error, Success, Warning)
+
+🎨 UI/UX-VERBESSERUNGEN:
+- Hover-Effekt minimiert (nur Border-Highlight, kein translateX mehr)
+- Smooth Accordion-Animation beim Expand/Collapse
+- Expand-Icon (Pfeil) rotiert beim Öffnen
+- Details-Section mit grauem Hintergrund und Check-Icons
+
+📊 DETAILS-INHALTE:
+- Kategorie-Info (Primary/Secondary/Tertiary/Error/Success/Warning)
+- Icon-Typ mit Material Symbol Name
+- Füllstil-Info (FILL 1 = gefüllt)
+- Commit-Datum und MD3-Konformitäts-Hinweis
+
+🎯 EMOJI-ZU-ICON-MAPPING:
+- 🎉/✨/🆕 → celebration (Primary)
+- 🔧/🐛 → build (Error)
+- 📱/🎨 → palette (Tertiary)
+- ✅/⚡ → check_circle (Success)
+- 🔒/🛡️ → shield (Warning)
+- 💡/🚀 → lightbulb (Secondary)
+- 📝/📊 → description (Primary)
+- 📦/🔍 → inventory_2 (Tertiary)
+- ♻️/🔄 → sync (Secondary)
+
+📱 MOBILE-OPTIMIERUNG:
+- Kleinere Icons und Padding
+- Angepasste Timeline-Position
+- Touch-friendly Spacing
+- Responsive Details-Section
+
+🔧 TECHNISCHE DETAILS:
+- Template: app/templates/md3/admin/changelog.html
+- JavaScript: toggleDetails() Funktion für Expand/Collapse
+- CSS: Material Design 3 Token-basiert
+- Animationen: cubic-bezier(0.4, 0, 0.2, 1) für smooth transitions
+- Timeline-Gradient: Primary → Tertiary
+- Hover: Subtile Border-Änderung ohne Transform
+
+💡 VERWENDUNGSZWECK:
+Diese Implementierung dient als Template für alle zukünftigen Feature-Commits.
+Jeder Commit sollte folgende Struktur haben:
+1. Emoji + Typ + Kurzbeschreibung
+2. Hauptfeatures
+3. UI/UX-Verbesserungen
+4. Details-Inhalte
+5. Technische Details
+6. Mobile-Optimierung (falls relevant)

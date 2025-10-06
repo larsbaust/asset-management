@@ -1,5 +1,27 @@
 # Changelog (automatisch generiert)
 
+- 2025-10-06 🔧 Fix: Robuste Git-Executable-Erkennung für Server ohne Git im PATH
+- 2025-10-06 🔒 Security: CSRF-Tokens zu Changelog-Formularen hinzugefügt (MD3 + Classic)
+- 2025-10-06 📱 Mobile: Ausleihen-Seiten optimiert mit Card-Layout (Aktive + Historie)
+- 2025-10-06 📱 Mobile UX: Perfekte Accordion-Dropdowns + Icon-Ausrichtung + Assets-Optimierung
+- 2025-10-06 📱 Mobile UX-Fix: Doppel-Hover entfernt + Dropdowns unter Icons positioniert
+- 2025-10-06 📱 Mobile UI-Fix: Hamburger-Icon dunkler + Icons horizontal ausgerichtet
+- 2025-10-06 🎨 UI-Fix: Alte grüne Navigation komplett ausgeblendet
+- 2025-10-06 🔒 Security: Remove real credentials from .env.example
+- 2025-10-06 ✅ OCI Integration Production-Ready
+- 2025-10-05 ✨ Feature: Profile-Seite - Edit-Modal für Kontaktdaten & Chat-Widget ausgeblendet
+- 2025-10-05 ✨ Feature: Organisches Auth-System mit MD3-Design komplett überarbeitet
+- 2025-10-05 Feature: Registrierung komplett überarbeitet - Vorname/Nachname/E-Mail, Passwort-Prüfung, E-Mail-Bestätigung, hCaptcha, MD3-Standard
+- 2025-10-04 filetransfer
+- 2025-10-04 file transfer
+- 2025-10-03 deploy strato
+- 2025-10-03 update floorplan routes update locations template update reset coverage update dashboard update
+- 2025-08-15 Update locations.html
+- 2025-08-15 Update dashboard.html
+- 2025-08-15 UX Renew
+- 2025-06-20 Inventory - Report bugfix & update
+- 2025-06-19 feat(order-wizard): Add "In Transfer" column and email enhancements
+- 2025-06-17 Ausgezeichnet! Ich freue mich, dass alles funktioniert. Wir haben erfolgreich:
 - 2025-06-16 wir haben die Logik grundlegend verändert, sodass jetzt der Backend-Name Vorrang hat. Das Problem lag darin, dass die JavaScript-Logik zuvor den Namen "Hypersoft Trading GmbH" für bestimmte Lieferanten-IDs hartcodiert hat, ungeachtet dessen, was das Backend tatsächlich lieferte.
 - 2025-06-10 erweiterung bestellprozess, Standort und Lieferant (csv- import) sowie erweiterte rollenverwaltung
 - 2025-06-10 Neuer Bestellprozess mit Wizard 4 Step route programmiert
