@@ -1,6 +1,30 @@
 import base64
 import subprocess
 import os
+import shutil
+
+def find_git_executable():
+    """
+    Findet den Git-Executable-Pfad auf verschiedenen Systemen.
+    """
+    # Zuerst im PATH suchen
+    git_path = shutil.which('git')
+    if git_path:
+        return git_path
+    
+    # Alternative Pfade für Linux/Unix-Systeme
+    common_paths = [
+        '/usr/bin/git',
+        '/usr/local/bin/git',
+        '/bin/git',
+        '/opt/git/bin/git'
+    ]
+    
+    for path in common_paths:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+    
+    return None
 
 def generate_changelog():
     """
@@ -8,16 +32,24 @@ def generate_changelog():
     """
     proj_dir = os.path.dirname(os.path.dirname(__file__))
     changelog_path = os.path.join(proj_dir, 'CHANGELOG.md')
+    
+    # Git-Executable finden
+    git_executable = find_git_executable()
+    if not git_executable:
+        return 'Fehler: Git ist auf diesem Server nicht installiert oder nicht im PATH. Bitte installieren Sie Git oder fügen Sie es zum PATH hinzu.'
+    
     try:
         log = subprocess.check_output(
-            ['git', 'log', '--pretty=format:- %ad %s', '--date=short'],
+            [git_executable, 'log', '--pretty=format:- %ad %s', '--date=short'],
             cwd=proj_dir, encoding='utf-8', stderr=subprocess.STDOUT
         )
         with open(changelog_path, 'w', encoding='utf-8') as f:
             f.write('# Changelog (automatisch generiert)\n\n')
             f.write(log)
+    except subprocess.CalledProcessError as e:
+        return f'Git-Fehler: {e.output}'
     except Exception as e:
-        return str(e)
+        return f'Fehler beim Generieren des Changelogs: {str(e)}'
     return 'Changelog erfolgreich generiert.'
 
 
@@ -30,10 +62,19 @@ def generate_ai_changelog(api_key, n=10):
     """
     import requests
     proj_dir = os.path.dirname(os.path.dirname(__file__))
-    log = subprocess.check_output(
-        ['git', 'log', f'-n{n}', '--pretty=format:%h %ad %s', '--date=short'],
-        cwd=proj_dir, encoding='utf-8', stderr=subprocess.STDOUT
-    )
+    
+    # Git-Executable finden
+    git_executable = find_git_executable()
+    if not git_executable:
+        return 'Fehler: Git ist auf diesem Server nicht installiert oder nicht im PATH.'
+    
+    try:
+        log = subprocess.check_output(
+            [git_executable, 'log', f'-n{n}', '--pretty=format:%h %ad %s', '--date=short'],
+            cwd=proj_dir, encoding='utf-8', stderr=subprocess.STDOUT
+        )
+    except Exception as e:
+        return f'Git-Fehler: {str(e)}'
     prompt = (
         "Fasse die folgenden Git-Commits als verständlichen, strukturierten Changelog für Anwender zusammen. "
         "Nutze eine Gliederung nach Features, Bugfixes, Verbesserungen, falls möglich. Schreibe auf Deutsch.\n\n" + log
