@@ -432,8 +432,13 @@
     display: none;
     background: none;
     border: none;
-    color: var(--md-sys-color-on-primary);
+    color: #1E1B16; /* ✅ Dunklere Farbe für bessere Sichtbarkeit */
     cursor: pointer;
+  }
+  
+  .md-nav-menu-button .material-symbols-outlined {
+    font-size: 28px; /* Größeres Icon */
+    color: #1E1B16; /* Dunkel für besseren Kontrast */
   }
 
   .md-nav-dropdown {
@@ -624,6 +629,42 @@
       width: 100%;
       color: var(--md-sys-color-on-surface);
       padding: 0 24px;
+      /* ✅ Icon-Ausrichtung in Mobile */
+      flex-direction: row;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .md-nav-tab .material-symbols-outlined {
+      margin: 0;
+      width: 24px;
+      height: 24px;
+    }
+    
+    .md-nav-tab-label {
+      margin-top: 0;
+    }
+    
+    /* ✅ Dropdown-Trigger in Mobile horizontal */
+    .md-nav-tab-trigger {
+      flex-direction: row;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      height: 56px;
+      padding: 0 24px;
+    }
+    
+    .md-nav-tab-trigger .material-symbols-outlined {
+      margin: 0;
+      width: 24px;
+      height: 24px;
+    }
+    
+    .md-nav-tab-trigger .md-nav-tab-label {
+      margin-top: 0;
     }
 
     .md-nav-tab.active::after {
