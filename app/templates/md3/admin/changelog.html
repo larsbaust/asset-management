@@ -38,6 +38,7 @@
       <div class="card">
         <div class="actions">
           <form method="post" action="{{ url_for('admin.changelog', md3=1) }}" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="md3" value="1">
             <button class="md3-button md3-button-tonal" type="submit" name="generate_ai">
               <span class="material-symbols-outlined">smart_toy</span>
@@ -45,6 +46,7 @@
             </button>
           </form>
           <form method="post" action="{{ url_for('admin.generate_changelog_route', md3=1) }}" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="md3" value="1">
             <button class="md3-button md3-button-filled" type="submit">
               <span class="material-symbols-outlined">refresh</span>
@@ -57,6 +59,7 @@
         <div class="ai-preview">
           <strong>KI-Zusammenfassung (Vorschau):</strong>
           <form method="post" action="{{ url_for('admin.changelog', md3=1) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="md3" value="1">
             <div class="form-field">
               <textarea name="ai_text" class="form-textarea" rows="8">{{ ai_summary }}</textarea>
