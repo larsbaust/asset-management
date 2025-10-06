@@ -666,6 +666,49 @@
     .md-nav-tab-trigger .md-nav-tab-label {
       margin-top: 0;
     }
+    
+    /* ✅ Standorte-Dropdown in Mobile wie normale Tabs */
+    #locations-dropdown .md-nav-tab-trigger {
+      flex-direction: row;
+      gap: 16px;
+      justify-content: flex-start;
+    }
+    
+    #locations-dropdown .md-nav-tab-trigger .material-symbols-outlined {
+      margin: 0;
+    }
+    
+    /* ✅ Mobile: Dropdowns auf Click/Touch statt Hover */
+    .md-nav-dropdown .md-dropdown-content,
+    .md-action-item .md-dropdown-content {
+      display: none !important;
+    }
+    
+    .md-nav-dropdown.is-active .md-dropdown-content,
+    .md-action-item.is-active .md-dropdown-content {
+      display: block !important;
+    }
+    
+    /* ✅ Action-Icon-Dropdowns in Mobile: UNTER der Navbar */
+    #admin-dropdown .md-dropdown-content,
+    #user-dropdown .md-dropdown-content,
+    #messages-dropdown .md-dropdown-content {
+      position: fixed;
+      top: 64px;
+      right: 8px;
+      left: auto;
+      width: 280px;
+      z-index: 10001;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.14);
+    }
+    
+    /* ✅ Action-Icons Container: Icons bleiben sichtbar */
+    .md-nav-actions {
+      position: relative;
+      z-index: 10002; /* Über Dropdowns */
+    }
 
     .md-nav-tab.active::after {
       display: none;
@@ -1089,6 +1132,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Positioniere das Dropdown relativ zum Toggle
     const toggleRect = toggle.getBoundingClientRect();
     const isNavTab = dropdown.classList.contains('md-nav-tab');
+    const isMobile = isMobileView();
     
     // Positionierung basierend auf Typ (NavTab oder ActionIcon)
     if (isNavTab) {
@@ -1096,13 +1140,26 @@ document.addEventListener('DOMContentLoaded', function() {
       portalDropdown.style.top = (toggleRect.bottom + window.scrollY) + 'px';
       portalDropdown.style.left = (toggleRect.left + (toggleRect.width / 2) - 140) + 'px'; // Zentriert
     } else {
-      // Für Action Icons (rechts ausgerichtet)
-      portalDropdown.style.top = (toggleRect.bottom + window.scrollY) + 'px';
-      portalDropdown.style.left = (toggleRect.right - portalDropdown.offsetWidth) + 'px';
+      // Für Action Icons
+      if (isMobile) {
+        // ✅ Mobile: Dropdown direkt unter dem Icon, rechts ausgerichtet
+        portalDropdown.style.top = (toggleRect.bottom + window.scrollY + 4) + 'px'; // 4px Abstand
+        portalDropdown.style.left = 'auto';
+        portalDropdown.style.right = '8px'; // Von rechts
+      } else {
+        // Desktop: rechts ausgerichtet
+        portalDropdown.style.top = (toggleRect.bottom + window.scrollY) + 'px';
+        portalDropdown.style.left = (toggleRect.right - portalDropdown.offsetWidth) + 'px';
+      }
     }
     
     // Zeige das Dropdown an
     portalDropdown.style.display = 'block';
+  }
+  
+  // ✅ Mobile-Erkennung (reaktiv bei Resize)
+  function isMobileView() {
+    return window.innerWidth <= 1023;
   }
   
   // Event-Listener für alle Dropdown-Elemente (Admin, User, Inventur, Bestellung) mit Hybrid-Aktivierung
@@ -1110,14 +1167,27 @@ document.addEventListener('DOMContentLoaded', function() {
     // Toggle-Element im Dropdown finden
     const toggle = dropdown.querySelector('.md-nav-tab-trigger, #admin-dropdown-toggle, #user-dropdown-toggle, #inventory-dropdown-toggle, #orders-dropdown-toggle, #loans-dropdown-toggle, #messages-dropdown-toggle');
     
-    // 1. Hover-Verhalten (mouseenter)
-    dropdown.addEventListener('mouseenter', function() {
-      console.log('Dropdown hover:', dropdown.id);
-      closeAllDropdowns(); // Andere Dropdowns schließen
-      openDropdown(dropdown);
-    });
+    // ✅ Hover-Verhalten (NUR in Desktop, nicht in Mobile)
+    if (!isMobileView()) {
+      dropdown.addEventListener('mouseenter', function() {
+        console.log('Dropdown hover:', dropdown.id);
+        closeAllDropdowns(); // Andere Dropdowns schließen
+        openDropdown(dropdown);
+      });
+      
+      // Sorgt dafür, dass das Dropdown offen bleibt, wenn die Maus darüber ist
+      dropdown.addEventListener('mouseleave', function() {
+        console.log('Dropdown verlassen:', dropdown.id);
+        // Dropdown nicht sofort schließen, sondern prüfen ob die Maus über dem Portal ist
+        setTimeout(() => {
+          if (!document.querySelector(`.md-dropdown-portal[data-for-dropdown="${dropdown.id}"]:hover`)) {
+            closeAllDropdowns();
+          }
+        }, 100);
+      });
+    }
     
-    // 2. Auch Klick-Verhalten für bessere Zugänglichkeit
+    // ✅ Click/Touch-Verhalten (für Touch-Geräte)
     if (toggle) {
       toggle.addEventListener('click', function(e) {
         // Spezielle Behandlung für Standorte: Erlaube direkte Navigation
@@ -1150,26 +1220,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
     }
-    
-    // Sorgt dafür, dass das Dropdown offen bleibt, wenn die Maus darüber ist
-    dropdown.addEventListener('mouseleave', function() {
-      console.log('Dropdown verlassen:', dropdown.id);
-      // Dropdown nicht sofort schließen, sondern prüfen ob die Maus über dem Portal ist
-      setTimeout(() => {
-        if (!document.querySelector(`.md-dropdown-portal[data-for-dropdown="${dropdown.id}"]:hover`)) {
-          closeAllDropdowns();
-        }
-      }, 100);
-    });
   });
   
-  // Event-Listener für Portal-Dropdowns
-  document.querySelectorAll('.md-dropdown-portal').forEach(portalDropdown => {
-    portalDropdown.addEventListener('mouseleave', function() {
-      console.log('Portal-Dropdown verlassen');
-      closeAllDropdowns();
+  // Event-Listener für Portal-Dropdowns (nur in Desktop)
+  if (!isMobileView()) {
+    document.querySelectorAll('.md-dropdown-portal').forEach(portalDropdown => {
+      portalDropdown.addEventListener('mouseleave', function() {
+        console.log('Portal-Dropdown verlassen');
+        closeAllDropdowns();
+      });
     });
-  });
+  }
   
   // Debug-Funktion für Dropdown-Tests
   document.getElementById('debug-toggle').addEventListener('click', function(e) {
