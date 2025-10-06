@@ -71,6 +71,128 @@
     border-top-right-radius: 12px;
     border-bottom-right-radius: 12px;
   }
+  
+  /* ✅ Mobile: Card-Ansicht statt Tabelle */
+  @media (max-width: 768px) {
+    .md3-container {
+      padding: 16px 8px;
+      margin-top: 70px;
+    }
+    
+    .md3-title {
+      font-size: 24px;
+    }
+    
+    .md3-subtitle {
+      font-size: 13px;
+    }
+    
+    .md3-card {
+      padding: 16px;
+    }
+    
+    /* Tabelle in Mobile verstecken */
+    .table-wrap {
+      display: none;
+    }
+    
+    /* Mobile Card-Liste */
+    .mobile-history-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .mobile-history-card {
+      background: var(--md-sys-color-surface-container);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .mobile-history-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+    
+    .mobile-history-img {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    
+    .mobile-history-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .mobile-history-name {
+      font-weight: 500;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+    
+    .mobile-history-article {
+      font-size: 12px;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+    
+    .mobile-history-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    
+    .mobile-history-detail {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .mobile-history-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--md-sys-color-on-surface-variant);
+      font-weight: 500;
+    }
+    
+    .mobile-history-value {
+      font-size: 14px;
+      color: var(--md-sys-color-on-surface);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .mobile-history-returned {
+      margin-top: 4px;
+      padding: 8px 12px;
+      background: var(--md-sys-color-tertiary-container);
+      color: var(--md-sys-color-on-tertiary-container);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+  }
+  
+  /* Desktop: Mobile Cards verstecken */
+  @media (min-width: 769px) {
+    .mobile-history-cards {
+      display: none;
+    }
+  }
 </style>
 
 <div class="md3-container">
@@ -81,6 +203,7 @@
   
   <div class="md3-card">
     {% if loan_history %}
+    <!-- Desktop: Tabelle -->
     <div class="table-wrap">
       <table class="md3-table">
         <thead>
@@ -124,6 +247,50 @@
           {% endfor %}
         </tbody>
       </table>
+    </div>
+    
+    <!-- Mobile: Cards -->
+    <div class="mobile-history-cards">
+      {% for loan in loan_history %}
+      <div class="mobile-history-card">
+        <div class="mobile-history-header">
+          {% if loan.loaned_asset.image_url %}
+          <img src="{{ loan.loaned_asset.image_url }}" class="mobile-history-img" alt="{{ loan.loaned_asset.name }}">
+          {% endif %}
+          <div class="mobile-history-info">
+            <div class="mobile-history-name">{{ loan.loaned_asset.name }}</div>
+            {% if loan.loaned_asset.article_number %}
+            <div class="mobile-history-article">Art.-Nr.: {{ loan.loaned_asset.article_number }}</div>
+            {% endif %}
+          </div>
+        </div>
+        
+        <div class="mobile-history-details">
+          <div class="mobile-history-detail">
+            <div class="mobile-history-label">Ausgeliehen an</div>
+            <div class="mobile-history-value">
+              <span class="material-symbols-outlined" style="font-size: 16px; color: var(--md-sys-color-primary);">person</span>
+              {{ loan.borrower_name }}
+            </div>
+          </div>
+          
+          <div class="mobile-history-detail">
+            <div class="mobile-history-label">Von</div>
+            <div class="mobile-history-value">{{ loan.start_date.strftime('%d.%m.%Y') }}</div>
+          </div>
+          
+          <div class="mobile-history-detail">
+            <div class="mobile-history-label">Bis</div>
+            <div class="mobile-history-value">{{ loan.expected_return_date.strftime('%d.%m.%Y') }}</div>
+          </div>
+        </div>
+        
+        <div class="mobile-history-returned">
+          <span class="material-symbols-outlined" style="font-size: 16px;">check</span>
+          Zurückgegeben: {{ loan.actual_return_date.strftime('%d.%m.%Y') }}
+        </div>
+      </div>
+      {% endfor %}
     </div>
     {% else %}
     <div style="text-align: center; padding: 60px; color: var(--md-sys-color-on-surface-variant);">

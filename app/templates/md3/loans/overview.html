@@ -111,6 +111,120 @@
     background: var(--md-sys-color-secondary-container);
     color: var(--md-sys-color-on-secondary-container);
   }
+  
+  /* ✅ Mobile: Card-Ansicht statt Tabelle */
+  @media (max-width: 768px) {
+    .md3-container {
+      padding: 16px 8px;
+      margin-top: 70px;
+    }
+    
+    .md3-title {
+      font-size: 24px;
+    }
+    
+    .md3-card {
+      padding: 16px;
+    }
+    
+    /* Tabelle in Mobile verstecken */
+    .table-wrap {
+      display: none;
+    }
+    
+    /* Mobile Card-Liste */
+    .mobile-loan-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .mobile-loan-card {
+      background: var(--md-sys-color-surface-container);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .mobile-loan-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+    
+    .mobile-loan-img {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+    
+    .mobile-loan-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .mobile-loan-name {
+      font-weight: 500;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+    
+    .mobile-loan-article {
+      font-size: 12px;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+    
+    .mobile-loan-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    
+    .mobile-loan-detail {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .mobile-loan-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--md-sys-color-on-surface-variant);
+      font-weight: 500;
+    }
+    
+    .mobile-loan-value {
+      font-size: 14px;
+      color: var(--md-sys-color-on-surface);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .mobile-loan-action {
+      margin-top: 8px;
+    }
+    
+    .md3-action-btn {
+      width: 100%;
+      justify-content: center;
+      padding: 12px 16px;
+    }
+  }
+  
+  /* Desktop: Mobile Cards verstecken */
+  @media (min-width: 769px) {
+    .mobile-loan-cards {
+      display: none;
+    }
+  }
 </style>
 
 <div class="md3-container">
@@ -120,6 +234,7 @@
   
   <div class="md3-card">
     {% if active_loans %}
+    <!-- Desktop: Tabelle -->
     <div class="table-wrap">
       <table class="md3-table">
         <thead>
@@ -177,6 +292,69 @@
           {% endfor %}
         </tbody>
       </table>
+    </div>
+    
+    <!-- Mobile: Cards -->
+    <div class="mobile-loan-cards">
+      {% for loan in active_loans %}
+      <div class="mobile-loan-card">
+        <div class="mobile-loan-header">
+          {% if loan.loaned_asset.image_url %}
+          <img src="{{ loan.loaned_asset.image_url }}" class="mobile-loan-img" alt="{{ loan.loaned_asset.name }}">
+          {% endif %}
+          <div class="mobile-loan-info">
+            <div class="mobile-loan-name">{{ loan.loaned_asset.name }}</div>
+            {% if loan.loaned_asset.article_number %}
+            <div class="mobile-loan-article">Art.-Nr.: {{ loan.loaned_asset.article_number }}</div>
+            {% endif %}
+          </div>
+        </div>
+        
+        <div class="mobile-loan-details">
+          <div class="mobile-loan-detail">
+            <div class="mobile-loan-label">Ausgeliehen an</div>
+            <div class="mobile-loan-value">
+              <span class="material-symbols-outlined" style="font-size: 16px; color: var(--md-sys-color-primary);">person</span>
+              {{ loan.borrower_name }}
+            </div>
+          </div>
+          
+          <div class="mobile-loan-detail">
+            <div class="mobile-loan-label">Von</div>
+            <div class="mobile-loan-value">{{ loan.start_date.strftime('%d.%m.%Y') }}</div>
+          </div>
+          
+          <div class="mobile-loan-detail">
+            <div class="mobile-loan-label">Bis</div>
+            <div class="mobile-loan-value">{{ loan.expected_return_date.strftime('%d.%m.%Y') }}</div>
+          </div>
+          
+          <div class="mobile-loan-detail">
+            <div class="mobile-loan-label">Status</div>
+            <div class="mobile-loan-value">
+              {% if loan.expected_return_date < now %}
+              <span class="md3-badge md3-badge-danger">
+                <span class="material-symbols-outlined" style="font-size: 14px; margin-right: 4px;">error</span>
+                Überfällig
+              </span>
+              {% else %}
+              <span class="md3-badge md3-badge-success">
+                <span class="material-symbols-outlined" style="font-size: 14px; margin-right: 4px;">check_circle</span>
+                Aktiv
+              </span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        
+        <div class="mobile-loan-action">
+          <button onclick="returnAssetFromOverview({{ loan.id }})" class="md3-action-btn md3-btn-secondary">
+            <span class="material-symbols-outlined" style="font-size: 18px;">undo</span>
+            Zurückgeben
+          </button>
+        </div>
+      </div>
+      {% endfor %}
     </div>
     {% else %}
     <div style="text-align: center; padding: 60px; color: var(--md-sys-color-on-surface-variant);">
