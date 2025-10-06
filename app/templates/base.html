@@ -32,7 +32,8 @@
     {% block head %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar is-primary" role="navigation" aria-label="main navigation">
+    <!-- ✅ Alte Navigation komplett ausgeblendet -->
+    <nav class="navbar is-primary" role="navigation" aria-label="main navigation" style="display: none !important;">
         <div class="navbar-brand">
             <a class="navbar-item" href="{{ url_for('main.dashboard') }}">
                 <strong>Asset Management</strong>
