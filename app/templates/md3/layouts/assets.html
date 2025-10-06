@@ -162,6 +162,73 @@
   background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
 }
+
+/* ✅ Mobile-Optimierung für Assets-Seite */
+@media (max-width: 768px) {
+  .md3-container {
+    padding: 16px 8px;
+  }
+  
+  .md3-assets-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .md3-assets-title {
+    font-size: 24px;
+  }
+  
+  .md3-action-buttons {
+    width: 100%;
+    flex-direction: column;
+  }
+  
+  .md3-action-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 16px 24px;
+    font-size: 16px;
+  }
+  
+  /* ✅ Tabelle in Mobile: Scrollbar + kompaktere Ansicht */
+  .md3-asset-table-container {
+    margin-left: -8px;
+    margin-right: -8px;
+    padding: 0 8px;
+  }
+  
+  .md3-asset-table {
+    font-size: 12px;
+    min-width: 600px; /* Horizontales Scrollen erlauben */
+  }
+  
+  .md3-asset-table th,
+  .md3-asset-table td {
+    padding: 8px 4px;
+    white-space: nowrap;
+  }
+  
+  .md3-asset-table th:first-child,
+  .md3-asset-table td:first-child {
+    padding-left: 8px;
+  }
+  
+  .md3-asset-table th:last-child,
+  .md3-asset-table td:last-child {
+    padding-right: 8px;
+  }
+  
+  /* ✅ Action-Icons kompakter in Mobile */
+  .md3-action-icon {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .md3-action-icon .material-symbols-outlined {
+    font-size: 18px;
+  }
+}
 </style>
 
 <script>

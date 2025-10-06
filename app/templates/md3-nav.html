@@ -607,25 +607,35 @@
       top: 64px;
       left: 0;
       right: 0;
+      width: 100%;
+      height: auto;
+      max-height: 0;
       background-color: var(--md-sys-color-surface);
       flex-direction: column;
       align-items: flex-start;
-      height: auto;
-      max-height: 0;
-      overflow: hidden;
-      margin-left: 0;
-      transition: max-height 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+      padding: 0;
+      margin: 0;
+      overflow: hidden; /* Erst hidden für closed state */
+      transition: max-height 0.3s ease-out;
       z-index: 90;
     }
-
+    
     .md-nav-sections.is-active {
       max-height: calc(100vh - 64px);
-      overflow-y: auto;
+      overflow-y: auto; /* Scrollbar wenn nötig */
+      overflow-x: hidden;
       box-shadow: 0px 4px 5px rgba(0, 0, 0, 0.14), 0px 1px 10px rgba(0, 0, 0, 0.12), 0px 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* ✅ Alle Borders in Nav-Sections entfernen */
+    .md-nav-sections > * {
+      border-top: none !important;
+      border-bottom: none !important;
     }
 
     .md-nav-tab {
-      height: 56px;
+      min-height: 56px; /* min statt height für Accordion */
+      height: auto; /* Auto-Höhe für expandierte Dropdowns */
       width: 100%;
       color: var(--md-sys-color-on-surface);
       padding: 0 24px;
@@ -634,6 +644,68 @@
       justify-content: flex-start;
       align-items: center;
       gap: 16px;
+      overflow: visible; /* Dropdowns dürfen nicht abgeschnitten werden */
+      border: none !important; /* Keine Borders */
+      border-top: none !important;
+      border-bottom: none !important;
+      background: transparent !important; /* Kein Hintergrund */
+      box-shadow: none !important;
+    }
+    
+    .md-nav-tab::before,
+    .md-nav-tab::after {
+      display: none !important; /* Keine Pseudo-Elemente */
+    }
+    
+    .md-nav-tab:hover,
+    .md-nav-tab:active,
+    .md-nav-tab.is-active {
+      background: transparent !important; /* Kein Hover-Hintergrund */
+      border: none !important;
+      box-shadow: none !important;
+    }
+    
+    /* ✅ Dropdown-Container in Mobile: Wrapper für Accordion */
+    .md-nav-dropdown.md-nav-tab {
+      height: auto !important;
+      min-height: 56px;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: none !important;
+      border-top: none !important;
+      border-bottom: none !important;
+      border-left: none !important;
+      border-right: none !important;
+      box-shadow: none !important;
+      outline: none !important;
+    }
+    
+    .md-nav-dropdown.md-nav-tab::before,
+    .md-nav-dropdown.md-nav-tab::after {
+      display: none !important;
+      content: none !important;
+    }
+    
+    /* ✅ Spezifische Dropdowns: KEINE Borders */
+    #inventory-dropdown,
+    #orders-dropdown,
+    #loans-dropdown {
+      border: none !important;
+      border-top: none !important;
+      border-bottom: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    
+    #inventory-dropdown::before,
+    #inventory-dropdown::after,
+    #orders-dropdown::before,
+    #orders-dropdown::after,
+    #loans-dropdown::before,
+    #loans-dropdown::after {
+      display: none !important;
     }
     
     .md-nav-tab .material-symbols-outlined {
@@ -646,21 +718,47 @@
       margin-top: 0;
     }
     
-    /* ✅ Dropdown-Trigger in Mobile horizontal */
+    /* ✅ Dropdown-Trigger in Mobile horizontal - BLEIBT STANDHAFT */
     .md-nav-tab-trigger {
-      flex-direction: row;
-      justify-content: flex-start;
-      align-items: center;
-      gap: 16px;
-      width: 100%;
-      height: 56px;
-      padding: 0 24px;
+      flex-direction: row !important;
+      justify-content: flex-start !important;
+      align-items: center !important;
+      gap: 16px !important;
+      width: 100% !important;
+      min-height: 56px !important;
+      height: 56px !important; /* Feste Höhe für den Trigger selbst */
+      padding: 0 24px !important; /* Festes Padding wie normale Tabs - NICHT ÄNDERN */
+      margin: 0 !important;
+      flex-shrink: 0 !important; /* Trigger behält seine Größe */
+      border: none !important;
+      border-top: none !important;
+      border-bottom: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      position: relative !important; /* Bleibt im Flow aber nicht verschoben */
+    }
+    
+    .md-nav-tab-trigger::before,
+    .md-nav-tab-trigger::after {
+      display: none !important;
+    }
+    
+    .md-nav-tab-trigger:hover,
+    .md-nav-tab-trigger:active {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
     }
     
     .md-nav-tab-trigger .material-symbols-outlined {
-      margin: 0;
-      width: 24px;
-      height: 24px;
+      margin: 0 !important;
+      margin-right: 0 !important; /* Kein zusätzlicher Abstand */
+      width: 24px !important;
+      height: 24px !important;
+      flex-shrink: 0 !important; /* Icon behält seine Größe */
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
     }
     
     .md-nav-tab-trigger .md-nav-tab-label {
@@ -668,40 +766,154 @@
     }
     
     /* ✅ Standorte-Dropdown in Mobile wie normale Tabs */
+    #locations-dropdown {
+      display: flex;
+      align-items: center;
+      padding: 0 !important;
+      border: none !important;
+      border-top: none !important;
+      border-bottom: none !important;
+    }
+    
+    #locations-dropdown::before,
+    #locations-dropdown::after {
+      display: none !important;
+    }
+    
     #locations-dropdown .md-nav-tab-trigger {
-      flex-direction: row;
-      gap: 16px;
-      justify-content: flex-start;
+      flex-direction: row !important;
+      gap: 16px !important;
+      justify-content: flex-start !important;
+      padding: 0 24px !important;
+      width: 100% !important;
+      border: none !important;
+      background: transparent !important;
     }
     
     #locations-dropdown .md-nav-tab-trigger .material-symbols-outlined {
-      margin: 0;
+      margin: 0 !important;
+      width: 24px !important;
+      height: 24px !important;
+      flex-shrink: 0 !important;
     }
     
     /* ✅ Mobile: Dropdowns auf Click/Touch statt Hover */
-    .md-nav-dropdown .md-dropdown-content,
+    .md-nav-dropdown .md-dropdown-content {
+      display: block !important; /* Immer im DOM für Accordion */
+    }
+    
     .md-action-item .md-dropdown-content {
       display: none !important;
     }
     
-    .md-nav-dropdown.is-active .md-dropdown-content,
     .md-action-item.is-active .md-dropdown-content {
       display: block !important;
     }
     
-    /* ✅ Action-Icon-Dropdowns in Mobile: UNTER der Navbar */
+    /* ✅ Dropdown-Content in Mobile: Echtes Accordion (bleibt im Flow, schiebt nach unten) */
+    .md-nav-dropdown .md-dropdown-content {
+      position: static !important; /* KEIN absolute/fixed! */
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      background: rgba(232, 222, 248, 0.8) !important;
+      border-left: 4px solid #6750A4 !important;
+      border-right: none !important;
+      border-top: none !important; /* KEINE obere Linie */
+      border-bottom: none !important; /* KEINE untere Linie */
+      left: auto !important;
+      right: auto !important;
+      top: auto !important;
+      bottom: auto !important;
+      max-height: 0 !important;
+      overflow: hidden !important;
+      transition: max-height 0.4s ease-in-out, padding 0.4s ease-in-out !important;
+    }
+    
+    .md-nav-dropdown .md-dropdown-content::before,
+    .md-nav-dropdown .md-dropdown-content::after {
+      display: none !important; /* Keine Pseudo-Elemente */
+    }
+    
+    /* ✅ Wenn aktiv: Dropdown expandiert - WICHTIG: Genug Höhe! */
+    .md-nav-dropdown.is-active .md-dropdown-content {
+      max-height: 1000px !important; /* Viel Platz für alle Items */
+      padding: 4px 0 8px 0 !important;
+      overflow: visible !important; /* Items müssen sichtbar sein */
+      border-top: none !important;
+      border-bottom: none !important;
+    }
+    
+    /* ✅ Dropdown-Items in Mobile: gut sichtbar und klickbar */
+    .md-nav-dropdown .md-dropdown-item {
+      padding: 14px 16px 14px 48px !important; /* Einrückung für Sub-Items */
+      margin: 0 !important;
+      border-radius: 0 !important;
+      background: white !important;
+      color: #1E1B16 !important; /* Dunkle Schrift */
+      text-decoration: none !important;
+      display: flex !important;
+      align-items: center !important;
+      font-size: 14px !important;
+      font-weight: 400 !important;
+      border: none !important; /* KEINE Borders */
+      border-top: none !important;
+      border-bottom: none !important;
+      min-height: 48px; /* Touch-friendly */
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+    }
+    
+    .md-nav-dropdown .md-dropdown-item::before,
+    .md-nav-dropdown .md-dropdown-item::after {
+      display: none !important;
+    }
+    
+    .md-nav-dropdown .md-dropdown-item .material-symbols-outlined {
+      margin-right: 12px !important;
+      font-size: 20px !important;
+      color: #6750A4 !important;
+      flex-shrink: 0;
+    }
+    
+    .md-nav-dropdown .md-dropdown-item:hover {
+      background: rgba(103, 80, 164, 0.15) !important;
+    }
+    
+    .md-nav-dropdown .md-dropdown-item:active {
+      background: rgba(103, 80, 164, 0.25) !important;
+    }
+    
+    /* ✅ Section-Überschriften in Mobile ausblenden */
+    .md-nav-dropdown .md-dropdown-section {
+      display: none !important;
+    }
+    
+    /* ✅ Divider in Mobile ausblenden */
+    .md-nav-dropdown .md-dropdown-divider {
+      display: none !important;
+    }
+    
+    /* ✅ Action-Icon-Dropdowns in Mobile: UNTER der Navbar (NICHT Accordion!) */
     #admin-dropdown .md-dropdown-content,
     #user-dropdown .md-dropdown-content,
     #messages-dropdown .md-dropdown-content {
-      position: fixed;
-      top: 64px;
-      right: 8px;
-      left: auto;
-      width: 280px;
-      z-index: 10001;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.14);
+      position: fixed !important; /* FIXED, nicht static! */
+      top: 64px !important;
+      right: 8px !important;
+      left: auto !important;
+      width: 280px !important;
+      max-height: none !important; /* Kein max-height Accordion */
+      z-index: 10001 !important;
+      background: white !important;
+      border-radius: 8px !important;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.14) !important;
+      border-left: none !important; /* Kein lila Border */
+      padding: 8px 0 !important;
+      overflow: visible !important;
     }
     
     /* ✅ Action-Icons Container: Icons bleiben sichtbar */
@@ -709,14 +921,35 @@
       position: relative;
       z-index: 10002; /* Über Dropdowns */
     }
+    
+    /* ✅ Action-Icon-Dropdown-Items: Andere Styles als Nav-Dropdowns */
+    #admin-dropdown .md-dropdown-item,
+    #user-dropdown .md-dropdown-item,
+    #messages-dropdown .md-dropdown-item {
+      padding: 12px 16px !important; /* Normales Padding, keine Einrückung */
+      background: transparent !important;
+      border-bottom: none !important;
+      min-height: auto !important;
+    }
+    
+    #admin-dropdown .md-dropdown-item:hover,
+    #user-dropdown .md-dropdown-item:hover,
+    #messages-dropdown .md-dropdown-item:hover {
+      background: rgba(103, 80, 164, 0.08) !important;
+    }
 
+    /* ✅ Active-States in Mobile deaktiviert */
     .md-nav-tab.active::after {
-      display: none;
+      display: none !important;
     }
 
     .md-nav-tab.active {
-      background-color: var(--md-sys-color-primary-container);
-      color: var(--md-sys-color-on-primary-container);
+      background-color: transparent !important;
+      color: var(--md-sys-color-on-surface) !important;
+    }
+    
+    .md-nav-tab.is-active {
+      background-color: transparent !important;
     }
     
     .md-dropdown-content {
@@ -1077,6 +1310,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Dropdown-Status in der Navbar zurücksetzen
     dropdowns.forEach(dropdown => {
       dropdown.classList.remove('is-active');
+      // ✅ CSS regelt das Schließen via .is-active und max-height (kein JS display nötig)
     });
     
     // Alle Portal-Dropdowns ausblenden
@@ -1096,22 +1330,49 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Die Dropdown-Inhalte sind jetzt direkt im HTML integriert und müssen nicht mehr per JavaScript angehängt werden
   
-  // Dropdown-Inhalte extrahieren und in Portal-Container verlagern
+  // ✅ Dropdown-Inhalte extrahieren und in Portal-Container verlagern (NUR für Action-Icons, NICHT für Nav-Tabs in Mobile)
   dropdowns.forEach(dropdown => {
     const dropdownContent = dropdown.querySelector('.md-dropdown-content');
-    if (dropdownContent) {
-      // Entferne das Original aus dem DOM
-      dropdown.removeChild(dropdownContent);
-      
-      // Füge eine Kopie zum Portal-Container hinzu
-      const portalDropdown = dropdownContent.cloneNode(true);
-      portalDropdown.id = dropdownContent.id || 'dropdown-' + dropdown.id + '-content';
-      portalDropdown.dataset.forDropdown = dropdown.id;
-      portalDropdown.style.display = 'none';
-      portalDropdown.style.position = 'absolute';
-      portalDropdown.classList.add('md-dropdown-portal');
-      portalContainer.appendChild(portalDropdown);
+    if (!dropdownContent) {
+      console.warn('⚠️ Kein Dropdown-Content gefunden für:', dropdown.id);
+      return;
     }
+    
+    // ✅ In Mobile: Nav-Dropdowns (Inventur, Bestellung, etc.) bleiben inline (kein Portal)
+    // ABER Action-Icons (Admin, User, Messages) verwenden Portal!
+    const isActionIcon = dropdown.classList.contains('md-action-item');
+    const isNavDropdown = (dropdown.classList.contains('md-nav-tab') || dropdown.classList.contains('md-nav-dropdown')) && !isActionIcon;
+    const isMobile = isMobileView();
+    
+    console.log('🔍 Dropdown-Check:', {
+      id: dropdown.id,
+      isNavDropdown: isNavDropdown,
+      isActionIcon: isActionIcon,
+      isMobile: isMobile,
+      items: dropdownContent.querySelectorAll('.md-dropdown-item').length
+    });
+    
+    if (isMobile && isNavDropdown) {
+      // Nav-Dropdowns bleiben im Original-DOM für Accordion-Verhalten
+      console.log('✅ Mobile Nav-Dropdown bleibt inline:', dropdown.id);
+      // WICHTIG: Dropdown-Content im DOM lassen!
+      dropdownContent.style.display = 'block'; // Explizit sichtbar machen
+      return;
+    }
+    
+    // Für Desktop oder Action-Icons: Portal-System verwenden
+    console.log('📤 Portal-System für:', dropdown.id);
+    // Entferne das Original aus dem DOM
+    dropdown.removeChild(dropdownContent);
+    
+    // Füge eine Kopie zum Portal-Container hinzu
+    const portalDropdown = dropdownContent.cloneNode(true);
+    portalDropdown.id = dropdownContent.id || 'dropdown-' + dropdown.id + '-content';
+    portalDropdown.dataset.forDropdown = dropdown.id;
+    portalDropdown.style.display = 'none';
+    portalDropdown.style.position = 'absolute';
+    portalDropdown.classList.add('md-dropdown-portal');
+    portalContainer.appendChild(portalDropdown);
   });
   
   // Funktion zum Öffnen eines Dropdowns
@@ -1125,14 +1386,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Aktiviere Dropdown-Status
     dropdown.classList.add('is-active');
     
-    // Finde das entsprechende Portal-Dropdown
+    const isNavTab = dropdown.classList.contains('md-nav-tab');
+    const isMobile = isMobileView();
+    
+    // ✅ In Mobile: Nav-Dropdowns verwenden CSS max-height für Accordion (kein JS display nötig)
+    // ABER Action-Icons verwenden Portal!
+    const isActionIcon = dropdown.classList.contains('md-action-item');
+    
+    if (isMobile && isNavTab && !isActionIcon) {
+      // CSS regelt das Accordion via .is-active Klasse und max-height
+      return;
+    }
+    
+    // Desktop oder Action-Icons: Finde das entsprechende Portal-Dropdown
     const portalDropdown = document.querySelector(`.md-dropdown-portal[data-for-dropdown="${dropdown.id}"]`);
     if (!portalDropdown) return;
     
     // Positioniere das Dropdown relativ zum Toggle
     const toggleRect = toggle.getBoundingClientRect();
-    const isNavTab = dropdown.classList.contains('md-nav-tab');
-    const isMobile = isMobileView();
     
     // Positionierung basierend auf Typ (NavTab oder ActionIcon)
     if (isNavTab) {
