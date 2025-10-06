@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCI Debug - Gesendete Felder</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .field {
+            padding: 12px;
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            margin-bottom: 12px;
+            font-family: monospace;
+        }
+        .field-name {
+            color: #667eea;
+            font-weight: bold;
+        }
+        .field-value {
+            color: #333;
+            margin-left: 20px;
+        }
+        .actions {
+            margin-top: 30px;
+            display: flex;
+            gap: 12px;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 OCI Debug - Gesendete Felder</h1>
+        <p style="color: #666; margin-bottom: 24px;">
+            Diese Felder werden an <strong>{{ oci_url }}</strong> gesendet:
+        </p>
+
+        {% for key, value in oci_data.items() %}
+        <div class="field">
+            <span class="field-name">{{ key }}:</span>
+            <span class="field-value">{{ value }}</span>
+        </div>
+        {% endfor %}
+
+        <div class="actions">
+            <button class="btn-primary" onclick="submitForm()">
+                ✅ Felder senden (zu shop.api.de)
+            </button>
+            <button class="btn-secondary" onclick="window.history.back()">
+                ⬅️ Zurück
+            </button>
+        </div>
+    </div>
+
+    <!-- Hidden form -->
+    <form id="ociForm" method="POST" action="{{ oci_url }}" style="display: none;">
+        {% for key, value in oci_data.items() %}
+        <input type="hidden" name="{{ key }}" value="{{ value }}">
+        {% endfor %}
+    </form>
+
+    <script>
+        function submitForm() {
+            document.getElementById('ociForm').submit();
+        }
+    </script>
+</body>
+</html>

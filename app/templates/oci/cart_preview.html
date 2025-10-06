@@ -1,0 +1,142 @@
+{% extends "md3/base.html" %}
+
+{% block title %}OCI Warenkorb - Asset Management{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+    
+    <!-- Header -->
+    <div style="margin-bottom: 32px;">
+        <h1 style="font-size: 32px; font-weight: 700; margin: 0 0 8px 0; color: var(--md-sys-color-on-surface);">
+            🛒 Warenkorb von shop.api.de
+        </h1>
+        <p style="font-size: 16px; color: var(--md-sys-color-on-surface-variant); margin: 0;">
+            {{ total_items }} Artikel • {{ "%.2f"|format(total_value) }} €
+        </p>
+    </div>
+
+    <!-- Items Table -->
+    <div style="background: var(--md-sys-color-surface); border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: var(--md-sys-color-surface-variant);">
+                    <th style="padding: 16px; text-align: left; font-weight: 600;">Nr.</th>
+                    <th style="padding: 16px; text-align: left; font-weight: 600;">Artikel</th>
+                    <th style="padding: 16px; text-align: left; font-weight: 600;">SKU</th>
+                    <th style="padding: 16px; text-align: center; font-weight: 600;">Menge</th>
+                    <th style="padding: 16px; text-align: right; font-weight: 600;">Einzelpreis</th>
+                    <th style="padding: 16px; text-align: right; font-weight: 600;">Gesamt</th>
+                    <th style="padding: 16px; text-align: center; font-weight: 600;">Lieferzeit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr style="border-bottom: 1px solid var(--md-sys-color-outline-variant);">
+                    <td style="padding: 16px;">{{ loop.index }}</td>
+                    <td style="padding: 16px;">
+                        <div style="font-weight: 600;">{{ item.description }}</div>
+                        {% if item.longtext %}
+                        <div style="font-size: 13px; color: var(--md-sys-color-on-surface-variant); margin-top: 4px;">
+                            {{ item.longtext[:100] }}{% if item.longtext|length > 100 %}...{% endif %}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 16px; font-family: monospace; font-size: 13px;">{{ item.sku }}</td>
+                    <td style="padding: 16px; text-align: center;">
+                        <span style="background: var(--md-sys-color-secondary-container); padding: 4px 12px; border-radius: 12px; font-weight: 600;">
+                            {{ item.quantity }} {{ item.unit }}
+                        </span>
+                    </td>
+                    <td style="padding: 16px; text-align: right; font-weight: 600;">
+                        {{ "%.2f"|format(item.price) }} {{ item.currency }}
+                    </td>
+                    <td style="padding: 16px; text-align: right; font-weight: 700; color: var(--md-sys-color-primary);">
+                        {{ "%.2f"|format(item.price * item.quantity) }} {{ item.currency }}
+                    </td>
+                    <td style="padding: 16px; text-align: center;">
+                        {% if item.leadtime > 0 %}
+                        <span style="font-size: 13px; color: var(--md-sys-color-on-surface-variant);">
+                            {{ item.leadtime }} Tage
+                        </span>
+                        {% else %}
+                        <span style="font-size: 13px; color: var(--md-sys-color-outline);">
+                            Auf Anfrage
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="background: var(--md-sys-color-primary-container); font-weight: 700;">
+                    <td colspan="5" style="padding: 20px; text-align: right; font-size: 18px;">
+                        Gesamtsumme:
+                    </td>
+                    <td style="padding: 20px; text-align: right; font-size: 20px; color: var(--md-sys-color-primary);">
+                        {{ "%.2f"|format(total_value) }} €
+                    </td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Actions -->
+    <div style="margin-top: 32px; display: flex; gap: 16px; justify-content: flex-end;">
+        <a href="{{ url_for('oci.cancel') }}" 
+           style="padding: 12px 24px; background: var(--md-sys-color-surface-variant); color: var(--md-sys-color-on-surface); text-decoration: none; border-radius: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined">close</span>
+            Abbrechen
+        </a>
+        
+        <button onclick="confirmCart()" 
+                style="padding: 12px 24px; background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); border: none; border-radius: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 16px;">
+            <span class="material-symbols-outlined">check_circle</span>
+            Assets erstellen & weiter
+        </button>
+    </div>
+
+    <!-- Info Box -->
+    <div style="margin-top: 32px; padding: 16px; background: var(--md-sys-color-tertiary-container); border-radius: 12px; display: flex; gap: 12px; align-items: start;">
+        <span class="material-symbols-outlined" style="color: var(--md-sys-color-on-tertiary-container); font-size: 24px;">info</span>
+        <div>
+            <div style="font-weight: 600; margin-bottom: 4px; color: var(--md-sys-color-on-tertiary-container);">
+                Was passiert beim Bestätigen?
+            </div>
+            <div style="font-size: 14px; color: var(--md-sys-color-on-tertiary-container); opacity: 0.8;">
+                • Assets werden aus den Warenkorb-Artikeln erstellt oder aktualisiert<br>
+                • Lieferantenpreise werden automatisch hinterlegt<br>
+                • Sie werden zum Bestellassistenten weitergeleitet
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function confirmCart() {
+    if (!confirm('{{ total_items }} Assets aus OCI-Warenkorb erstellen?')) {
+        return;
+    }
+    
+    fetch('{{ url_for("oci.confirm_cart") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = data.redirect;
+        } else {
+            alert('Fehler: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Fehler beim Erstellen der Assets.');
+    });
+}
+</script>
+{% endblock %}

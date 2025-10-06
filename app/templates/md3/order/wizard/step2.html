@@ -57,6 +57,23 @@
       </button>
     </div>
 
+    <!-- OCI Integration: shop.api.de Katalog -->
+    <div class="md3-card wizard-card" style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;background:linear-gradient(135deg, var(--md-sys-color-primary-container) 0%, var(--md-sys-color-tertiary-container) 100%);">
+      <span class="material-symbols-outlined" style="color:var(--md-sys-color-primary);font-size:32px;">shopping_cart</span>
+      <div style="flex:1;">
+        <div style="font-weight:600;margin-bottom:4px;color:var(--md-sys-color-on-primary-container);">
+          🛒 Artikel aus shop.api.de Katalog
+        </div>
+        <div style="font-size:13px;color:var(--md-sys-color-on-surface-variant);">
+          Durchsuchen Sie den Online-Katalog von shop.api.de und übernehmen Sie Artikel direkt in Ihre Bestellung.
+        </div>
+      </div>
+      <a href="{{ url_for('oci.outbound') }}" class="md3-button md3-button-filled" style="background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);text-decoration:none;display:inline-flex;align-items:center;height:40px;padding:0 20px;">
+        <span class="material-symbols-outlined" style="margin-right:8px;">open_in_new</span>
+        Katalog öffnen
+      </a>
+    </div>
+
     <!-- Filter (optional simple version) -->
     <div class="md3-card wizard-card filter-line" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       {{ form.filter_name(placeholder='Artikelname', style='height:40px;border-radius:12px;border:1px solid var(--md-sys-color-outline-variant);padding:0 10px;background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);') }}
@@ -87,6 +104,7 @@
             <th style="text-align:left;padding:8px 12px;">Seriennummer</th>
             <th style="text-align:left;padding:8px 12px;">Hersteller</th>
             <th style="text-align:left;padding:8px 12px;">Lieferant</th>
+            <th style="text-align:center;padding:8px 12px;width:120px;">💰 Preis</th>
           </tr>
         </thead>
         <tbody>
@@ -146,9 +164,19 @@
                 <span style="color:var(--md-sys-color-outline);font-size:13px;">-</span>
               {% endif %}
             </td>
+            <td style="padding:8px 12px;text-align:center;vertical-align:middle;">
+              {% if asset and (asset.ean or asset.gtin) %}
+                <button type="button" class="md3-button md3-button-tonal" onclick="showPriceComparison({{ asset.id }})" style="padding:8px 12px;font-size:13px;">
+                  <span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;">search</span>
+                  Vergleichen
+                </button>
+              {% else %}
+                <span style="color:var(--md-sys-color-outline);font-size:12px;" title="Keine EAN/GTIN hinterlegt">-</span>
+              {% endif %}
+            </td>
           </tr>
         {% else %}
-          <tr><td colspan="8" style="padding:12px;">Keine Artikel gefunden.</td></tr>
+          <tr><td colspan="9" style="padding:12px;">Keine Artikel gefunden.</td></tr>
         {% endfor %}
         </tbody>
       </table>
@@ -190,6 +218,212 @@
   </form>
   </div>
 </div>
+
+<!-- Price Comparison Modal -->
+<div id="priceModal" class="price-modal">
+  <div class="price-modal-content">
+    <div class="price-modal-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="material-symbols-outlined" style="font-size:32px;color:var(--md-sys-color-primary);">shopping_cart_checkout</span>
+        <div>
+          <h3 class="price-modal-title" id="priceModalTitle">Preisvergleich</h3>
+          <div class="price-modal-subtitle" id="priceModalSubtitle">Wird geladen...</div>
+        </div>
+      </div>
+      <button type="button" class="price-modal-close" onclick="closePriceModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="price-modal-body" id="priceModalBody">
+      <div style="text-align:center;padding:40px;">
+        <span class="material-symbols-outlined" style="font-size:48px;color:var(--md-sys-color-outline);animation:spin 1s linear infinite;">progress_activity</span>
+        <p>Preise werden verglichen...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .price-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .price-modal.active {
+    display: flex;
+  }
+  
+  .price-modal-content {
+    background: white;
+    border-radius: 24px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease;
+  }
+  
+  @keyframes modalSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  .price-modal-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .price-modal-title {
+    margin: 0;
+    font: var(--md-sys-typescale-headline-small-font);
+    color: var(--md-sys-color-on-surface);
+  }
+  
+  .price-modal-subtitle {
+    font: var(--md-sys-typescale-body-medium-font);
+    color: var(--md-sys-color-on-surface-variant);
+    margin-top: 4px;
+  }
+  
+  .price-modal-close {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: var(--md-sys-color-surface-container);
+    color: var(--md-sys-color-on-surface);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+  }
+  
+  .price-modal-close:hover {
+    background: var(--md-sys-color-surface-container-high);
+  }
+  
+  .price-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+  }
+  
+  .price-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border-radius: 16px;
+    border: 2px solid var(--md-sys-color-outline-variant);
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+  }
+  
+  .price-card:hover {
+    border-color: var(--md-sys-color-primary);
+    box-shadow: 0 4px 12px rgba(103, 80, 164, 0.2);
+  }
+  
+  .price-card.best {
+    border-color: var(--md-sys-color-tertiary);
+    background: color-mix(in srgb, var(--md-sys-color-tertiary) 8%, var(--md-sys-color-surface));
+  }
+  
+  .price-rank {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  
+  .price-card.best .price-rank {
+    background: var(--md-sys-color-tertiary);
+    color: var(--md-sys-color-on-tertiary);
+  }
+  
+  .price-info {
+    flex: 1;
+  }
+  
+  .price-shop {
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    margin-bottom: 4px;
+  }
+  
+  .price-details {
+    font-size: 13px;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+  
+  .price-amount {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--md-sys-color-primary);
+  }
+  
+  .price-card.best .price-amount {
+    color: var(--md-sys-color-tertiary);
+  }
+  
+  .price-savings {
+    font-size: 13px;
+    color: var(--md-sys-color-error);
+    margin-top: 4px;
+  }
+  
+  .price-savings.positive {
+    color: var(--md-sys-color-tertiary);
+  }
+  
+  .price-action {
+    padding: 10px 20px;
+    border-radius: 999px;
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: opacity 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .price-action:hover {
+    opacity: 0.9;
+  }
+</style>
 
 <script>
 // Supplier ID direkt vom Backend (robuster als Session-Zugriff)
@@ -400,6 +634,142 @@ function openSaveTemplateModal() {
     alert('Fehler beim Speichern der Vorlage.');
   });
 }
+
+// Price Comparison Modal (Hybrid: B2B + WWW)
+function showPriceComparison(assetId) {
+  const modal = document.getElementById('priceModal');
+  modal.classList.add('active');
+  
+  // Fetch price comparison
+  fetch(`/api/price-comparison/${assetId}`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('priceModalTitle').textContent = `Preisvergleich: ${data.asset_name}`;
+      document.getElementById('priceModalSubtitle').textContent = data.ean ? `EAN: ${data.ean}` : (data.gtin ? `GTIN: ${data.gtin}` : 'Produktname');
+      
+      let html = '';
+      
+      // Summary Header
+      if (data.savings > 0 || data.has_b2b || data.has_www) {
+        html += `<div style="margin-bottom:16px;padding:12px;background:var(--md-sys-color-tertiary-container);border-radius:12px;">
+          <div style="font-weight:600;margin-bottom:4px;">💰 Ihr aktueller Preis: ${data.our_price.toFixed(2)} €</div>
+          <div style="font-size:13px;color:var(--md-sys-color-on-surface-variant);">Beste Alternative: ${data.best_price.toFixed(2)} € 
+          ${data.savings > 0 ? `<span style="color:var(--md-sys-color-tertiary);font-weight:600;">(${data.savings.toFixed(2)} € günstiger)</span>` : ''}</div>
+        </div>`;
+      }
+      
+      // B2B Lieferanten Section
+      if (data.has_b2b && data.b2b_prices.length > 0) {
+        html += `<div style="margin-bottom:20px;">
+          <h4 style="display:flex;align-items:center;gap:8px;margin-bottom:12px;color:var(--md-sys-color-primary);">
+            <span class="material-symbols-outlined">business</span>
+            Ihre B2B-Lieferanten (Vertragspreise)
+          </h4>`;
+        
+        data.b2b_prices.forEach((alt, index) => {
+          const isBest = index === 0;
+          const diff = alt.price - data.our_price;
+          html += `
+            <div class="price-card ${isBest ? 'best' : ''}" style="margin-bottom:8px;">
+              <div class="price-rank">${isBest ? '🏆' : index + 1}</div>
+              <div class="price-info">
+                <div class="price-shop">🏢 ${alt.shop}</div>
+                <div class="price-details">${alt.shipping || 'Auf Rechnung'}${alt.delivery_time ? ' • ' + alt.delivery_time : ''}</div>
+                ${alt.article_number ? `<div style="font-size:11px;color:var(--md-sys-color-outline);">Art.-Nr.: ${alt.article_number}</div>` : ''}
+              </div>
+              <div style="text-align:right;">
+                <div class="price-amount">${alt.price.toFixed(2)} €</div>
+                <div class="price-savings ${diff < 0 ? 'positive' : ''}">${diff > 0 ? '+' : ''}${diff.toFixed(2)} €</div>
+                ${alt.last_updated ? `<div style="font-size:11px;color:var(--md-sys-color-outline);">Stand: ${alt.last_updated}</div>` : ''}
+              </div>
+              ${alt.url && alt.url !== '#' ? `<a href="${alt.url}" target="_blank" class="price-action">
+                <span class="material-symbols-outlined">open_in_new</span>
+                Zum Lieferanten
+              </a>` : '<span style="color:var(--md-sys-color-outline);font-size:13px;">Kein Link</span>'}
+            </div>
+          `;
+        });
+        
+        html += `</div>`;
+      }
+      
+      // WWW Section
+      if (data.has_www && data.www_prices.length > 0) {
+        html += `<div style="margin-bottom:20px;">
+          <h4 style="display:flex;align-items:center;gap:8px;margin-bottom:12px;color:var(--md-sys-color-secondary);">
+            <span class="material-symbols-outlined">public</span>
+            Beste Angebote im WWW
+          </h4>`;
+        
+        data.www_prices.forEach((alt, index) => {
+          const isBest = index === 0 && (!data.has_b2b || alt.price < data.b2b_prices[0].price);
+          const diff = alt.price - data.our_price;
+          html += `
+            <div class="price-card ${isBest ? 'best' : ''}" style="margin-bottom:8px;">
+              <div class="price-rank">${isBest ? '🏆' : index + 1}</div>
+              <div class="price-info">
+                <div class="price-shop">🌐 ${alt.shop}</div>
+                <div class="price-details">${alt.shipping || 'zzgl. Versand'}</div>
+                ${alt.source ? `<div style="font-size:11px;color:var(--md-sys-color-outline);">Quelle: ${alt.source}</div>` : ''}
+              </div>
+              <div style="text-align:right;">
+                <div class="price-amount">${alt.price.toFixed(2)} €</div>
+                <div class="price-savings ${diff < 0 ? 'positive' : ''}">${diff > 0 ? '+' : ''}${diff.toFixed(2)} €</div>
+              </div>
+              <a href="${alt.url}" target="_blank" class="price-action">
+                <span class="material-symbols-outlined">open_in_new</span>
+                Zum Shop
+              </a>
+            </div>
+          `;
+        });
+        
+        html += `</div>`;
+        
+        // Hinweis
+        html += `<div style="padding:12px;background:var(--md-sys-color-surface-variant);border-radius:12px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">
+          <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">info</span>
+          <strong>Hinweis:</strong> WWW-Preise sind ohne Firmenrabatt und ggf. zzgl. MwSt. Prüfen Sie Zahlungs- und Lieferbedingungen.
+        </div>`;
+      }
+      
+      // No results
+      if (!data.has_b2b && !data.has_www) {
+        html = `<div style="text-align:center;padding:40px;">
+          <span class="material-symbols-outlined" style="font-size:64px;color:var(--md-sys-color-outline);opacity:0.5;">search_off</span>
+          <p style="margin-top:16px;color:var(--md-sys-color-on-surface-variant);">Keine Preise gefunden.</p>
+          <p style="font-size:13px;color:var(--md-sys-color-outline);margin-top:8px;">Tipp: Pflegen Sie B2B-Lieferantenpreise oder hinterlegen Sie eine EAN/GTIN.</p>
+        </div>`;
+      }
+      
+      document.getElementById('priceModalBody').innerHTML = html;
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      document.getElementById('priceModalBody').innerHTML = `
+        <div style="text-align:center;padding:40px;">
+          <span class="material-symbols-outlined" style="font-size:64px;color:var(--md-sys-color-error);">error</span>
+          <p style="margin-top:16px;color:var(--md-sys-color-error);">Fehler beim Laden der Preise.</p>
+        </div>
+      `;
+    });
+}
+
+function closePriceModal() {
+  document.getElementById('priceModal').classList.remove('active');
+}
+
+// Close modal on outside click
+document.addEventListener('DOMContentLoaded', function() {
+  const modal = document.getElementById('priceModal');
+  if (modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) {
+        closePriceModal();
+      }
+    });
+  }
+});
 </script>
 
 {% endblock %}

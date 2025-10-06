@@ -2,15 +2,16 @@ from flask_wtf import FlaskForm
 from wtforms import (
     StringField, TextAreaField, SelectField, IntegerField, 
     RadioField, FieldList, FormField, BooleanField, DateField,
-    HiddenField
+    HiddenField, DecimalField
 )
 from wtforms.validators import DataRequired, Optional, Length
 from datetime import datetime, timedelta
 
 class WizardStep1Form(FlaskForm):
     """Formular für Schritt 1: Lieferant und Standort Auswahl"""
-    supplier_id = RadioField('Lieferant', validators=[DataRequired()], coerce=int, choices=[])
+    supplier_id = SelectField('Lieferant', validators=[DataRequired()], coerce=int, choices=[])
     location = SelectField('Standort', validators=[DataRequired()], coerce=int, choices=[])
+    budget = DecimalField('Budget (optional)', validators=[Optional()], places=2)
 
 class AssetSelectionForm(FlaskForm):
     """Formular für ein einzelnes Asset in der Auswahlliste"""
@@ -25,6 +26,7 @@ class WizardStep2Form(FlaskForm):
     filter_name = StringField('Name', validators=[Optional()])
     filter_category = SelectField('Kategorie', coerce=int)
     filter_manufacturer = SelectField('Hersteller', coerce=int)
+    filter_supplier = SelectField('Lieferant', coerce=int)
     
     # Liste der Assets
     assets = FieldList(FormField(AssetSelectionForm))

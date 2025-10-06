@@ -13,6 +13,12 @@
     .wizard-step { display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background: var(--md-sys-color-surface); box-shadow: var(--md-sys-elevation-1); }
     .wizard-step .num { width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); font-size:12px; }
     .wizard-step.active { background: color-mix(in srgb, var(--md-sys-color-primary) 12%, var(--md-sys-color-surface)); }
+    
+    /* Flash Messages */
+    .flash-container { margin-bottom: 16px; }
+    .flash-error { padding: 12px; border-radius: 12px; background: #ffebee; color: #c62828; margin-bottom: 8px; }
+    .flash-success { padding: 12px; border-radius: 12px; background: #e8f5e9; color: #2e7d32; margin-bottom: 8px; }
+    
     @media (max-width: 768px) { .wizard-grid { grid-template-columns: 1fr; } }
   </style>
   <div class="wizard-container">
@@ -32,6 +38,20 @@
 
     <form method="post" class="md3-card wizard-card">
       {{ form.hidden_tag() }}
+      
+      <!-- Flash Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-container">
+            {% for category, message in messages %}
+              <div class="flash-{{ category }}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      
       <div class="wizard-grid" style="max-width:720px;">
         <label>
           <div class="md3-subtitle" style="margin-bottom:4px;">{{ form.supplier_id.label }}</div>

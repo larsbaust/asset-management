@@ -152,7 +152,9 @@ class Asset(db.Model):
     article_number = db.Column(db.String(100))  # Artikelnummer
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
     category = db.relationship('Category', backref='assets')
-    ean = db.Column(db.String(13))  # EAN-Nummer
+    ean = db.Column(db.String(13))  # EAN-Nummer (EAN13)
+    gtin = db.Column(db.String(14))  # GTIN-Nummer (GTIN14 - internationaler Standard)
+    manufacturer_part_number = db.Column(db.String(100))  # Herstellerartikelnummer (MPN)
     value = db.Column(db.Float)
     status = db.Column(db.String(20), nullable=False, default='active')
     archived_at = db.Column(db.DateTime, nullable=True)  # Zeitpunkt der Archivierung
@@ -225,6 +227,52 @@ class Asset(db.Model):
 
     def __repr__(self):
         return f'<Asset {self.name}>'
+
+
+class AssetSupplierPrice(db.Model):
+    """Preise pro Asset und Lieferant für B2B-Preisvergleich"""
+    __tablename__ = 'asset_supplier_price'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id', ondelete='CASCADE'), nullable=False)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('supplier.id', ondelete='CASCADE'), nullable=False)
+    
+    # Preisinformationen
+    price = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(3), default='EUR')
+    
+    # Artikelinformationen beim Lieferanten
+    supplier_article_number = db.Column(db.String(100))
+    supplier_url = db.Column(db.String(500))
+    
+    # Konditionen
+    minimum_order_quantity = db.Column(db.Integer, default=1)
+    delivery_time_days = db.Column(db.Integer)
+    payment_terms = db.Column(db.String(100))  # z.B. "30 Tage netto"
+    
+    # Metadaten
+    last_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    valid_until = db.Column(db.DateTime)  # Optional: Preisgültigkeit
+    notes = db.Column(db.Text)
+    
+    # Relationships
+    asset = db.relationship('Asset', backref=db.backref('supplier_prices', lazy='dynamic', cascade='all, delete-orphan'))
+    supplier = db.relationship('Supplier', backref=db.backref('asset_prices', lazy='dynamic'))
+    
+    # Constraints
+    __table_args__ = (
+        db.UniqueConstraint('asset_id', 'supplier_id', name='unique_asset_supplier'),
+    )
+    
+    def __repr__(self):
+        return f'<AssetSupplierPrice Asset:{self.asset_id} Supplier:{self.supplier_id} Price:{self.price}€>'
+    
+    def is_valid(self):
+        """Check if price is still valid"""
+        if self.valid_until:
+            return datetime.utcnow() <= self.valid_until
+        return True
+
 
 # Mapping-Tabelle: Rollen und Rechte (n:m)
 role_permissions = db.Table('role_permissions',

@@ -231,7 +231,8 @@ def wizard_step1():
         locations = []
 
     form = WizardStep1Form()
-    form.supplier_id.choices = [(s.id, s.name) for s in suppliers]
+    # "Alle Lieferanten" Option (ID -1) für Preisvergleich - 0 wird als "leer" interpretiert
+    form.supplier_id.choices = [(-1, '🔍 Alle Lieferanten (Preisvergleich)')] + [(s.id, s.name) for s in suppliers]
     form.location.choices = [(0, '-- Kein Standort --')] + [(l.id, l.name) for l in locations]
 
     if request.method == 'GET' and request.args.get('supplier_id'):
@@ -245,9 +246,15 @@ def wizard_step1():
 
     if form.validate_on_submit():
         _update_wizard_session('supplier_id', form.supplier_id.data)
-        _update_wizard_session('location_id', form.location.data)
+        _update_wizard_session('location_id', form.location.data if form.location.data else 0)
         _update_wizard_session('budget', float(form.budget.data) if form.budget.data else None)
         return redirect(url_for('md3_order.wizard_step2'))
+    
+    # Debug: Show validation errors
+    if request.method == 'POST' and form.errors:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f'{field}: {error}', 'error')
 
     return render_template('md3/order/wizard/step1.html', form=form, suppliers=suppliers)
 
@@ -257,13 +264,18 @@ def wizard_step1():
 def wizard_step2():
     data = _get_wizard_session()
     supplier_id = data.get('supplier_id')
-    if not supplier_id:
+    if supplier_id is None:
         flash('Bitte zuerst Schritt 1 abschließen.', 'warning')
         return redirect(url_for('md3_order.wizard_step1'))
 
-    # Lade Bestellvorlagen für diesen Lieferanten
+    # Lade Bestellvorlagen
     from app.models import OrderTemplate
-    templates = OrderTemplate.query.filter_by(supplier_id=supplier_id).order_by(OrderTemplate.name).all()
+    if supplier_id == -1:
+        # Alle Lieferanten - lade alle Vorlagen
+        templates = OrderTemplate.query.order_by(OrderTemplate.name).all()
+    else:
+        # Spezifischer Lieferant
+        templates = OrderTemplate.query.filter_by(supplier_id=supplier_id).order_by(OrderTemplate.name).all()
     
     # Budget aus Session holen
     budget = data.get('budget')
@@ -289,11 +301,12 @@ def wizard_step2():
 
     # Build asset list based on filters
     query = Asset.query.filter(Asset.status == 'active')
-    # Restrict to assets that have the chosen supplier
-    try:
-        query = query.filter(Asset.suppliers.any(Supplier.id == supplier_id))
-    except Exception:
-        pass
+    # Restrict to assets that have the chosen supplier (nur wenn nicht "Alle")
+    if supplier_id != -1:
+        try:
+            query = query.filter(Asset.suppliers.any(Supplier.id == supplier_id))
+        except Exception:
+            pass
 
     # Apply filters
     if request.method == 'POST':
@@ -326,6 +339,14 @@ def wizard_step2():
     
     assets = query.order_by(Asset.name).limit(100).all()
 
+    # ✅ Check für OCI-importierte Assets
+    oci_asset_ids = session.get('oci_asset_ids', [])
+    oci_supplier_name = session.get('oci_supplier', None)
+    
+    # Markiere OCI-Assets (für Highlighting im Template)
+    for asset in assets:
+        asset.is_oci_import = asset.id in oci_asset_ids
+
     # Populate FieldList on GET
     if request.method == 'GET':
         form.assets.entries = []
@@ -345,7 +366,10 @@ def wizard_step2():
             entry.quantity.data = 1
             entry.select.data = False
             form.assets.append_entry(entry.data)
-        return render_template('md3/order/wizard/step2.html', form=form, assets=assets, templates=templates, supplier_id=supplier_id, budget=budget)
+        return render_template('md3/order/wizard/step2.html', 
+                             form=form, assets=assets, templates=templates, 
+                             supplier_id=supplier_id, budget=budget,
+                             oci_asset_ids=oci_asset_ids, oci_supplier_name=oci_supplier_name)
 
     if form.validate_on_submit():
         selected = []
@@ -363,9 +387,15 @@ def wizard_step2():
             flash('Bitte mindestens einen Artikel auswählen.', 'warning')
         else:
             _update_wizard_session('items', selected)
+            # ✅ Clear OCI session after successful selection
+            session.pop('oci_asset_ids', None)
+            session.pop('oci_supplier', None)
             return redirect(url_for('md3_order.wizard_step3'))
 
-    return render_template('md3/order/wizard/step2.html', form=form, assets=assets, templates=templates, supplier_id=supplier_id, budget=budget)
+    return render_template('md3/order/wizard/step2.html', 
+                         form=form, assets=assets, templates=templates, 
+                         supplier_id=supplier_id, budget=budget,
+                         oci_asset_ids=oci_asset_ids, oci_supplier_name=oci_supplier_name)
 
 
 @md3_order_bp.route('/wizard/step3', methods=['GET', 'POST'])

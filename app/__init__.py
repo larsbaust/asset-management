@@ -200,6 +200,17 @@ def create_app():
     from app.api import bp as api_bp
     app.register_blueprint(api_bp)
     
+    # Price Comparison API Blueprint registrieren
+    from app.api_price_comparison import api_price_bp
+    app.register_blueprint(api_price_bp)
+    
+    # OCI Integration Blueprint registrieren
+    from app.oci import oci_bp
+    app.register_blueprint(oci_bp)
+    
+    # OCI Inbound-Route von CSRF-Protection befreien (externe Callbacks)
+    csrf.exempt(oci_bp)
+    
     with app.app_context():
         db.create_all()
     # Create test user if it doesn't exist
