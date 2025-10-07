@@ -816,6 +816,7 @@ def add_role():
 def edit_role(role_id):
     ensure_default_permissions()
     role = Role.query.get_or_404(role_id)
+    md3 = request.values.get('md3', type=int)
     form = RoleForm(obj=role)
     if request.method == 'GET':
         form.permissions.data = [p.id for p in role.permissions]
@@ -825,8 +826,7 @@ def edit_role(role_id):
         role.permissions = Permission.query.filter(Permission.id.in_(form.permissions.data)).all()
         db.session.commit()
         flash('Rolle aktualisiert.', 'success')
-        return redirect(url_for('admin.role_management'))
-    md3 = request.values.get('md3', type=int)
+        return redirect(url_for('admin.role_management', md3=1 if md3 else None))
     if md3:
         return render_template('md3/admin/edit_role.html', form=form, role=role)
     return render_template('admin/edit_role.html', form=form, role=role)
@@ -835,14 +835,15 @@ def edit_role(role_id):
 @login_required
 @admin_required
 def delete_role(role_id):
+    md3 = request.values.get('md3', type=int)
     role = Role.query.get_or_404(role_id)
     if role.name == 'Admin':
         flash('Die Admin-Rolle kann nicht gelöscht werden.', 'danger')
-        return redirect(url_for('admin.role_management'))
+        return redirect(url_for('admin.role_management', md3=1 if md3 else None))
     db.session.delete(role)
     db.session.commit()
     flash('Rolle gelöscht.', 'success')
-    return redirect(url_for('admin.role_management'))
+    return redirect(url_for('admin.role_management', md3=1 if md3 else None))
 
 
 @admin.route('/users')
