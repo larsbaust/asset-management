@@ -2,22 +2,173 @@
 
 {% block head %}
 <style>
+  .md3-page {
+    padding: 24px;
+    padding-top: 90px;
+    min-height: 100vh;
+    background: var(--md-sys-color-surface-container-lowest);
+  }
+  
+  .md3-container {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  
+  .md3-page-header {
+    margin-bottom: 32px;
+  }
+  
+  .md3-page-title-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .md3-page-icon {
+    font-size: 36px;
+    color: var(--md-sys-color-primary);
+  }
+  
+  .md3-headline-large {
+    font: var(--md-sys-typescale-headline-large-font);
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+  }
+  
+  .md3-card {
+    background: var(--md-sys-color-surface);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+  
+  .md3-form-group {
+    margin-bottom: 24px;
+  }
+  
+  .md3-form-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font: var(--md-sys-typescale-title-medium-font);
+    color: var(--md-sys-color-on-surface);
+    margin-bottom: 12px;
+  }
+  
+  .md3-form-label .material-symbols-outlined {
+    font-size: 20px;
+    color: var(--md-sys-color-primary);
+  }
+  
+  .md3-form-input,
+  .md3-form-textarea {
+    width: 100%;
+    padding: 16px;
+    border: 1px solid var(--md-sys-color-outline);
+    border-radius: 12px;
+    background: var(--md-sys-color-surface-container-highest);
+    color: var(--md-sys-color-on-surface);
+    font: var(--md-sys-typescale-body-large-font);
+    transition: all 0.2s ease;
+  }
+  
+  .md3-form-input:focus,
+  .md3-form-textarea:focus {
+    outline: none;
+    border-color: var(--md-sys-color-primary);
+    background: var(--md-sys-color-surface);
+    box-shadow: 0 0 0 3px rgba(var(--md-sys-color-primary-rgb, 103, 80, 164), 0.1);
+  }
+  
+  .md3-form-textarea {
+    min-height: 100px;
+    resize: vertical;
+    font-family: inherit;
+  }
+  
+  .md3-form-helper {
+    font: var(--md-sys-typescale-body-small-font);
+    color: var(--md-sys-color-on-surface-variant);
+    margin-top: 6px;
+  }
+  
+  .md3-form-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--md-sys-color-error);
+    font: var(--md-sys-typescale-body-small-font);
+    margin-top: 6px;
+  }
+  
+  .md3-form-error .material-symbols-outlined {
+    font-size: 16px;
+  }
+  
+  .md3-form-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: flex-end;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+  }
+  
+  .md3-button {
+    border: none;
+    border-radius: 20px;
+    padding: 10px 24px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    font: var(--md-sys-typescale-label-large-font);
+    transition: all 0.2s ease;
+  }
+  
+  .md3-button .material-symbols-outlined {
+    font-size: 20px;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  }
+  
+  .md3-button-filled {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+  }
+  
+  .md3-button-filled:hover {
+    background: var(--md-sys-color-primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  
+  .md3-button-outlined {
+    background: transparent;
+    color: var(--md-sys-color-primary);
+    border: 1px solid var(--md-sys-color-outline);
+  }
+  
+  .md3-button-outlined:hover {
+    background: var(--md-sys-color-primary-container);
+  }
+  
   .permissions-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: var(--md-sys-spacing-4);
-    margin-top: var(--md-sys-spacing-3);
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
   }
 
   .permission-category-card {
     display: flex;
     flex-direction: column;
-    gap: var(--md-sys-spacing-3);
-    padding: var(--md-sys-spacing-4);
-    border-radius: var(--md-sys-shape-corner-large);
-    background: var(--md-sys-color-surface);
+    gap: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--md-sys-color-surface-container);
     border: 1px solid var(--md-sys-color-outline-variant);
-    box-shadow: var(--md-sys-elevation-level1);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
   }
 
   .permission-category-header {
@@ -28,44 +179,53 @@
   }
 
   .permission-category-title {
-    font-weight: 600;
+    font: var(--md-sys-typescale-title-small-font);
     color: var(--md-sys-color-on-surface);
     display: flex;
     align-items: center;
-    gap: var(--md-sys-spacing-2);
+    gap: 8px;
+  }
+  
+  .permission-category-title .material-symbols-outlined {
+    font-size: 18px;
+    color: var(--md-sys-color-primary);
   }
 
   .permission-category-count {
-    font-size: 0.85rem;
+    font: var(--md-sys-typescale-label-small-font);
     color: var(--md-sys-color-on-surface-variant);
+    background: var(--md-sys-color-surface-container-highest);
+    padding: 2px 8px;
+    border-radius: 12px;
   }
 
   .permission-list {
     display: flex;
     flex-direction: column;
-    gap: var(--md-sys-spacing-3);
+    gap: 8px;
   }
 
   .permission-item {
     display: flex;
     align-items: flex-start;
-    gap: var(--md-sys-spacing-2);
-    padding: var(--md-sys-spacing-3);
-    border-radius: var(--md-sys-shape-corner-medium);
-    background: var(--md-sys-color-surface-container-lowest);
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--md-sys-color-surface);
     border: 1px solid var(--md-sys-color-outline-variant);
     cursor: pointer;
     transition: all 0.2s ease;
   }
 
   .permission-item:hover {
-    background: var(--md-sys-color-surface-container-low);
+    background: var(--md-sys-color-surface-container-highest);
     border-color: var(--md-sys-color-primary);
   }
 
   .permission-item.selected {
     background: var(--md-sys-color-primary-container);
     border-color: var(--md-sys-color-primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   }
 
   .permission-checkbox {
@@ -79,10 +239,17 @@
     transition: all 0.2s ease;
     flex-shrink: 0;
     margin-top: 2px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
   }
 
   .permission-checkbox:checked {
     background: var(--md-sys-color-primary);
+    border-color: var(--md-sys-color-primary);
+  }
+  
+  .permission-checkbox:hover {
     border-color: var(--md-sys-color-primary);
   }
 
@@ -95,6 +262,7 @@
     color: var(--md-sys-color-on-primary);
     font-size: 14px;
     font-weight: bold;
+    line-height: 1;
   }
 
   .permission-details {
@@ -118,27 +286,53 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--md-sys-spacing-3);
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
   }
 
   .select-all-btn {
-    padding: var(--md-sys-spacing-2) var(--md-sys-spacing-3);
+    padding: 8px 16px;
     border: 1px solid var(--md-sys-color-outline);
-    border-radius: var(--md-sys-shape-corner-full);
+    border-radius: 20px;
     background: var(--md-sys-color-surface);
-    color: var(--md-sys-color-on-surface);
-    font-size: 0.875rem;
+    color: var(--md-sys-color-primary);
+    font: var(--md-sys-typescale-label-large-font);
     cursor: pointer;
     transition: all 0.2s ease;
   }
 
   .select-all-btn:hover {
-    background: var(--md-sys-color-surface-container-high);
+    background: var(--md-sys-color-primary-container);
+    border-color: var(--md-sys-color-primary);
   }
 
   @media (max-width: 768px) {
+    .md3-page {
+      padding: 16px;
+      padding-top: 80px;
+    }
+    
     .permissions-grid {
       grid-template-columns: 1fr;
+    }
+    
+    .permissions-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .select-all-btn {
+      width: 100%;
+    }
+    
+    .md3-form-actions {
+      flex-direction: column-reverse;
+    }
+    
+    .md3-button {
+      width: 100%;
+      justify-content: center;
     }
   }
 </style>
