@@ -44,10 +44,6 @@ function showMapFallback() {
   }
 }
 </script>
-<script async defer 
-  src=""
-  onerror="showMapFallback()">
-</script>
 
 <!-- Locations Data for Map -->
 <script type="application/json" id="locations-data">
@@ -57,8 +53,18 @@ function showMapFallback() {
     "id": "{{ location.id }}",
     "name": "{{ location.name|e }}",
     "address": "{{ location.address|e }}",
+    "street": "{{ location.street|e if location.street else '' }}",
+    "postal_code": "{{ location.postal_code|e if location.postal_code else '' }}",
+    "city": "{{ location.city|e if location.city else '' }}",
+    "state": "{{ location.state|e if location.state else '' }}",
+    "size_sqm": {{ location.size_sqm if location.size_sqm else 'null' }},
+    "seats": {{ location.seats if location.seats else 'null' }},
+    "description": "{{ location.description|e if location.description else '' }}",
     "latitude": {{ location.latitude or 'null' }},
-    "longitude": {{ location.longitude or 'null' }}
+    "longitude": {{ location.longitude or 'null' }},
+    "google_rating": {{ location.google_rating if location.google_rating else 'null' }},
+    "google_reviews_count": {{ location.google_reviews_count if location.google_reviews_count else 'null' }},
+    "google_maps_url": "{{ location.google_maps_url|e if location.google_maps_url else '' }}"
   }{% if not loop.last %},{% endif %}
   {% endfor %}
 ]
@@ -686,7 +692,6 @@ function showMapFallback() {
   font-size: 18px;
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 18;
 }
-
 .md3-error-btn:hover .material-symbols-outlined {
   font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 18;
 }
@@ -698,6 +703,7 @@ function showMapFallback() {
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid var(--md-sys-color-outline-variant);
+  grid-column: 1 / -1; /* Span entire grid width */
 }
 
 .md3-modal-section-title {
@@ -710,75 +716,70 @@ function showMapFallback() {
 
 .md3-modal-description-text {
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--md-sys-color-on-surface-variant);
   margin: 0;
+  padding: 16px;
+  background: var(--md-sys-color-surface-container-highest);
+  border-radius: 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
 }
 
-/* Compact Assets Container */
-.md3-modal-body {
-  padding: 24px;
-  max-height: 70vh;
-  overflow-y: auto;
-}
-
-/* Elegant Modal Scrollbar (Screenshot 2 Style) */
+/* Elegant Modal Scrollbar - Visible and Inside Modal */
 .md3-modal-body::-webkit-scrollbar {
-  width: 4px;
+  width: 12px;
 }
 
 .md3-modal-body::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 2px;
+  background: rgba(103, 80, 164, 0.08);
+  border-radius: 6px;
+  margin: 4px;
 }
 
 .md3-modal-body::-webkit-scrollbar-thumb {
-  background: rgba(103, 80, 164, 0.3);
-  border-radius: 2px;
+  background: rgba(103, 80, 164, 0.4);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
   transition: all 0.2s ease;
 }
 
 .md3-modal-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(103, 80, 164, 0.6);
+  background: rgba(103, 80, 164, 0.7);
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 /* Firefox Scrollbar */
 .md3-modal-body {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(103, 80, 164, 0.3) transparent;
+  scrollbar-width: auto;
+  scrollbar-color: rgba(103, 80, 164, 0.4) rgba(103, 80, 164, 0.08);
 }
 
 /* Assets Grid Layout - Optimized */
 .md3-modal-assets-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
-  gap: 12px !important;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+  gap: 16px !important;
   margin: 16px 0 !important;
   padding: 16px !important;
   background: rgba(103, 80, 164, 0.03) !important;
   border-radius: 16px !important;
   border: 1px solid rgba(103, 80, 164, 0.1) !important;
-  /* ABSOLUTE FULL WIDTH */
   width: 100% !important;
-  max-width: none !important;
-  min-width: 100% !important;
   box-sizing: border-box !important;
-  /* Force grid behavior */
-  max-height: none !important;
-  overflow: visible !important;
-  position: relative !important;
-  /* Grid optimization */
-  justify-content: start !important;
-  align-content: start !important;
-  /* Override any parent width constraints */
-  flex: 1 !important;
-  flex-shrink: 0 !important;
+}
+
+/* FORCE Grid Items to NOT be full width */
+.md3-modal-assets-grid .md3-modal-asset-card {
+  display: block !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
 }
 
 /* Force grid on all children */
 .md3-modal-assets-grid > * {
-  display: block !important;
-  width: 100% !important;
   box-sizing: border-box !important;
 }
 
@@ -874,7 +875,6 @@ function showMapFallback() {
   flex-direction: column;
   justify-content: space-between;
   /* Force consistent sizing */
-  width: 100%;
   box-sizing: border-box;
 }
 
@@ -890,15 +890,9 @@ function showMapFallback() {
   transition: opacity 0.3s ease;
 }
 
-.md3-modal-asset-tile:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(103, 80, 164, 0.15);
-  border-color: rgba(103, 80, 164, 0.2);
-}
+/* Hover effect removed per user request */
 
-.md3-modal-asset-tile:hover::before {
-  opacity: 1;
-}
+/* Hover effect removed per user request */
 
 /* Asset Card Styles */
 .md3-modal-asset-card {
@@ -923,16 +917,9 @@ function showMapFallback() {
   transition: opacity 0.3s ease;
 }
 
-.md3-modal-asset-card:hover {
-  background: rgba(103, 80, 164, 0.02);
-  border-color: rgba(103, 80, 164, 0.2);
-  transform: translateX(4px);
-  box-shadow: 0 4px 16px rgba(103, 80, 164, 0.1);
-}
+/* Hover effect removed per user request */
 
-.md3-modal-asset-card:hover::before {
-  opacity: 1;
-}
+/* Hover effect removed per user request */
 
 .md3-asset-header {
   display: flex;
@@ -1000,34 +987,27 @@ function showMapFallback() {
 /* Category Grid Styles - Optimized */
 .md3-modal-categories-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
-  gap: 12px !important;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+  gap: 16px !important;
   margin: 16px 0 !important;
   padding: 16px !important;
   background: rgba(103, 80, 164, 0.03) !important;
   border-radius: 16px !important;
   border: 1px solid rgba(103, 80, 164, 0.1) !important;
-  /* ABSOLUTE FULL WIDTH */
   width: 100% !important;
-  max-width: none !important;
-  min-width: 100% !important;
   box-sizing: border-box !important;
-  /* Force grid behavior */
-  max-height: none !important;
-  overflow: visible !important;
-  position: relative !important;
-  /* Grid optimization */
-  justify-content: start !important;
-  align-content: start !important;
-  /* Override any parent width constraints */
-  flex: 1 !important;
-  flex-shrink: 0 !important;
+}
+
+/* FORCE Grid Items to NOT be full width */
+.md3-modal-categories-grid .md3-modal-category-card {
+  display: block !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
 }
 
 /* Force grid on all category children */
 .md3-modal-categories-grid > * {
-  display: block !important;
-  width: 100% !important;
   box-sizing: border-box !important;
 }
 
@@ -1041,13 +1021,12 @@ function showMapFallback() {
   position: relative;
   overflow: hidden;
   /* Compact sizing */
-  min-height: 100px;
-  max-height: 120px;
-  width: 100%;
+  min-height: 120px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  padding-bottom: 20px;
 }
 
 .md3-modal-category-card::before {
@@ -1062,16 +1041,9 @@ function showMapFallback() {
   transition: opacity 0.3s ease;
 }
 
-.md3-modal-category-card:hover {
-  background: linear-gradient(135deg, rgba(103, 80, 164, 0.12) 0%, rgba(103, 80, 164, 0.06) 100%);
-  border-color: rgba(103, 80, 164, 0.3);
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 8px 24px rgba(103, 80, 164, 0.2);
-}
+/* Hover effect removed per user request */
 
-.md3-modal-category-card:hover::before {
-  opacity: 1;
-}
+/* Hover effect removed per user request */
 
 .md3-category-header {
   display: flex;
@@ -1116,15 +1088,14 @@ function showMapFallback() {
   transition: opacity 0.3s ease;
 }
 
-.md3-modal-category-card:hover .md3-category-count::after {
-  opacity: 1;
-}
+/* Hover effect removed per user request */
 
 .md3-category-value {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: #6750A4;
-  margin-top: 8px;
+  margin-top: 12px;
+  line-height: 1.2;
   text-shadow: 0 1px 2px rgba(103, 80, 164, 0.1);
 }
 
@@ -1197,15 +1168,16 @@ function showMapFallback() {
   width: 95% !important;
   max-width: 1200px !important;
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden;
   position: relative;
   box-shadow: 0 24px 38px 3px rgba(0, 0, 0, 0.14),
               0 9px 46px 8px rgba(0, 0, 0, 0.12),
               0 11px 15px -7px rgba(0, 0, 0, 0.2);
   animation: modalSlideIn 0.3s ease-out;
-  /* DEBUG: Force full width usage */
   min-width: 1100px !important;
   box-sizing: border-box !important;
+  display: flex;
+  flex-direction: column;
 }
 
 .md3-modal-header {
@@ -1245,10 +1217,11 @@ function showMapFallback() {
 }
 
 .md3-modal-body {
-  padding: 24px 16px 32px 16px !important;
-  /* DEBUG: Maximize width for grids */
+  padding: 24px 24px 32px 24px !important;
   width: 100% !important;
   box-sizing: border-box !important;
+  overflow-y: auto;
+  max-height: 70vh;
 }
 
 .md3-modal-image {
@@ -1277,9 +1250,23 @@ function showMapFallback() {
   width: 100% !important;
   max-width: none !important;
   margin-bottom: 24px !important;
-  /* Remove grid constraints that might limit sections width */
   box-sizing: border-box !important;
   padding: 0 !important;
+}
+
+/* Grid nur für Info-Felder */
+.md3-modal-info-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .md3-modal-info-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Vertical Layout for Assets and Categories Sections - Optimized */
@@ -1906,29 +1893,64 @@ function showMapFallback() {
 .md3-modal-detail-item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  padding: 16px;
+  background: var(--md-sys-color-surface-container-highest);
+  border-radius: 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  transition: all 0.2s ease;
 }
 
+/* Hover effect removed per user request */
+
 .md3-modal-detail-label {
-  font-size: 14px;
+  font-size: 11px;
   color: var(--md-sys-color-on-surface-variant);
-  font-weight: 500;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 
 .md3-modal-detail-value {
-  font-size: 18px;
+  font-size: 16px;
   color: var(--md-sys-color-on-surface);
-  font-weight: 400;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .md3-modal-actions {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   justify-content: flex-end;
   padding-top: 24px;
   border-top: 1px solid var(--md-sys-color-outline-variant);
+  flex-wrap: wrap;
+}
+
+.md3-modal-actions .md3-action-btn {
+  width: auto;
+  min-width: 120px;
+  height: 44px;
+  padding: 0 20px;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 22px;
+}
+
+.md3-modal-actions .md3-action-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+@media (max-width: 768px) {
+  .md3-modal-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .md3-modal-actions .md3-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 @keyframes fadeIn {
@@ -2141,20 +2163,53 @@ function showMapFallback() {
   opacity: 0.7;
   cursor: not-allowed;
 }
-
 .md3-google-fetch-btn.loading .material-symbols-outlined {
-  animation: spin 1s linear infinite;
+  animation: rotate 1s linear infinite;
 }
 
-@keyframes spin {
+@keyframes rotate {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* Form Actions Buttons Fix */
+.md3-form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.md3-form-actions .md3-action-btn {
+  width: auto;
+  min-width: 120px;
+  height: 44px;
+  padding: 0 20px;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 22px;
+}
+
+.md3-form-actions .md3-action-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+@media (max-width: 768px) {
+  .md3-form-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .md3-form-actions .md3-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>
 {% endblock %}
 
 {% block scripts %}
-{{ super() }}
 <script src="{{ url_for('static', filename='md3/components/floorplan-planner.js') }}" defer></script>
 {% endblock %}
 
@@ -2212,26 +2267,27 @@ function showMapFallback() {
             
             <div class="md3-card-title-section">
               <h3 class="md3-location-name">{{ location.name }}</h3>
-              <p class="md3-location-address">{{ location.address or 'Keine Adresse angegeben' }}</p>
+              <p class="md3-location-address">
+                {% if location.street or location.postal_code or location.city or location.state %}
+                  {% if location.street %}{{ location.street }}{% endif %}{% if location.street and (location.postal_code or location.city) %}, {% endif %}{% if location.postal_code %}{{ location.postal_code }}{% endif %}{% if location.postal_code and location.city %} {% endif %}{% if location.city %}{{ location.city }}{% endif %}{% if (location.street or location.postal_code or location.city) and location.state %}, {% endif %}{% if location.state %}{{ location.state }}{% endif %}
+                {% else %}
+                  Keine Adresse angegeben
+                {% endif %}
+              </p>
             </div>
           </div>
 
           <!-- Badges -->
           <div class="md3-card-badges">
             <span class="md3-badge md3-badge-type">{{ location.location_type or 'Büro' }}</span>
-            <span class="md3-badge md3-badge-status {{ 'inactive' if not location.is_active }}">
-              {{ 'Aktiv' if location.is_active else 'Inaktiv' }}
-            </span>
-            <span class="md3-badge {{ 'md3-badge-available' if location.available else 'md3-badge-unavailable' }}">
-              {{ 'Verfügbar' if location.available else 'Belegt' }}
-            </span>
+            <span class="md3-badge md3-badge-status">Aktiv</span>
           </div>
 
           <!-- Details Grid -->
           <div class="md3-card-details">
             <div class="md3-detail-item">
               <span class="md3-detail-label">Größe</span>
-              <span class="md3-detail-value">{{ location.size or '—' }}</span>
+              <span class="md3-detail-value">{{ location.size_sqm or '—' }}</span>
             </div>
             <div class="md3-detail-item">
               <span class="md3-detail-label">Plätze</span>
@@ -2241,7 +2297,7 @@ function showMapFallback() {
               <span class="md3-detail-label">Assets</span>
               <span class="md3-detail-value">{{ location.asset_count or '0' }}</span>
             </div>
-            <div class="md3-detail-item">
+            <div class="md3-detail-item" style="visibility: hidden;">
               <span class="md3-detail-label">Kapazität</span>
               <span class="md3-detail-value">{{ location.capacity or '—' }}</span>
             </div>
@@ -2353,24 +2409,25 @@ function showMapFallback() {
           
           <div class="md3-card-title-section">
             <h3 class="md3-location-name">{{ location.name }}</h3>
-            <p class="md3-location-address">{{ location.address or 'Keine Adresse angegeben' }}</p>
+            <p class="md3-location-address">
+              {% if location.street or location.postal_code or location.city or location.state %}
+                {% if location.street %}{{ location.street }}{% endif %}{% if location.street and (location.postal_code or location.city) %}, {% endif %}{% if location.postal_code %}{{ location.postal_code }}{% endif %}{% if location.postal_code and location.city %} {% endif %}{% if location.city %}{{ location.city }}{% endif %}{% if (location.street or location.postal_code or location.city) and location.state %}, {% endif %}{% if location.state %}{{ location.state }}{% endif %}
+              {% else %}
+                Keine Adresse angegeben
+              {% endif %}
+            </p>
           </div>
         </div>
 
         <div class="md3-card-badges">
           <span class="md3-badge md3-badge-type">{{ location.location_type or 'Büro' }}</span>
-          <span class="md3-badge md3-badge-status {{ 'inactive' if not location.is_active }}">
-            {{ 'Aktiv' if location.is_active else 'Inaktiv' }}
-          </span>
-          <span class="md3-badge {{ 'md3-badge-available' if location.available else 'md3-badge-unavailable' }}">
-            {{ 'Verfügbar' if location.available else 'Belegt' }}
-          </span>
+          <span class="md3-badge md3-badge-status">Aktiv</span>
         </div>
 
         <div class="md3-card-details">
           <div class="md3-detail-item">
             <span class="md3-detail-label">Größe</span>
-            <span class="md3-detail-value">{{ location.size or '—' }}</span>
+            <span class="md3-detail-value">{{ location.size_sqm or '—' }}</span>
           </div>
           <div class="md3-detail-item">
             <span class="md3-detail-label">Plätze</span>
@@ -2380,7 +2437,7 @@ function showMapFallback() {
             <span class="md3-detail-label">Assets</span>
             <span class="md3-detail-value">{{ location.asset_count or '0' }}</span>
           </div>
-          <div class="md3-detail-item">
+          <div class="md3-detail-item" style="visibility: hidden;">
             <span class="md3-detail-label">Kapazität</span>
             <span class="md3-detail-value">{{ location.capacity or '—' }}</span>
           </div>
@@ -3301,29 +3358,31 @@ function populateLocationModal(location) {
   }
   
   detailsContainer.innerHTML = `
-    <div class="md3-modal-detail-item">
-      <span class="md3-modal-detail-label">VOLLSTÄNDIGE ADRESSE</span>
-      <span class="md3-modal-detail-value">${fullAddress}</span>
-    </div>
-    <div class="md3-modal-detail-item">
-      <span class="md3-modal-detail-label">TYP</span>
-      <span class="md3-modal-detail-value">${location.location_type || 'Büro'}</span>
-    </div>
-    <div class="md3-modal-detail-item">
-      <span class="md3-modal-detail-label">GRÖSSE</span>
-      <span class="md3-modal-detail-value">${location.size_sqm ? location.size_sqm + ' m²' : '—'}</span>
-    </div>
-    <div class="md3-modal-detail-item">
-      <span class="md3-modal-detail-label">SITZPLÄTZE</span>
-      <span class="md3-modal-detail-value">${location.seats || '—'}</span>
-    </div>
-    <div class="md3-modal-detail-item">
-      <span class="md3-modal-detail-label">KAPAZITÄT</span>
-      <span class="md3-modal-detail-value">${location.capacity || '—'}</span>
-    </div>
-    <div class="md3-modal-detail-item">
-      <span class="md3-modal-detail-label">ASSETS</span>
-      <span class="md3-modal-detail-value">${location.asset_count || '0'}</span>
+    <div class="md3-modal-info-grid">
+      <div class="md3-modal-detail-item">
+        <span class="md3-modal-detail-label">VOLLSTÄNDIGE ADRESSE</span>
+        <span class="md3-modal-detail-value">${fullAddress}</span>
+      </div>
+      <div class="md3-modal-detail-item">
+        <span class="md3-modal-detail-label">TYP</span>
+        <span class="md3-modal-detail-value">${location.location_type || 'Büro'}</span>
+      </div>
+      <div class="md3-modal-detail-item">
+        <span class="md3-modal-detail-label">GRÖSSE</span>
+        <span class="md3-modal-detail-value">${location.size_sqm ? location.size_sqm + ' m²' : '—'}</span>
+      </div>
+      <div class="md3-modal-detail-item">
+        <span class="md3-modal-detail-label">SITZPLÄTZE</span>
+        <span class="md3-modal-detail-value">${location.seats || '—'}</span>
+      </div>
+      <div class="md3-modal-detail-item">
+        <span class="md3-modal-detail-label">KAPAZITÄT</span>
+        <span class="md3-modal-detail-value">${location.capacity || '—'}</span>
+      </div>
+      <div class="md3-modal-detail-item">
+        <span class="md3-modal-detail-label">ASSETS</span>
+        <span class="md3-modal-detail-value">${location.asset_count || '0'}</span>
+      </div>
     </div>
   `;
   
@@ -3383,10 +3442,13 @@ function populateLocationModal(location) {
       `;
       
       location.category_stats.forEach(categoryData => {
+        // Get readable category name
+        const categoryName = categoryData.category_name || categoryData.name || 'Unbekannt';
+        
         sectionsHtml += `
           <div class="md3-modal-category-card">
             <div class="md3-category-header">
-              <div class="md3-category-name">${categoryData.category_name || 'Unbekannt'}</div>
+              <div class="md3-category-name">${categoryName}</div>
               <div class="md3-category-count">${categoryData.count || 0}</div>
             </div>
             <div class="md3-category-value">${categoryData.total_value ? categoryData.total_value.toFixed(2) + ' €' : '0,00 €'}</div>
@@ -3413,13 +3475,10 @@ function populateLocationModal(location) {
   const availabilityClass = location.available ? 'md3-badge-available' : 'md3-badge-unavailable';
   const availabilityText = location.available ? 'Verfügbar' : 'Belegt';
   
+  // Only show Aktiv/Inaktiv badge
   badgesContainer.innerHTML = `
-    <span class="md3-badge md3-badge-type">${location.location_type || 'Büro'}</span>
     <span class="md3-badge md3-badge-status ${statusClass}">
       ${location.is_active ? 'Aktiv' : 'Inaktiv'}
-    </span>
-    <span class="md3-badge ${availabilityClass}">
-      ${availabilityText}
     </span>
   `;
 }
