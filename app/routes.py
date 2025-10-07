@@ -927,3 +927,29 @@ def init_app(app):
                 'notes': loan.notes
             }
         })
+    
+    @app.route('/md3/suppliers')
+    def md3_suppliers():
+        """MD3 Lieferanten-Liste"""
+        from .models import Supplier
+        
+        # Filter-Parameter
+        search = request.args.get('search', '')
+        letter = request.args.get('letter', '')
+        
+        # Query erstellen
+        query = Supplier.query
+        
+        if search:
+            query = query.filter(Supplier.name.ilike(f"%{search}%"))
+        if letter and letter != "Alle":
+            query = query.filter(Supplier.name.ilike(f"{letter}%"))
+        
+        suppliers = query.order_by(Supplier.name).all()
+        
+        print(f"[DEBUG] MD3 Suppliers Route - Rendering: md3/suppliers/list.html with {len(suppliers)} suppliers")
+        
+        return render_template('md3/suppliers/list.html', 
+                             suppliers=suppliers, 
+                             search=search, 
+                             letter=letter)

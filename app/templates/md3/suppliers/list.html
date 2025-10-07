@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
-{% block styles %}
+{% block head %}
+  {{ super() }}
   <style>
     /* Material Design 3 Supplier List Styles - Force Override ALL Bulma */
     * {
@@ -291,8 +292,6 @@
       margin-top: 24px !important;
       list-style: none !important;
       padding: 0 !important;
-      background: #f0f0f0 !important; /* Debug background */
-      border: 2px solid red !important; /* Debug border */
       flex-direction: unset !important;
       flex-wrap: unset !important;
     }
