@@ -596,6 +596,7 @@ class Location(db.Model):
     google_rating = db.Column(db.Float)  # Google-Bewertung (1.0-5.0)
     google_reviews_count = db.Column(db.Integer)  # Anzahl der Google-Bewertungen
     google_maps_url = db.Column(db.String(500))  # Direkte Google Maps URL
+    show_reviews = db.Column(db.Boolean, default=True)  # Zeige Google Reviews/Beschreibung Slider
     # Inventur-Informationen
     last_inventory_date = db.Column(db.DateTime, nullable=True)
     inventory_status = db.Column(db.String(50), nullable=True)

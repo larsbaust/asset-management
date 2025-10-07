@@ -117,6 +117,7 @@ class LocationForm(FlaskForm):
     google_rating = FloatField('Google Bewertung (1.0-5.0)', validators=[Optional(), NumberRange(min=1.0, max=5.0)])
     google_reviews_count = IntegerField('Anzahl Google Bewertungen', validators=[Optional(), NumberRange(min=0)])
     google_maps_url = StringField('Google Maps URL', validators=[Optional(), Length(max=500)])
+    show_reviews = BooleanField('Reviews/Beschreibung anzeigen', default=True)
     submit = SubmitField('Speichern')
 
 class LoanForm(FlaskForm):

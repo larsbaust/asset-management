@@ -728,6 +728,10 @@ def init_app(app):
                 'latitude': float(location.latitude) if getattr(location, 'latitude', None) else None,
                 'longitude': float(location.longitude) if getattr(location, 'longitude', None) else None,
                 'image_url': getattr(location, 'image_url', ''),
+                'google_rating': getattr(location, 'google_rating', None),
+                'google_reviews_count': getattr(location, 'google_reviews_count', None),
+                'google_maps_url': getattr(location, 'google_maps_url', ''),
+                'show_reviews': getattr(location, 'show_reviews', True),
                 'asset_count': len(assets),
                 'assets': [{
                     'id': asset.id,

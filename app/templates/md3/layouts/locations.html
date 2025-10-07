@@ -64,7 +64,8 @@ function showMapFallback() {
     "longitude": {{ location.longitude or 'null' }},
     "google_rating": {{ location.google_rating if location.google_rating else 'null' }},
     "google_reviews_count": {{ location.google_reviews_count if location.google_reviews_count else 'null' }},
-    "google_maps_url": "{{ location.google_maps_url|e if location.google_maps_url else '' }}"
+    "google_maps_url": "{{ location.google_maps_url|e if location.google_maps_url else '' }}",
+    "show_reviews": {{ 'true' if location.show_reviews else 'false' }}
   }{% if not loop.last %},{% endif %}
   {% endfor %}
 ]
@@ -2029,12 +2030,14 @@ function showMapFallback() {
 
 /* Review Slider */
 .md3-review-slider {
-  margin-top: 12px;
+  margin-top: 16px;
   position: relative;
   overflow: hidden;
   border-radius: 12px;
   background: var(--md-sys-color-surface-container);
   padding: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .md3-review-slides {
@@ -2244,6 +2247,59 @@ function showMapFallback() {
   line-height: 1.4;
 }
 
+/* MD3 Toggle Switch */
+.md3-toggle-label {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.md3-toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.md3-toggle-switch {
+  position: relative;
+  width: 52px;
+  height: 32px;
+  background: var(--md-sys-color-surface-variant);
+  border-radius: 16px;
+  transition: background 0.3s ease;
+  flex-shrink: 0;
+}
+
+.md3-toggle-switch::before {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--md-sys-color-outline);
+  top: 4px;
+  left: 4px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.md3-toggle-input:checked + .md3-toggle-switch {
+  background: var(--md-sys-color-primary);
+}
+
+.md3-toggle-input:checked + .md3-toggle-switch::before {
+  background: var(--md-sys-color-on-primary);
+  transform: translateX(20px);
+}
+
+.md3-toggle-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+}
+
 /* Loading state for Google fetch button */
 .md3-google-fetch-btn.loading {
   opacity: 0.7;
@@ -2413,16 +2469,6 @@ function showMapFallback() {
             </div>
             {% endif %}
             
-            <!-- Review Slider Container (will be populated by JavaScript) -->
-            <div class="md3-review-slider" id="review-slider-carousel-{{ location.id }}" style="display: none;">
-              <div class="md3-review-slides" id="review-slides-carousel-{{ location.id }}">
-                <!-- Reviews will be inserted here by JavaScript -->
-              </div>
-              <div class="md3-slider-dots" id="review-dots-carousel-{{ location.id }}">
-                <!-- Dots will be inserted here by JavaScript -->
-              </div>
-            </div>
-            
             <!-- Navigation Button -->
             {% if location.latitude and location.longitude %}
             <button class="md3-navigation-btn" 
@@ -2436,6 +2482,16 @@ function showMapFallback() {
               <span class="md3-nav-text">Route</span>
             </button>
             {% endif %}
+          </div>
+          
+          <!-- Review Slider Container (will be populated by JavaScript) -->
+          <div class="md3-review-slider" id="review-slider-carousel-{{ location.id }}" style="display: none;">
+            <div class="md3-review-slides" id="review-slides-carousel-{{ location.id }}">
+              <!-- Reviews will be inserted here by JavaScript -->
+            </div>
+            <div class="md3-slider-dots" id="review-dots-carousel-{{ location.id }}">
+              <!-- Dots will be inserted here by JavaScript -->
+            </div>
           </div>
         </div> <!-- End card-content -->
       </div>
@@ -2563,16 +2619,6 @@ function showMapFallback() {
           </div>
           {% endif %}
           
-          <!-- Review Slider Container (will be populated by JavaScript) -->
-          <div class="md3-review-slider" id="review-slider-grid-{{ location.id }}" style="display: none;">
-            <div class="md3-review-slides" id="review-slides-grid-{{ location.id }}">
-              <!-- Reviews will be inserted here by JavaScript -->
-            </div>
-            <div class="md3-slider-dots" id="review-dots-grid-{{ location.id }}">
-              <!-- Dots will be inserted here by JavaScript -->
-            </div>
-          </div>
-          
           <!-- Navigation Button -->
           {% if location.latitude and location.longitude %}
           <button class="md3-navigation-btn md3-navigation-btn-purple" 
@@ -2586,6 +2632,16 @@ function showMapFallback() {
             <span class="md3-nav-text">Route</span>
           </button>
           {% endif %}
+        </div>
+        
+        <!-- Review Slider Container (will be populated by JavaScript) -->
+        <div class="md3-review-slider" id="review-slider-grid-{{ location.id }}" style="display: none;">
+          <div class="md3-review-slides" id="review-slides-grid-{{ location.id }}">
+            <!-- Reviews will be inserted here by JavaScript -->
+          </div>
+          <div class="md3-slider-dots" id="review-dots-grid-{{ location.id }}">
+            <!-- Dots will be inserted here by JavaScript -->
+          </div>
         </div>
       </div> <!-- End card-content -->
     </div>
@@ -2854,6 +2910,18 @@ function showMapFallback() {
             <label class="md3-form-label">Google Maps URL</label>
             <input type="url" id="edit-google-maps-url" name="google_maps_url" class="md3-form-input" placeholder="https://maps.google.com/?q=...">
             <div class="md3-form-help">Direkte Google Maps URL für Navigation und Bewertungen</div>
+          </div>
+        </div>
+        
+        <!-- Review Display Toggle -->
+        <div class="md3-form-row">
+          <div class="md3-form-field">
+            <label class="md3-form-label md3-toggle-label">
+              <input type="checkbox" id="edit-show-reviews" name="show_reviews" class="md3-toggle-input" checked>
+              <span class="md3-toggle-switch"></span>
+              <span class="md3-toggle-text">Google Reviews / Beschreibung anzeigen</span>
+            </label>
+            <div class="md3-form-help">Zeigt Reviews oder Beschreibung unterhalb der Standort-Karte an</div>
           </div>
         </div>
         
@@ -4023,10 +4091,12 @@ function populateGoogleReviewsFields(location) {
   const ratingField = document.getElementById('edit-google-rating');
   const countField = document.getElementById('edit-google-reviews-count');
   const urlField = document.getElementById('edit-google-maps-url');
+  const showReviewsField = document.getElementById('edit-show-reviews');
   
   if (ratingField) ratingField.value = location.google_rating || '';
   if (countField) countField.value = location.google_reviews_count || '';
   if (urlField) urlField.value = location.google_maps_url || '';
+  if (showReviewsField) showReviewsField.checked = location.show_reviews !== false; // Default true
 }
 
 /**
@@ -4294,6 +4364,12 @@ const reviewSliders = {};
  * @param {string} viewType - 'carousel' or 'grid'
  */
 function initReviewSlider(locationId, viewType) {
+  // Check if location has show_reviews enabled
+  const location = locationsData.find(loc => loc.id === locationId);
+  if (!location || location.show_reviews === false) {
+    return; // Don't show slider if disabled
+  }
+  
   const sliderId = `review-slider-${viewType}-${locationId}`;
   const slidesId = `review-slides-${viewType}-${locationId}`;
   const dotsId = `review-dots-${viewType}-${locationId}`;
