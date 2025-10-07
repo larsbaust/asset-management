@@ -2027,6 +2027,92 @@ function showMapFallback() {
   white-space: nowrap;
 }
 
+/* Review Slider */
+.md3-review-slider {
+  margin-top: 12px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--md-sys-color-surface-container);
+  padding: 16px;
+}
+
+.md3-review-slides {
+  display: flex;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+}
+
+.md3-review-slide {
+  min-width: 100%;
+  flex-shrink: 0;
+}
+
+.md3-review-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.md3-review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.md3-review-author {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+}
+
+.md3-review-time {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-review-rating {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.md3-review-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--md-sys-color-on-surface-variant);
+  font-style: italic;
+}
+
+.md3-review-description {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md3-slider-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.md3-slider-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--md-sys-color-outline);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.md3-slider-dot.active {
+  background: var(--md-sys-color-primary);
+  width: 24px;
+  border-radius: 4px;
+}
+
 /* Navigation Button */
 .md3-navigation-btn {
   display: flex;
@@ -2327,6 +2413,16 @@ function showMapFallback() {
             </div>
             {% endif %}
             
+            <!-- Review Slider Container (will be populated by JavaScript) -->
+            <div class="md3-review-slider" id="review-slider-carousel-{{ location.id }}" style="display: none;">
+              <div class="md3-review-slides" id="review-slides-carousel-{{ location.id }}">
+                <!-- Reviews will be inserted here by JavaScript -->
+              </div>
+              <div class="md3-slider-dots" id="review-dots-carousel-{{ location.id }}">
+                <!-- Dots will be inserted here by JavaScript -->
+              </div>
+            </div>
+            
             <!-- Navigation Button -->
             {% if location.latitude and location.longitude %}
             <button class="md3-navigation-btn" 
@@ -2466,6 +2562,16 @@ function showMapFallback() {
             <span class="md3-rating-text">{{ "%.1f"|format(location.google_rating) }} ({{ location.google_reviews_count }})</span>
           </div>
           {% endif %}
+          
+          <!-- Review Slider Container (will be populated by JavaScript) -->
+          <div class="md3-review-slider" id="review-slider-grid-{{ location.id }}" style="display: none;">
+            <div class="md3-review-slides" id="review-slides-grid-{{ location.id }}">
+              <!-- Reviews will be inserted here by JavaScript -->
+            </div>
+            <div class="md3-slider-dots" id="review-dots-grid-{{ location.id }}">
+              <!-- Dots will be inserted here by JavaScript -->
+            </div>
+          </div>
           
           <!-- Navigation Button -->
           {% if location.latitude and location.longitude %}
@@ -4172,6 +4278,253 @@ document.getElementById('new-location-form').addEventListener('submit', function
   .catch(error => {
     console.error('❌ ERROR: Network error:', error);
     alert('Netzwerkfehler. Bitte versuchen Sie es erneut.');
+  });
+});
+
+// ==========================================
+// Review Slider Implementation
+// ==========================================
+
+// Store slider states for each location
+const reviewSliders = {};
+
+/**
+ * Initialize review slider for a location
+ * @param {number} locationId - Location ID
+ * @param {string} viewType - 'carousel' or 'grid'
+ */
+function initReviewSlider(locationId, viewType) {
+  const sliderId = `review-slider-${viewType}-${locationId}`;
+  const slidesId = `review-slides-${viewType}-${locationId}`;
+  const dotsId = `review-dots-${viewType}-${locationId}`;
+  
+  // Fetch reviews from API
+  fetch(`/api/locations/${locationId}/reviews`)
+    .then(response => response.json())
+    .then(data => {
+      if (!data.success) {
+        console.error('Failed to load reviews for location', locationId);
+        return;
+      }
+      
+      const sliderElement = document.getElementById(sliderId);
+      const slidesElement = document.getElementById(slidesId);
+      const dotsElement = document.getElementById(dotsId);
+      
+      if (!sliderElement || !slidesElement || !dotsElement) {
+        return;
+      }
+      
+      // Decide what to show: Reviews or Description
+      let slides = [];
+      if (data.has_reviews && data.reviews && data.reviews.length > 0) {
+        // Show Google Reviews
+        slides = data.reviews.map(review => createReviewSlide(review));
+      } else if (data.description && data.description.trim() !== '') {
+        // Show Description as fallback
+        slides = [createDescriptionSlide(data.description)];
+      } else {
+        // Nothing to show
+        return;
+      }
+      
+      // Populate slides
+      slidesElement.innerHTML = slides.join('');
+      
+      // Create dots
+      if (slides.length > 1) {
+        const dots = slides.map((_, index) => 
+          `<div class="md3-slider-dot ${index === 0 ? 'active' : ''}" onclick="goToSlide(${locationId}, '${viewType}', ${index})"></div>`
+        ).join('');
+        dotsElement.innerHTML = dots;
+      }
+      
+      // Show slider
+      sliderElement.style.display = 'block';
+      
+      // Initialize slider state
+      reviewSliders[`${locationId}-${viewType}`] = {
+        currentSlide: 0,
+        totalSlides: slides.length,
+        slidesElement: slidesElement,
+        dotsElement: dotsElement,
+        autoSlideInterval: null,
+        isPaused: false
+      };
+      
+      // Start auto-slide if more than 1 slide
+      if (slides.length > 1) {
+        startAutoSlide(locationId, viewType);
+        
+        // Pause on hover
+        sliderElement.addEventListener('mouseenter', () => {
+          pauseAutoSlide(locationId, viewType);
+        });
+        
+        sliderElement.addEventListener('mouseleave', () => {
+          resumeAutoSlide(locationId, viewType);
+        });
+      }
+    })
+    .catch(error => {
+      console.error('Error loading reviews:', error);
+    });
+}
+
+/**
+ * Create HTML for a review slide
+ */
+function createReviewSlide(review) {
+  const stars = createStarsHTML(review.rating);
+  return `
+    <div class="md3-review-slide">
+      <div class="md3-review-content">
+        <div class="md3-review-header">
+          <span class="md3-review-author">${escapeHtml(review.author_name)}</span>
+          <span class="md3-review-time">${escapeHtml(review.time)}</span>
+        </div>
+        <div class="md3-review-rating">${stars}</div>
+        <div class="md3-review-text">"${escapeHtml(review.text)}"</div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Create HTML for a description slide
+ */
+function createDescriptionSlide(description) {
+  return `
+    <div class="md3-review-slide">
+      <div class="md3-review-content">
+        <div class="md3-review-description">${escapeHtml(description)}</div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Create stars HTML for rating
+ */
+function createStarsHTML(rating) {
+  let stars = '';
+  for (let i = 1; i <= 5; i++) {
+    if (i <= rating) {
+      stars += '<span class="md3-star md3-star-filled">★</span>';
+    } else {
+      stars += '<span class="md3-star md3-star-empty">☆</span>';
+    }
+  }
+  return stars;
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * Go to specific slide
+ */
+function goToSlide(locationId, viewType, slideIndex) {
+  const key = `${locationId}-${viewType}`;
+  const slider = reviewSliders[key];
+  
+  if (!slider) return;
+  
+  slider.currentSlide = slideIndex;
+  updateSlider(locationId, viewType);
+}
+
+/**
+ * Update slider position and dots
+ */
+function updateSlider(locationId, viewType) {
+  const key = `${locationId}-${viewType}`;
+  const slider = reviewSliders[key];
+  
+  if (!slider) return;
+  
+  // Update slide position
+  const translateX = -slider.currentSlide * 100;
+  slider.slidesElement.style.transform = `translateX(${translateX}%)`;
+  
+  // Update dots
+  const dots = slider.dotsElement.querySelectorAll('.md3-slider-dot');
+  dots.forEach((dot, index) => {
+    if (index === slider.currentSlide) {
+      dot.classList.add('active');
+    } else {
+      dot.classList.remove('active');
+    }
+  });
+}
+
+/**
+ * Start auto-slide
+ */
+function startAutoSlide(locationId, viewType) {
+  const key = `${locationId}-${viewType}`;
+  const slider = reviewSliders[key];
+  
+  if (!slider || slider.totalSlides <= 1) return;
+  
+  slider.autoSlideInterval = setInterval(() => {
+    if (!slider.isPaused) {
+      slider.currentSlide = (slider.currentSlide + 1) % slider.totalSlides;
+      updateSlider(locationId, viewType);
+    }
+  }, 5000); // Change slide every 5 seconds
+}
+
+/**
+ * Pause auto-slide
+ */
+function pauseAutoSlide(locationId, viewType) {
+  const key = `${locationId}-${viewType}`;
+  const slider = reviewSliders[key];
+  
+  if (slider) {
+    slider.isPaused = true;
+  }
+}
+
+/**
+ * Resume auto-slide
+ */
+function resumeAutoSlide(locationId, viewType) {
+  const key = `${locationId}-${viewType}`;
+  const slider = reviewSliders[key];
+  
+  if (slider) {
+    slider.isPaused = false;
+  }
+}
+
+/**
+ * Stop auto-slide
+ */
+function stopAutoSlide(locationId, viewType) {
+  const key = `${locationId}-${viewType}`;
+  const slider = reviewSliders[key];
+  
+  if (slider && slider.autoSlideInterval) {
+    clearInterval(slider.autoSlideInterval);
+    slider.autoSlideInterval = null;
+  }
+}
+
+// Initialize review sliders for all locations when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize sliders for all locations
+  locationsData.forEach(location => {
+    // Initialize for both carousel and grid views
+    initReviewSlider(location.id, 'carousel');
+    initReviewSlider(location.id, 'grid');
   });
 });
 

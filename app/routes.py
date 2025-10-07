@@ -667,7 +667,11 @@ def init_app(app):
                 'google_rating': location.google_rating,
                 'google_reviews_count': location.google_reviews_count,
                 'google_maps_url': location.google_maps_url,
-                'asset_count': asset_count
+                'asset_count': asset_count,
+                'is_active': location.is_active if hasattr(location, 'is_active') else True,
+                'location_type': location.location_type if hasattr(location, 'location_type') else 'Büro',
+                'available': location.available if hasattr(location, 'available') else True,
+                'image_url': location.image_url if hasattr(location, 'image_url') else None
             }
             locations_dict.append(location_dict)
         
@@ -698,6 +702,7 @@ def init_app(app):
                 pass  # LocationImage Model existiert möglicherweise nicht
             
             # Bestand nach Kategorien aggregieren
+            from .models import Category
             category_stats = db.session.query(
                 Asset.category_id,
                 func.count(Asset.id).label('count'),
@@ -743,10 +748,57 @@ def init_app(app):
                 } for img in gallery_images],
                 'category_stats': [{
                     'category_id': stat.category_id,
-                    'category_name': 'Kategorie ' + str(stat.category_id) if stat.category_id else 'Unbekannt',
+                    'category_name': Category.query.get(stat.category_id).name if stat.category_id and Category.query.get(stat.category_id) else 'Unbekannt',
                     'count': stat.count,
                     'total_value': float(stat.total_value) if stat.total_value else 0
                 } for stat in category_stats]
+            }
+            
+            return jsonify(response_data)
+            
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/api/locations/<int:location_id>/reviews')
+    def location_reviews_api(location_id):
+        """API für Google Reviews eines Standorts"""
+        from .models import Location
+        
+        try:
+            location = Location.query.get_or_404(location_id)
+            
+            # TODO: Integrate with real Google Places API
+            # For now, return mock data for demonstration
+            mock_reviews = [
+                {
+                    'author_name': 'Max Mustermann',
+                    'rating': 5,
+                    'text': 'Hervorragender Standort mit toller Atmosphäre und professionellem Service. Sehr zu empfehlen!',
+                    'time': '2 Wochen her',
+                    'profile_photo_url': None
+                },
+                {
+                    'author_name': 'Anna Schmidt',
+                    'rating': 4,
+                    'text': 'Sehr gute Lage und moderne Ausstattung. Das Team ist freundlich und hilfsbereit.',
+                    'time': '1 Monat her',
+                    'profile_photo_url': None
+                },
+                {
+                    'author_name': 'Thomas Weber',
+                    'rating': 5,
+                    'text': 'Top Standort! Perfekte Infrastruktur und zentrale Lage. Immer wieder gerne.',
+                    'time': '3 Monate her',
+                    'profile_photo_url': None
+                }
+            ]
+            
+            response_data = {
+                'success': True,
+                'has_reviews': True,  # Set to False if no Google reviews available
+                'reviews': mock_reviews,
+                'description': location.description or '',
+                'message': 'Mock-Daten (Google Places API noch nicht konfiguriert)'
             }
             
             return jsonify(response_data)
