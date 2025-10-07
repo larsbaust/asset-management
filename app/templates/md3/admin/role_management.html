@@ -31,30 +31,45 @@
   
   .roles-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
   }
   
   .role-card {
     background: var(--md-sys-color-surface);
     border-radius: 16px;
-    padding: 24px;
+    padding: 20px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     border: 1px solid var(--md-sys-color-outline-variant);
     transition: all 0.3s ease;
+    cursor: pointer;
   }
   
   .role-card:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-    transform: translateY(-2px);
+    border-color: var(--md-sys-color-primary);
+  }
+  
+  .role-card.expanded {
+    grid-column: span 2;
+  }
+  
+  @media (max-width: 1200px) {
+    .role-card.expanded {
+      grid-column: span 1;
+    }
   }
   
   .role-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    margin-bottom: 16px;
     gap: 12px;
+    margin-bottom: 0;
+  }
+  
+  .role-card.expanded .role-header {
+    margin-bottom: 8px;
   }
   
   .role-info {
@@ -65,6 +80,9 @@
     font: var(--md-sys-typescale-title-large-font);
     color: var(--md-sys-color-on-surface);
     margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   
   .role-description {
@@ -73,13 +91,36 @@
     margin: 0;
   }
   
+  .expand-indicator {
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 20px;
+    transition: transform 0.3s ease;
+  }
+  
+  .role-card.expanded .expand-indicator {
+    transform: rotate(180deg);
+  }
+  
   .role-actions {
     display: flex;
     gap: 8px;
   }
   
+  .role-actions a {
+    pointer-events: all;
+  }
+  
   .permissions-section {
-    margin-top: 20px;
+    margin-top: 12px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, opacity 0.3s ease;
+    opacity: 0;
+  }
+  
+  .role-card.expanded .permissions-section {
+    max-height: 2000px;
+    opacity: 1;
   }
   
   .permissions-header {
@@ -98,6 +139,19 @@
     border-radius: 12px;
     font-size: 12px;
     font-weight: 600;
+  }
+  
+  .permissions-preview {
+    font: var(--md-sys-typescale-body-small-font);
+    color: var(--md-sys-color-on-surface-variant);
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .role-card.expanded .permissions-preview {
+    display: none;
   }
   
   .permissions-grid {
@@ -230,6 +284,10 @@
       grid-template-columns: 1fr;
     }
     
+    .role-card.expanded {
+      grid-column: span 1;
+    }
+    
     .page-header {
       flex-direction: column;
       align-items: stretch;
@@ -257,17 +315,24 @@
 
       <div class="roles-grid">
         {% for role in roles %}
-        <div class="role-card">
+        <div class="role-card" onclick="toggleCard(this)">
           <div class="role-header">
             <div class="role-info">
-              <h2 class="role-name">{{ role.name }}</h2>
+              <h2 class="role-name">
+                {{ role.name }}
+                <span class="expand-indicator material-symbols-outlined">expand_more</span>
+              </h2>
               <p class="role-description">{{ role.description or 'Keine Beschreibung' }}</p>
+              <div class="permissions-preview">
+                <span class="material-symbols-outlined" style="font-size: 16px;">shield_person</span>
+                <span>{{ role.permissions|length }} Berechtigungen</span>
+              </div>
             </div>
             <div class="role-actions">
-              <a href="{{ url_for('admin.edit_role', role_id=role.id, md3=1) }}" class="md3-icon-button" title="Bearbeiten">
+              <a href="{{ url_for('admin.edit_role', role_id=role.id, md3=1) }}" class="md3-icon-button" title="Bearbeiten" onclick="event.stopPropagation();">
                 <span class="material-symbols-outlined">edit</span>
               </a>
-              <a href="{{ url_for('admin.delete_role', role_id=role.id, md3=1) }}" class="md3-icon-button delete" onclick="return confirm('Rolle wirklich löschen?');" title="Löschen">
+              <a href="{{ url_for('admin.delete_role', role_id=role.id, md3=1) }}" class="md3-icon-button delete" onclick="event.stopPropagation(); return confirm('Rolle wirklich löschen?');" title="Löschen">
                 <span class="material-symbols-outlined">delete</span>
               </a>
             </div>
@@ -355,4 +420,11 @@
       </div>
     </div>
   </div>
+  
+  <script>
+    function toggleCard(card) {
+      // Toggle expanded class
+      card.classList.toggle('expanded');
+    }
+  </script>
 {% endblock %}
